@@ -79,13 +79,17 @@ static std::filesystem::path get_private_key_path(const X509Wrapper& certificate
                 try {
                     std::ifstream file(key_file_path, std::ios::binary);
                     std::string private_key((std::istreambuf_iterator<char>(file)), std::istreambuf_iterator<char>());
+                    EVLOG_critical << "private key  " << private_key;
                     BIO_ptr bio(BIO_new_mem_buf(private_key.c_str(), -1));
+                    EVLOG_critical << "bio " << bio.get() << " password " << password.value_or("").c_str();
                     EVP_PKEY_ptr evp_pkey(
                         PEM_read_bio_PrivateKey(bio.get(), nullptr, nullptr, (void*)password.value_or("").c_str()));
                     if (evp_pkey not_eq nullptr) {
                         if (X509_check_private_key(certificate.get(), evp_pkey.get())) {
                             return key_path;
                         }
+                    } else {
+                        EVLOG_critical << "nullptr caught";
                     }
                 } catch (const std::exception& e) {
                     EVLOG_debug << "Could not load or verify private key at: " << key_file_path << ": " << e.what();
