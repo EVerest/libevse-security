@@ -82,8 +82,10 @@ static std::filesystem::path get_private_key_path(const X509Wrapper& certificate
                     BIO_ptr bio(BIO_new_mem_buf(private_key.c_str(), -1));
                     EVP_PKEY_ptr evp_pkey(
                         PEM_read_bio_PrivateKey(bio.get(), nullptr, nullptr, (void*)password.value_or("").c_str()));
-                    if (X509_check_private_key(certificate.get(), evp_pkey.get())) {
-                        return key_path;
+                    if (evp_pkey not_eq nullptr) {
+                        if (X509_check_private_key(certificate.get(), evp_pkey.get())) {
+                            return key_path;
+                        }
                     }
                 } catch (const std::exception& e) {
                     EVLOG_debug << "Could not load or verify private key at: " << key_file_path << ": " << e.what();
