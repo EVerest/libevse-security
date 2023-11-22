@@ -9,9 +9,12 @@ class MalformedPEMException: public std::runtime_error {
     using std::runtime_error::runtime_error;
 };
 
+static std::regex not_b64_chars("[^a-zA-Z0-9/\\+=]");
+static std::regex single_pem("(-----BEGIN[^-]*-----)([^-]*)(-----END[^-]*-----\\n?)");
+
 static std::string fix_pem_payload(const std::string& input_pem_payload) {
     // Remove all newlines and whitespace from the rest
-    std::string cleared_string = std::regex_replace(input_pem_payload, std::regex("[^a-zA-Z0-9/\\+=]"), "");
+    std::string cleared_string = std::regex_replace(input_pem_payload, not_b64_chars, "");
 
     // Start with a newline, split the string into 64-char chunks, add newline after each
     std::string result = "\n";
@@ -29,10 +32,9 @@ static std::string fix_pem_string(const std::string& input_pem_string) {
     std::string payload;
 
     // Split the string into header, footer, and b64 encoding
-    std::regex single_pem_regex("(-----BEGIN[^-]*-----)([^-]*)(-----END[^-]*-----\\n?)");
     std::smatch matches;
     try {
-        std::regex_match(input_pem_string, matches, single_pem_regex);
+        std::regex_match(input_pem_string, matches, single_pem);
     } catch (std::regex_error& e) {
         throw MalformedPEMException("Invalid PEM string: " + input_pem_string);
     }
