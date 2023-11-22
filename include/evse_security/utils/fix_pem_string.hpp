@@ -2,10 +2,10 @@
 // Copyright 2020 - 2023 Pionix GmbH and Contributors to EVerest
 #pragma once
 
-#include <string>
 #include <regex>
+#include <string>
 
-class MalformedPEMException: public std::runtime_error {
+class MalformedPEMException : public std::runtime_error {
     using std::runtime_error::runtime_error;
 };
 
