@@ -4,8 +4,6 @@
 
 #include <string>
 #include <regex>
-#include <boost/algorithm/string.hpp>
-#include <boost/algorithm/string/regex.hpp>
 
 class MalformedPEMException: public std::runtime_error {
     using std::runtime_error::runtime_error;
@@ -13,7 +11,7 @@ class MalformedPEMException: public std::runtime_error {
 
 static std::string fix_pem_payload(const std::string& input_pem_payload) {
     // Remove all newlines and whitespace from the rest
-    std::string cleared_string = boost::erase_all_regex_copy(input_pem_payload, boost::regex("[^a-zA-Z0-9/\\+=]"));
+    std::string cleared_string = std::regex_replace(input_pem_payload, std::regex("[^a-zA-Z0-9/\\+=]"), "");
 
     // Start with a newline, split the string into 64-char chunks, add newline after each
     std::string result = "\n";
