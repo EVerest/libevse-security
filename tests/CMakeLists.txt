@@ -24,7 +24,13 @@ install(
 )
 
 install(
-        DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/future_leaf"
+    DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/future_leaf"
+    DESTINATION "${CMAKE_BINARY_DIR}/tests"
+    FILES_MATCHING PATTERN "*"
+)
+
+install(
+        DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/expired_leaf"
         DESTINATION "${CMAKE_BINARY_DIR}/tests"
         FILES_MATCHING PATTERN "*"
 )
