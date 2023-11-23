@@ -155,8 +155,8 @@ InstallCertificateResult EvseSecurity::install_ca_certificate(const std::string&
                                                               CaCertificateType certificate_type) {
     EVLOG_debug << "Installing ca certificate: " << conversions::ca_certificate_type_to_string(certificate_type);
 
-    // Some CSMS may send malformed PEM strings. Canonicalize them here.
-    std::string fixed_certificate = fix_pem_string(certificate);
+    // Function may be called with malformed PEM strings. Canonicalize them here.
+    const auto fixed_certificate = fix_pem_string(certificate);
 
     // TODO(piet): Check CertificateStoreMaxEntries
     try {
@@ -706,7 +706,7 @@ bool EvseSecurity::verify_file_signature(const fs::path& path, const std::string
     EVLOG_debug << "Verifying file signature for " << path.string();
 
     // Make sure the signing certificate is proper PEM
-    std::string fixed_signing_certificate = fix_pem_string(signing_certificate);
+    const auto fixed_signing_certificate = fix_pem_string(signing_certificate);
 
     std::vector<std::byte> sha256_digest;
 
