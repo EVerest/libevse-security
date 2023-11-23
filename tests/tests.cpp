@@ -60,6 +60,7 @@ protected:
 
     void TearDown() override {
         fs::remove_all("certs");
+        fs::remove_all("csr");
     }
 };
 
@@ -482,6 +483,20 @@ TEST_F(EvseSecurityTests, fix_pem_string) {
     expected_output += "-----END TEST INPUT-----";
 
     ASSERT_EQ(fix_pem_string(test_input), expected_output);
+}
+
+TEST_F(EvseSecurityTests, leaf_cert_starts_in_future_accepted) {
+    const auto new_root_ca =
+        read_file_to_string(std::filesystem::path("future_leaf/V2G_ROOT_CA.pem"));
+    const auto result_ca = this->evse_security->install_ca_certificate(new_root_ca, CaCertificateType::V2G);
+    ASSERT_TRUE(result_ca == InstallCertificateResult::Accepted);
+
+    std::filesystem::copy("future_leaf/SECC_LEAF_FUTURE.key", "certs/client/cso/SECC_LEAF_FUTURE.key");
+
+    const auto client_certificate = read_file_to_string(fs::path("future_leaf/SECC_LEAF_FUTURE.pem"));
+    std::cout << client_certificate << std::endl;
+    const auto result_client = this->evse_security->update_leaf_certificate(client_certificate, LeafCertificateType::V2G);
+    ASSERT_TRUE(result_client == InstallCertificateResult::Accepted);
 }
 
 } // namespace evse_security
