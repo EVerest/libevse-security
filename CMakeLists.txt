@@ -54,6 +54,7 @@ if (EVSE_SECURITY_INSTALL)
 endif()
 
 if(BUILD_TESTING_EVSE_SECURITY)
+    enable_testing()
     add_subdirectory(tests)
     set(CMAKE_BUILD_TYPE Debug)
 endif()
