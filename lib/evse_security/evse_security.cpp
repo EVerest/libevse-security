@@ -595,6 +595,13 @@ std::string EvseSecurity::generate_certificate_signing_request(LeafCertificateTy
     return csr;
 }
 
+std::string EvseSecurity::generate_certificate_signing_request(LeafCertificateType certificate_type,
+                                                               const std::string& country,
+                                                               const std::string& organization,
+                                                               const std::string& common) {
+    return generate_certificate_signing_request(certificate_type, country, organization, common, false);
+}
+
 GetKeyPairResult EvseSecurity::get_key_pair(LeafCertificateType certificate_type, EncodingFormat encoding) {
     EVLOG_debug << "Requesting key/pair: " << conversions::leaf_certificate_type_to_string(certificate_type);
 

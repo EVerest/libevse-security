@@ -96,7 +96,7 @@ public:
     bool is_ca_certificate_installed(CaCertificateType certificate_type);
 
     /// @brief Generates a certificate signing request for the given \p certificate_type , \p country , \p organization
-    /// and \p common
+    /// and \p common , uses the TPM if \p use_tpm is true
     /// @param certificate_type
     /// @param country
     /// @param organization
@@ -106,6 +106,16 @@ public:
     std::string generate_certificate_signing_request(LeafCertificateType certificate_type, const std::string& country,
                                                      const std::string& organization, const std::string& common,
                                                      bool use_tpm);
+
+    /// @brief Generates a certificate signing request for the given \p certificate_type , \p country , \p organization
+    /// and \p common without using the TPM
+    /// @param certificate_type
+    /// @param country
+    /// @param organization
+    /// @param common
+    /// @return the PEM formatted certificate signing request
+    std::string generate_certificate_signing_request(LeafCertificateType certificate_type, const std::string& country,
+                                                     const std::string& organization, const std::string& common);
 
     /// @brief Searches the filesystem on the specified directories for the given \p certificate_type and retrieves the
     /// most recent certificate that is already valid and the respective key.  If no certificate is present or no key is
