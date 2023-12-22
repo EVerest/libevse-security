@@ -101,9 +101,11 @@ public:
     /// @param country
     /// @param organization
     /// @param common
+    /// @param use_tpm  If the TPM should be used for the CSR request
     /// @return the PEM formatted certificate signing request
     std::string generate_certificate_signing_request(LeafCertificateType certificate_type, const std::string& country,
-                                                     const std::string& organization, const std::string& common);
+                                                     const std::string& organization, const std::string& common,
+                                                     bool use_tpm);
 
     /// @brief Searches the filesystem on the specified directories for the given \p certificate_type and retrieves the
     /// most recent certificate that is already valid and the respective key.  If no certificate is present or no key is
