@@ -8,6 +8,11 @@
 #include <map>
 namespace evse_security {
 
+struct LinkPaths {
+    fs::path secc_leaf_cert_link;
+    fs::path cpo_cert_chain_link;
+};
+
 struct DirectoryPaths {
     fs::path csms_leaf_cert_directory;
     fs::path csms_leaf_key_directory;
@@ -22,6 +27,7 @@ struct FilePaths {
     fs::path v2g_ca_bundle;
 
     DirectoryPaths directories;
+    LinkPaths links;
 };
 
 /// @brief This class holds filesystem paths to CA bundle file locations and directories for leaf certificates
@@ -114,6 +120,7 @@ public:
     /// @param organization
     /// @param common
     /// @return the PEM formatted certificate signing request
+    // are these 4 params enough for a full request? I guess there are much more
     std::string generate_certificate_signing_request(LeafCertificateType certificate_type, const std::string& country,
                                                      const std::string& organization, const std::string& common);
 
@@ -147,6 +154,7 @@ private:
     // why not reusing the FilePaths here directly (storage duplication)
     std::map<CaCertificateType, fs::path> ca_bundle_path_map;
     DirectoryPaths directories;
+    LinkPaths links;
 
     // FIXME(piet): map passwords to encrypted private key files
     // is there only one password for all private keys?
