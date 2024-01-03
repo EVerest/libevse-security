@@ -146,6 +146,7 @@ EvseSecurity::EvseSecurity(const FilePaths& file_paths, const std::optional<std:
     }
 
     this->directories = file_paths.directories;
+    this->links = file_paths.links;
 }
 
 EvseSecurity::~EvseSecurity() {
@@ -305,12 +306,16 @@ InstallCertificateResult EvseSecurity::update_leaf_certificate(const std::string
                                                                LeafCertificateType certificate_type) {
     fs::path cert_path;
     fs::path key_path;
+    fs::path cert_link_path;
+    fs::path chain_link_path;
     if (certificate_type == LeafCertificateType::CSMS) {
         cert_path = this->directories.csms_leaf_cert_directory;
         key_path = this->directories.csms_leaf_key_directory;
     } else {
         cert_path = this->directories.secc_leaf_cert_directory;
         key_path = this->directories.secc_leaf_key_directory;
+        cert_link_path = this->links.secc_leaf_cert_link;
+        chain_link_path = this->links.cpo_cert_chain_link;
     }
 
     try {
@@ -346,6 +351,23 @@ InstallCertificateResult EvseSecurity::update_leaf_certificate(const std::string
             std::string("CPO_CERT_CHAIN_") + filesystem_utils::get_random_file_name(PEM_EXTENSION.string());
         const auto chain_file_path = cert_path / chain_file_name;
         std::string str_chain_cert = chain_certificate.to_export_string();
+
+        // Optionally create or update symlinks to SECC cert and CPO chain
+        if (!cert_link_path.empty()) {
+            if (fs::exists(cert_link_path)) {
+                fs::remove(cert_link_path);
+            }
+            EVLOG_debug << "SECC cert link: " << cert_link_path << " -> " << file_path;
+            fs::create_symlink(file_path, cert_link_path);
+        }
+
+        if (!chain_link_path.empty()) {
+            if (fs::exists(chain_link_path)) {
+                fs::remove(chain_link_path);
+            }
+            EVLOG_debug << "CPO cert chain link: " << chain_link_path << " -> " << chain_file_path;
+            fs::create_symlink(chain_file_path, chain_link_path);
+        }
 
         if (filesystem_utils::write_to_file(file_path, str_cert, std::ios::out) &&
             filesystem_utils::write_to_file(chain_file_path, str_chain_cert, std::ios::out)) {
