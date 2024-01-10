@@ -789,7 +789,7 @@ bool EvseSecurity::update_certificate_links(LeafCertificateType certificate_type
             fs::remove(key_link_path);
             changed = true;
         }
-        if (!chain_link_path.empty() &&fs::is_symlink(chain_link_path)) {
+        if (!chain_link_path.empty() && fs::is_symlink(chain_link_path)) {
             fs::remove(chain_link_path);
             changed = true;
         }
