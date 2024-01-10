@@ -691,7 +691,6 @@ GetKeyPairResult EvseSecurity::get_key_pair(LeafCertificateType certificate_type
             return true;
         });
 
-
         if (leaf_single != nullptr) {
             certificate_file = leaf_single->at(0).get_file().value();
         } else {
