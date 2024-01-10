@@ -117,6 +117,7 @@ struct OCSPRequestDataList {
 struct KeyPair {
     fs::path key;                        ///< The path of the PEM or DER encoded private key
     fs::path certificate;                ///< The path of the PEM or DER encoded certificate
+    fs::path chain;                      ///< The path of the PEM or DER encoded certificate chain
     std::optional<std::string> password; ///< Specifies the password for the private key if encrypted
 };
 struct GetKeyPairResult {

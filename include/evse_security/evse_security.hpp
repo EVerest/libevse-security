@@ -10,6 +10,7 @@ namespace evse_security {
 
 struct LinkPaths {
     fs::path secc_leaf_cert_link;
+    fs::path secc_leaf_key_link;
     fs::path cpo_cert_chain_link;
 };
 
@@ -120,7 +121,6 @@ public:
     /// @param organization
     /// @param common
     /// @return the PEM formatted certificate signing request
-    // are these 4 params enough for a full request? I guess there are much more
     std::string generate_certificate_signing_request(LeafCertificateType certificate_type, const std::string& country,
                                                      const std::string& organization, const std::string& common);
 
@@ -131,6 +131,10 @@ public:
     /// @param encoding specifies PEM or DER format
     /// @return contains response result
     GetKeyPairResult get_key_pair(LeafCertificateType certificate_type, EncodingFormat encoding);
+
+    /// @brief Checks and updates the symlinks for the V2G leaf certificates and keys to the most recent valid one
+    /// @return true if one of the links was updated
+    bool update_certificate_links(LeafCertificateType certificate_type);
 
     /// @brief Retrieves the PEM formatted CA bundle file for the given \p certificate_type
     /// @param certificate_type

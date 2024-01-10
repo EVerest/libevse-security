@@ -306,16 +306,12 @@ InstallCertificateResult EvseSecurity::update_leaf_certificate(const std::string
                                                                LeafCertificateType certificate_type) {
     fs::path cert_path;
     fs::path key_path;
-    fs::path cert_link_path;
-    fs::path chain_link_path;
     if (certificate_type == LeafCertificateType::CSMS) {
         cert_path = this->directories.csms_leaf_cert_directory;
         key_path = this->directories.csms_leaf_key_directory;
     } else {
         cert_path = this->directories.secc_leaf_cert_directory;
         key_path = this->directories.secc_leaf_key_directory;
-        cert_link_path = this->links.secc_leaf_cert_link;
-        chain_link_path = this->links.cpo_cert_chain_link;
     }
 
     try {
@@ -351,23 +347,6 @@ InstallCertificateResult EvseSecurity::update_leaf_certificate(const std::string
             std::string("CPO_CERT_CHAIN_") + filesystem_utils::get_random_file_name(PEM_EXTENSION.string());
         const auto chain_file_path = cert_path / chain_file_name;
         std::string str_chain_cert = chain_certificate.to_export_string();
-
-        // Optionally create or update symlinks to SECC cert and CPO chain
-        if (!cert_link_path.empty()) {
-            if (fs::exists(cert_link_path)) {
-                fs::remove(cert_link_path);
-            }
-            EVLOG_debug << "SECC cert link: " << cert_link_path << " -> " << file_path;
-            fs::create_symlink(file_path, cert_link_path);
-        }
-
-        if (!chain_link_path.empty()) {
-            if (fs::exists(chain_link_path)) {
-                fs::remove(chain_link_path);
-            }
-            EVLOG_debug << "CPO cert chain link: " << chain_link_path << " -> " << chain_file_path;
-            fs::create_symlink(chain_file_path, chain_link_path);
-        }
 
         if (filesystem_utils::write_to_file(file_path, str_cert, std::ios::out) &&
             filesystem_utils::write_to_file(chain_file_path, str_chain_cert, std::ios::out)) {
@@ -669,6 +648,7 @@ GetKeyPairResult EvseSecurity::get_key_pair(LeafCertificateType certificate_type
 
         fs::path key_file;
         fs::path certificate_file;
+        fs::path chain_file;
 
         auto certificate = std::move(leaf_certificates.get_latest_valid_certificate());
         auto private_key_path = get_private_key_path(certificate, key_dir, this->private_key_password);
@@ -680,7 +660,7 @@ GetKeyPairResult EvseSecurity::get_key_pair(LeafCertificateType certificate_type
         X509CertificateBundle leaf_directory(cert_dir, EncodingFormat::PEM);
         const std::vector<X509Wrapper>* leaf_fullchain = nullptr;
 
-        // Collect the correct bundle
+        // Collect the full chain
         leaf_directory.for_each_chain([&](const std::filesystem::path& path, const std::vector<X509Wrapper>& chain) {
             // If we contain the latest valid, we found our generated bundle
             if (chain.size() > 1 && std::find(chain.begin(), chain.end(), certificate) != chain.end()) {
@@ -692,17 +672,33 @@ GetKeyPairResult EvseSecurity::get_key_pair(LeafCertificateType certificate_type
         });
 
         if (leaf_fullchain != nullptr) {
-            certificate_file = leaf_fullchain->at(0).get_file().value();
+            chain_file = leaf_fullchain->at(0).get_file().value();
         } else {
             EVLOG_warning << "V2G leaf requires full bundle, but full bundle not found at path: " << cert_dir;
         }
 
-        // If chain is not found, set single leaf certificate file
-        if (certificate_file.empty()) {
-            certificate_file = certificate.get_file().value();
+        // Since certificate may be a full chain, we search again for the single leaf
+        const std::vector<X509Wrapper>* leaf_single = nullptr;
+
+        // Collect the single leaf
+        leaf_directory.for_each_chain([&](const std::filesystem::path& path, const std::vector<X509Wrapper>& chain) {
+            // If we contain the latest valid, we found our generated bundle
+            if (chain.size() == 1 && std::find(chain.begin(), chain.end(), certificate) != chain.end()) {
+                leaf_single = &chain;
+                return false;
+            }
+
+            return true;
+        });
+
+
+        if (leaf_single != nullptr) {
+            certificate_file = leaf_single->at(0).get_file().value();
+        } else {
+            EVLOG_warning << "V2G single leaf not found at path: " << cert_dir;
         }
 
-        result.pair = {key_file, certificate_file, this->private_key_password};
+        result.pair = {key_file, certificate_file, chain_file, this->private_key_password};
         result.status = GetKeyPairStatus::Accepted;
 
         return result;
@@ -719,6 +715,87 @@ GetKeyPairResult EvseSecurity::get_key_pair(LeafCertificateType certificate_type
         result.status = GetKeyPairStatus::NotFound;
         return result;
     }
+}
+
+bool EvseSecurity::update_certificate_links(LeafCertificateType certificate_type) {
+    bool changed = false;
+
+    if (certificate_type != LeafCertificateType::V2G) {
+        throw std::runtime_error("Link updating only supported for V2G certificates");
+    }
+
+    fs::path cert_link_path = this->links.secc_leaf_cert_link;
+    fs::path key_link_path = this->links.secc_leaf_key_link;
+    fs::path chain_link_path = this->links.cpo_cert_chain_link;
+
+    // Get the most recent valid certificate
+    const auto key_pair = this->get_key_pair(certificate_type, EncodingFormat::PEM);
+    if ((key_pair.status == GetKeyPairStatus::Accepted) && key_pair.pair.has_value()) {
+
+        // Create or update symlinks to SECC leaf cert
+        if (!cert_link_path.empty()) {
+            fs::path cert_path = key_pair.pair.value().certificate;
+            if (fs::is_symlink(cert_link_path)) {
+                if (fs::read_symlink(cert_link_path) != cert_path) {
+                    fs::remove(cert_link_path);
+                    changed = true;
+                }
+            }
+            if (!fs::exists(cert_link_path)) {
+                EVLOG_debug << "SECC cert link: " << cert_link_path << " -> " << cert_path;
+                fs::create_symlink(cert_path, cert_link_path);
+                changed = true;
+            }
+        }
+
+        // Create or update symlinks to SECC leaf key
+        if (!key_link_path.empty()) {
+            fs::path key_path = key_pair.pair.value().key;
+            if (fs::is_symlink(key_link_path)) {
+                if (fs::read_symlink(key_link_path) != key_path) {
+                    fs::remove(key_link_path);
+                    changed = true;
+                }
+            }
+            if (!fs::exists(key_link_path)) {
+                EVLOG_debug << "SECC key link: " << key_link_path << " -> " << key_path;
+                fs::create_symlink(key_path, key_link_path);
+                changed = true;
+            }
+        }
+
+        // Create or update symlinks to CPO chain
+        fs::path chain_path = key_pair.pair.value().chain;
+        if (!chain_link_path.empty()) {
+            if (fs::is_symlink(chain_link_path)) {
+                if (fs::read_symlink(chain_link_path) != chain_path) {
+                    fs::remove(chain_link_path);
+                    changed = true;
+                }
+            }
+            if (!fs::exists(chain_link_path)) {
+                EVLOG_debug << "CPO cert chain link: " << chain_link_path << " -> " << chain_path;
+                fs::create_symlink(chain_path, chain_link_path);
+                changed = true;
+            }
+        }
+    } else {
+        // Remove existing symlinks if no valid certificate is found
+        if (!cert_link_path.empty() && fs::is_symlink(cert_link_path)) {
+            fs::remove(cert_link_path);
+            changed = true;
+        }
+        if (!key_link_path.empty() && fs::is_symlink(key_link_path)) {
+            fs::remove(key_link_path);
+            changed = true;
+        }
+        if (!chain_link_path.empty() &&fs::is_symlink(chain_link_path)) {
+            fs::remove(chain_link_path);
+            changed = true;
+        }
+    }
+
+    return changed;
 }
 
 std::string EvseSecurity::get_verify_file(CaCertificateType certificate_type) {
