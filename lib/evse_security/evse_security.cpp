@@ -694,7 +694,7 @@ GetKeyPairResult EvseSecurity::get_key_pair(LeafCertificateType certificate_type
             EVLOG_warning << "V2G single leaf not found at path: " << cert_dir;
         }
 
-        result.pair = {key_file, certificate_file, chain_file, this->private_key_password};
+        result.pair = {key_file, chain_file, certificate_file, this->private_key_password};
         result.status = GetKeyPairStatus::Accepted;
 
         return result;
@@ -761,7 +761,7 @@ bool EvseSecurity::update_certificate_links(LeafCertificateType certificate_type
         }
 
         // Create or update symlinks to CPO chain
-        fs::path chain_path = key_pair.pair.value().chain;
+        fs::path chain_path = key_pair.pair.value().certificate;
         if (!chain_link_path.empty()) {
             if (fs::is_symlink(chain_link_path)) {
                 if (fs::read_symlink(chain_link_path) != chain_path) {
