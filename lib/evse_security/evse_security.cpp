@@ -656,17 +656,28 @@ GetKeyPairResult EvseSecurity::get_key_pair(LeafCertificateType certificate_type
         // Key path doesn't change
         key_file = private_key_path;
 
-        // We are searching for the full leaf bundle, containing both the leaf and the cso1/2
         X509CertificateBundle leaf_directory(cert_dir, EncodingFormat::PEM);
-        const std::vector<X509Wrapper>* leaf_fullchain = nullptr;
 
-        // Collect the full chain
+        const std::vector<X509Wrapper>* leaf_fullchain = nullptr;
+        const std::vector<X509Wrapper>* leaf_single = nullptr;
+
+        // We are searching for both the full leaf bundle, containing the leaf and the cso1/2 and the single leaf
+        // without the cso1/2
         leaf_directory.for_each_chain([&](const std::filesystem::path& path, const std::vector<X509Wrapper>& chain) {
             // If we contain the latest valid, we found our generated bundle
-            if (chain.size() > 1 && std::find(chain.begin(), chain.end(), certificate) != chain.end()) {
-                leaf_fullchain = &chain;
-                return false;
+            bool bFound = (std::find(chain.begin(), chain.end(), certificate) != chain.end());
+
+            if (bFound) {
+                if (chain.size() > 1) {
+                    leaf_fullchain = &chain;
+                } else if (chain.size() == 1) {
+                    leaf_single = &chain;
+                }
             }
+
+            // Found both, break
+            if (leaf_fullchain != nullptr && leaf_single != nullptr)
+                return false;
 
             return true;
         });
@@ -676,20 +687,6 @@ GetKeyPairResult EvseSecurity::get_key_pair(LeafCertificateType certificate_type
         } else {
             EVLOG_warning << "V2G leaf requires full bundle, but full bundle not found at path: " << cert_dir;
         }
-
-        // Since certificate may be a full chain, we search again for the single leaf
-        const std::vector<X509Wrapper>* leaf_single = nullptr;
-
-        // Collect the single leaf
-        leaf_directory.for_each_chain([&](const std::filesystem::path& path, const std::vector<X509Wrapper>& chain) {
-            // If we contain the latest valid, we found our generated bundle
-            if (chain.size() == 1 && std::find(chain.begin(), chain.end(), certificate) != chain.end()) {
-                leaf_single = &chain;
-                return false;
-            }
-
-            return true;
-        });
 
         if (leaf_single != nullptr) {
             certificate_file = leaf_single->at(0).get_file().value();
