@@ -11,6 +11,7 @@ find_package(everest-cmake 0.1 REQUIRED
 
 # options
 option(EVSE_SECURITY_INSTALL "Install the library (shared data might be installed anyway)" ${EVC_MAIN_PROJECT})
+option(LIBEVSE_SECURITY_INSTALL_LIBRARY "Install the libevse-security library (for example when built as a shared library)" OFF)
 
 # dependencies
 if (NOT DISABLE_EDM)
@@ -50,6 +51,13 @@ if (EVSE_SECURITY_INSTALL)
         EXPORT evse_security-targets
         ADDITIONAL_CONTENT
             "find_dependency(everest-log)"
+    )
+endif()
+
+if (LIBEVSE_SECURITY_INSTALL_LIBRARY)
+    install(
+        TARGETS evse_security
+        LIBRARY
     )
 endif()
 
