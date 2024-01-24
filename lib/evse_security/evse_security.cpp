@@ -730,7 +730,7 @@ bool EvseSecurity::update_certificate_links(LeafCertificateType certificate_type
 
         // Create or update symlinks to SECC leaf cert
         if (!cert_link_path.empty()) {
-            fs::path cert_path = key_pair.pair.value().certificate;
+            fs::path cert_path = key_pair.pair.value().certificate_single;
             if (fs::is_symlink(cert_link_path)) {
                 if (fs::read_symlink(cert_link_path) != cert_path) {
                     fs::remove(cert_link_path);
