@@ -768,7 +768,7 @@ bool OpenSSLSupplier::digest_file_sha256(const fs::path& path, std::vector<std::
 
     bool digest_error = false;
 
-    unsigned int sha256_out_length;
+    unsigned int sha256_out_length = 0;
     std::byte sha256_out[EVP_MAX_MD_SIZE];
 
     // calculate sha256 of file
