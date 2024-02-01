@@ -5,6 +5,7 @@
 #include <gtest/gtest.h>
 #include <regex>
 #include <sstream>
+#include <thread>
 
 #include <evse_security/certificate/x509_bundle.hpp>
 #include <evse_security/certificate/x509_wrapper.hpp>
@@ -704,6 +705,60 @@ TEST_F(EvseSecurityTests, expired_leaf_cert_rejected) {
     const auto result_client =
         this->evse_security->update_leaf_certificate(client_certificate, LeafCertificateType::V2G);
     ASSERT_TRUE(result_client == InstallCertificateResult::Expired);
+}
+
+TEST_F(EvseSecurityTests, verify_full_filesystem) {
+    ASSERT_EQ(evse_security->is_filesystem_full(), false);
+
+    evse_security->max_fs_usage_bytes = 1;
+    ASSERT_EQ(evse_security->is_filesystem_full(), true);
+}
+
+TEST_F(EvseSecurityTests, verify_full_filesystem_install_reject) {
+    evse_security->max_fs_usage_bytes = 1;
+    ASSERT_EQ(evse_security->is_filesystem_full(), true);
+
+    // Must have a rejection
+    const auto new_root_ca_1 =
+        read_file_to_string(std::filesystem::path("certs/to_be_installed/INSTALL_TEST_ROOT_CA1.pem"));
+    const auto result = this->evse_security->install_ca_certificate(new_root_ca_1, CaCertificateType::CSMS);
+    ASSERT_TRUE(result == InstallCertificateResult::CertificateStoreMaxLengthExceeded);
+}
+
+TEST_F(EvseSecurityTests, verify_expired_csr_deletion) {
+    // Generate a CSR
+    std::string csr =
+        evse_security->generate_certificate_signing_request(LeafCertificateType::CSMS, "DE", "Pionix", "NA");
+    fs::path csr_key_path = evse_security->managed_csr.begin()->first;
+
+    ASSERT_EQ(evse_security->managed_csr.size(), 1);
+    ASSERT_TRUE(fs::exists(csr_key_path));
+
+    // Check that is is NOT deleted
+    evse_security->garbage_collect(false);
+    ASSERT_TRUE(fs::exists(csr_key_path));
+
+    // Sleep 1 second AND it must be deleted
+    evse_security->csr_expiry = std::chrono::seconds(0);
+    std::this_thread::sleep_for(std::chrono::seconds(1));
+    evse_security->garbage_collect(false);
+
+    ASSERT_FALSE(fs::exists(csr_key_path));
+    ASSERT_EQ(evse_security->managed_csr.size(), 0);
+
+    // Delete unmanaged CSRs
+    csr = evse_security->generate_certificate_signing_request(LeafCertificateType::CSMS, "DE", "Pionix", "NA");
+    csr_key_path = evse_security->managed_csr.begin()->first;
+
+    // Remove from managed (simulate a reboot/reinit)
+    evse_security->managed_csr.clear();
+
+    ASSERT_EQ(evse_security->managed_csr.size(), 0);
+    ASSERT_TRUE(fs::exists(csr_key_path));
+
+    // Garbage collect should delete the unmanaged key
+    evse_security->garbage_collect(false);
+    ASSERT_FALSE(fs::exists(csr_key_path));
 }
 
 } // namespace evse_security
