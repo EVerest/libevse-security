@@ -209,8 +209,9 @@ private:
 // Define here all tests that require internal function usage
 #ifdef BUILD_TESTING_EVSE_SECURITY
     FRIEND_TEST(EvseSecurityTests, verify_full_filesystem_install_reject);
-    FRIEND_TEST(EvseSecurityTests, verify_expired_csr_deletion);
     FRIEND_TEST(EvseSecurityTests, verify_full_filesystem);
+    FRIEND_TEST(EvseSecurityTests, verify_expired_csr_deletion);
+    FRIEND_TEST(EvseSecurityTests, verify_expired_leaf_deletion);
 #endif
 };
 

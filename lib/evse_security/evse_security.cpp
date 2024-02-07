@@ -421,14 +421,12 @@ InstallCertificateResult EvseSecurity::update_leaf_certificate(const std::string
         // Write certificate to file
         std::string extra_filename = filesystem_utils::get_random_file_name(PEM_EXTENSION.string());
 
-        const auto file_name =
-            std::string("SECC_LEAF_") + extra_filename;
+        const auto file_name = std::string("SECC_LEAF_") + extra_filename;
         const auto file_path = cert_path / file_name;
         std::string str_cert = leaf_certificate.get_export_string();
 
         // Also write chain to file
-        const auto chain_file_name =
-            std::string("CPO_CERT_CHAIN_") + extra_filename;
+        const auto chain_file_name = std::string("CPO_CERT_CHAIN_") + extra_filename;
         const auto chain_file_path = cert_path / chain_file_name;
         std::string str_chain_cert = chain_certificate.to_export_string();
 
