@@ -731,6 +731,9 @@ TEST_F(EvseSecurityTests, verify_expired_csr_deletion) {
         evse_security->generate_certificate_signing_request(LeafCertificateType::CSMS, "DE", "Pionix", "NA");
     fs::path csr_key_path = evse_security->managed_csr.begin()->first;
 
+    // Simulate a full fs else no deletion will take place
+    evse_security->max_fs_usage_bytes = 1;
+
     ASSERT_EQ(evse_security->managed_csr.size(), 1);
     ASSERT_TRUE(fs::exists(csr_key_path));
 

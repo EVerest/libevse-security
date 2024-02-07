@@ -200,6 +200,17 @@ EvseSecurity::EvseSecurity(const FilePaths& file_paths, const std::optional<std:
         }
     }
 
+    // Check that the leafs directory is not related to the bundle directory because
+    // on garbage collect that can delete relevant CA certificates instead of leaf ones
+    for (const auto& leaf_dir : dirs) {
+        for (auto const& [certificate_type, ca_bundle_path] : ca_bundle_path_map) {
+            if (ca_bundle_path == leaf_dir) {
+                throw std::runtime_error(leaf_dir.string() +
+                                         " leaf directory can not overlap CA directory: " + ca_bundle_path.string());
+            }
+        }
+    }
+
     this->directories = file_paths.directories;
     this->links = file_paths.links;
 
@@ -408,14 +419,16 @@ InstallCertificateResult EvseSecurity::update_leaf_certificate(const std::string
         }
 
         // Write certificate to file
+        std::string extra_filename = filesystem_utils::get_random_file_name(PEM_EXTENSION.string());
+
         const auto file_name =
-            std::string("SECC_LEAF_") + filesystem_utils::get_random_file_name(PEM_EXTENSION.string());
+            std::string("SECC_LEAF_") + extra_filename;
         const auto file_path = cert_path / file_name;
         std::string str_cert = leaf_certificate.get_export_string();
 
         // Also write chain to file
         const auto chain_file_name =
-            std::string("CPO_CERT_CHAIN_") + filesystem_utils::get_random_file_name(PEM_EXTENSION.string());
+            std::string("CPO_CERT_CHAIN_") + extra_filename;
         const auto chain_file_path = cert_path / chain_file_name;
         std::string str_chain_cert = chain_certificate.to_export_string();
 
@@ -1012,23 +1025,44 @@ void EvseSecurity::garbage_collect(bool delete_expired_certificates) {
 
         std::set<fs::path> invalid_certificate_files;
 
-        // TODO: Order by latest valid, and keep newest with a safety limit
+        // Order by latest valid, and keep newest with a safety limit
         for (auto const& [cert_dir, key_dir] : leaf_paths) {
             X509CertificateBundle expired_certs(cert_dir, EncodingFormat::PEM);
 
-            expired_certs.for_each_chain(
-                [&invalid_certificate_files](const fs::path& file, const std::vector<X509Wrapper>& chain) {
-                    // If the chain contains the first expired (leafs are the first)
-                    if (chain.size()) {
-                        if (chain[0].is_expired()) {
+            // Only handle if we have more than the minimum certificates entry
+            if (expired_certs.get_certificate_chains_count() > DEFAULT_MINIMUM_CERTIFICATE_ENTRIES) {
+                int skipped = 0;
+
+                // Order by expiry date, and keep even expired certificates with a minimum of 10 certificates
+                expired_certs.for_each_chain_ordered(
+                    [&invalid_certificate_files, &skipped](const fs::path& file,
+                                                           const std::vector<X509Wrapper>& chain) {
+                        // By default delete all empty
+                        if (chain.size() <= 0) {
                             invalid_certificate_files.emplace(file);
                         }
-                    } else {
-                        invalid_certificate_files.emplace(file);
-                    }
 
-                    return true;
-                });
+                        if (skipped++ > DEFAULT_MINIMUM_CERTIFICATE_ENTRIES) {
+                            // If the chain contains the first expired (leafs are the first)
+                            if (chain.size()) {
+                                if (chain[0].is_expired()) {
+                                    invalid_certificate_files.emplace(file);
+                                }
+                            }
+                        }
+
+                        return true;
+                    },
+                    [](const std::vector<X509Wrapper>& a, const std::vector<X509Wrapper>& b) {
+                        // Order from newest to oldest (newest DEFAULT_MINIMUM_CERTIFICATE_ENTRIES) are kept
+                        // even if they are expired
+                        if (a.size() && b.size()) {
+                            return a.at(0).get_valid_to() > b.at(0).get_valid_to();
+                        } else {
+                            return false;
+                        }
+                    });
+            }
         }
 
         for (const auto& expired_certificate_file : invalid_certificate_files) {

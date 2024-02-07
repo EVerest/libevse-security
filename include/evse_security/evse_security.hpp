@@ -37,13 +37,15 @@ struct FilePaths {
     LinkPaths links;
 };
 
+// Unchangeable security limit for certificate deletion, a min entry count will be always kept (newest)
+static constexpr std::size_t DEFAULT_MINIMUM_CERTIFICATE_ENTRIES = 10;
 // 50 MB default limit for filesystem usage
 static constexpr std::uintmax_t DEFAULT_MAX_FILESYSTEM_SIZE = 1024 * 1024 * 50;
 // Default maximum 2000 certificate entries
 static constexpr std::uintmax_t DEFAULT_MAX_CERTIFICATE_ENTRIES = 2000;
 
-// Expiry for CSRs that did not receive a response CSR
-static std::chrono::seconds DEFAULT_CSR_EXPIRY(5 * 60);
+// Expiry for CSRs that did not receive a response CSR, 10 minutes or reboot
+static std::chrono::seconds DEFAULT_CSR_EXPIRY(10 * 60);
 
 /// @brief This class holds filesystem paths to CA bundle file locations and directories for leaf certificates
 class EvseSecurity {
