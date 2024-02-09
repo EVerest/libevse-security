@@ -139,7 +139,7 @@ public:
     /// @brief Retrieves the PEM formatted CA bundle file for the given \p certificate_type
     /// @param certificate_type
     /// @return CA certificate file
-    std::string get_verify_file(CaCertificateType certificate_type);
+    std::string get_verify_file(CaCertificateType certificate_type, bool attempt_fallback = false);
 
     /// @brief Gets the expiry day count for the leaf certificate of the given \p certificate_type
     /// @param certificate_type

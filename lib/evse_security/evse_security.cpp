@@ -151,6 +151,8 @@ EvseSecurity::EvseSecurity(const FilePaths& file_paths, const std::optional<std:
 EvseSecurity::~EvseSecurity() {
 }
 
+bool AdditionalRootCertificateCheck = false;
+
 InstallCertificateResult EvseSecurity::install_ca_certificate(const std::string& certificate,
                                                               CaCertificateType certificate_type) {
     EVLOG_debug << "Installing ca certificate: " << conversions::ca_certificate_type_to_string(certificate_type);
@@ -189,27 +191,35 @@ InstallCertificateResult EvseSecurity::install_ca_certificate(const std::string&
             // special handling for CSMS Root CA
 
             // check CaCertificateType and check if it is CSMS
-            if (certificate_type == CaCertificateType::CSMS /* and AdditionalRootCertificateCheck is true*/) {
-                const auto result =
-                    CryptoSupplier::x509_verify_certificate(new_cert.get(), existing_certs.split().at(0).get());
-                if (result == CertificateValidationError::NoError) {
-                    existing_certs.add_certificate(std::move(new_cert));
-                    if (existing_certs.export_certificates()) {
-                        return InstallCertificateResult::Accepted;
-                    } else {
-                        return InstallCertificateResult::WriteError;
+            if (certificate_type == CaCertificateType::CSMS && AdditionalRootCertificateCheck) {
+                // New certificate must be signed by the old one
+                bool any_signed = false;
+
+                existing_certs.for_each_chain([&](const fs::path& chain, const std::vector<X509Wrapper>& certifs) {
+                    for (const auto& root : certifs) {
+                        // Check if we find a parent
+                        if (new_cert.is_child(root)) {
+                            any_signed = true;
+                            return false;
+                        }
                     }
-                } else {
+
+                    return true;
+                });
+
+                if (any_signed == false) {
+                    EVLOG_error << "We are trying to install a new CSMS with 'AdditionalRootCertificateCheck' and "
+                                   "provided cert was not signed by any of our roots!";
                     return InstallCertificateResult::InvalidCertificateChain;
                 }
-            } else {
-                existing_certs.add_certificate(std::move(new_cert));
+            }
 
-                if (existing_certs.export_certificates()) {
-                    return InstallCertificateResult::Accepted;
-                } else {
-                    return InstallCertificateResult::WriteError;
-                }
+            existing_certs.add_certificate(std::move(new_cert));
+
+            if (existing_certs.export_certificates()) {
+                return InstallCertificateResult::Accepted;
+            } else {
+                return InstallCertificateResult::WriteError;
             }
         } else {
             // Else, simply update it
@@ -819,26 +829,49 @@ bool EvseSecurity::update_certificate_links(LeafCertificateType certificate_type
     return changed;
 }
 
-std::string EvseSecurity::get_verify_file(CaCertificateType certificate_type) {
+std::string EvseSecurity::get_verify_file(CaCertificateType certificate_type, bool attempt_fallback) {
+    EVLOG_debug << "Requesting verify file: [" << conversions::ca_certificate_type_to_string(certificate_type) << "]"
+                << " attempt fallback: " << attempt_fallback;
+
     // Support bundle files, in case the certificates contain
     // multiple entries (should be 3) as per the specification
-    X509CertificateBundle verify_file(this->ca_bundle_path_map.at(certificate_type), EncodingFormat::PEM);
+    try {
+        X509CertificateBundle verify_file(this->ca_bundle_path_map.at(certificate_type), EncodingFormat::PEM);
+        EVLOG_debug << "Verify file: [" << verify_file.get_path();
 
-    EVLOG_debug << "Requesting certificate file: [" << conversions::ca_certificate_type_to_string(certificate_type)
-                << "] file:" << verify_file.get_path();
-
-    // If we are using a directory, search for the first valid root file
-    if (verify_file.is_using_directory()) {
         auto& hierarchy = verify_file.get_certficate_hierarchy();
 
-        // Get all roots and search for a valid self-signed
-        for (auto& root : hierarchy.get_hierarchy()) {
-            if (root.certificate.is_selfsigned() && root.certificate.is_valid())
-                return root.certificate.get_file().value_or("");
+        if (AdditionalRootCertificateCheck) {
+            // Since on the CSMS case we can have a certificate that is signed by the root, in that
+            // case we need to collect the descendants
+            for (auto& root : hierarchy.get_hierarchy()) {
+                if (attempt_fallback) {
+                    return root.certificate.get_file().value_or("");
+                } else {
+                    const auto descendants = hierarchy.collect_descendants(root.certificate);
+                    if (descendants.size()) {
+                        return descendants[0].get_file().value_or("");
+                    } else {
+                        return root.certificate.get_file().value_or("");
+                    }
+                }
+            }
+        } else {
+            // Get all roots and search for a valid self-signed
+            for (auto& root : hierarchy.get_hierarchy()) {
+                if (root.certificate.is_selfsigned() && root.certificate.is_valid()) {
+                    return root.certificate.get_file().value_or("");
+                }
+            }
         }
+    } catch (const CertificateLoadException& e) {
+        EVLOG_error << "Could not load verify file type:"
+                    << conversions::ca_certificate_type_to_string(certificate_type);
+        return "";
     }
 
-    return verify_file.get_path().string();
+    EVLOG_error << "Could not find verify file:" << conversions::ca_certificate_type_to_string(certificate_type);
+    return "";
 }
 
 int EvseSecurity::get_leaf_expiry_days_count(LeafCertificateType certificate_type) {
