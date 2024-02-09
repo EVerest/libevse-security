@@ -184,12 +184,32 @@ InstallCertificateResult EvseSecurity::install_ca_certificate(const std::string&
 
         // Check if cert is already installed
         if (existing_certs.contains_certificate(new_cert) == false) {
-            existing_certs.add_certificate(std::move(new_cert));
 
-            if (existing_certs.export_certificates()) {
-                return InstallCertificateResult::Accepted;
+            // for CSMS Root CA when AdditionalRootCertificateCheck == true we need to check if its signed by the old
+            // special handling for CSMS Root CA
+
+            // check CaCertificateType and check if it is CSMS
+            if (certificate_type == CaCertificateType::CSMS /* and AdditionalRootCertificateCheck is true*/) {
+                const auto result =
+                    CryptoSupplier::x509_verify_certificate(new_cert.get(), existing_certs.split().at(0).get());
+                if (result == CertificateValidationError::NoError) {
+                    existing_certs.add_certificate(std::move(new_cert));
+                    if (existing_certs.export_certificates()) {
+                        return InstallCertificateResult::Accepted;
+                    } else {
+                        return InstallCertificateResult::WriteError;
+                    }
+                } else {
+                    return InstallCertificateResult::InvalidCertificateChain;
+                }
             } else {
-                return InstallCertificateResult::WriteError;
+                existing_certs.add_certificate(std::move(new_cert));
+
+                if (existing_certs.export_certificates()) {
+                    return InstallCertificateResult::Accepted;
+                } else {
+                    return InstallCertificateResult::WriteError;
+                }
             }
         } else {
             // Else, simply update it
