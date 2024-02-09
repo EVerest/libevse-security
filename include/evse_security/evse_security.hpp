@@ -45,11 +45,15 @@ public:
     /// @brief Destructor
     ~EvseSecurity();
 
+    bool set_configuration_value(const std::string& name, const std::string& value);
+
     /// @brief Installs the given \p certificate within the specified CA bundle file
     /// @param certificate PEM formatted CA certificate
     /// @param certificate_type specifies the CA certificate type
     /// @return result of the operation
     InstallCertificateResult install_ca_certificate(const std::string& certificate, CaCertificateType certificate_type);
+
+    DeleteCertificateResult delete_certificate_csms_fallback();
 
     /// @brief Deletes the certificate specified by \p certificate_hash_data . If a CA certificate is specified, the
     /// certificate is removed from the bundle. If a leaf certificate is specified, the file will be removed from the
@@ -136,6 +140,8 @@ public:
     /// @return true if one of the links was updated
     bool update_certificate_links(LeafCertificateType certificate_type);
 
+    std::string get_csms_verify_file(bool attempt_fallback = false);
+
     /// @brief Retrieves the PEM formatted CA bundle file for the given \p certificate_type
     /// @param certificate_type
     /// @return CA certificate file
@@ -163,6 +169,9 @@ private:
     // FIXME(piet): map passwords to encrypted private key files
     // is there only one password for all private keys?
     std::optional<std::string> private_key_password; // used to decrypt encrypted private keys;
+
+private:                                             // Cofigs
+    bool AdditionalRootCertificateCheck;
 };
 
 } // namespace evse_security

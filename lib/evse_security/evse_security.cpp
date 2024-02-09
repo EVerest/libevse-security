@@ -146,12 +146,24 @@ EvseSecurity::EvseSecurity(const FilePaths& file_paths, const std::optional<std:
 
     this->directories = file_paths.directories;
     this->links = file_paths.links;
+
+    // Default false
+    AdditionalRootCertificateCheck = false;
 }
 
 EvseSecurity::~EvseSecurity() {
 }
 
-bool AdditionalRootCertificateCheck = false;
+bool EvseSecurity::set_configuration_value(const std::string& name, const std::string& value) {
+    EVLOG_info << "Setting config: [" << name << "] value: [" << value << "]";
+
+    if (name == "AdditionalRootCertificateCheck") {
+        AdditionalRootCertificateCheck = (value == "true");
+        return true;
+    }
+
+    return false;
+}
 
 InstallCertificateResult EvseSecurity::install_ca_certificate(const std::string& certificate,
                                                               CaCertificateType certificate_type) {
@@ -237,6 +249,44 @@ InstallCertificateResult EvseSecurity::install_ca_certificate(const std::string&
         EVLOG_error << "Certificate load error: " << e.what();
         return InstallCertificateResult::InvalidFormat;
     }
+}
+
+DeleteCertificateResult EvseSecurity::delete_certificate_csms_fallback() {
+    EVLOG_info << "Deleting ca csms root fallback certificate!";
+
+    if (AdditionalRootCertificateCheck == false) {
+        EVLOG_error << "Certificate csms fallback delete request without 'AdditionalRootCertificateCheck'";
+        return DeleteCertificateResult::Failed;
+    }
+
+    const auto ca_bundle_path = this->ca_bundle_path_map.at(CaCertificateType::CSMS);
+
+    try {
+        X509CertificateBundle existing_certs(ca_bundle_path, EncodingFormat::PEM);
+
+        bool deleted_fallback = false;
+        auto& hierarchy = existing_certs.get_certficate_hierarchy();
+
+        for (auto& root : hierarchy.get_hierarchy()) {
+            const auto descendants = hierarchy.collect_descendants(root.certificate);
+            if (descendants.size()) {
+                deleted_fallback = (existing_certs.delete_certificate(root.certificate, false) > 0);
+                break;
+            }
+        }
+
+        if (deleted_fallback) {
+            if (false == existing_certs.export_certificates()) {
+                EVLOG_error << "Certificate csms fallback delete request failed!";
+                return DeleteCertificateResult::Failed;
+            }
+        }
+    } catch (CertificateLoadException& e) {
+        EVLOG_error << "Certificate csms fallback not found: " << e.what();
+        return DeleteCertificateResult::NotFound;
+    }
+
+    return DeleteCertificateResult::NotFound;
 }
 
 DeleteCertificateResult EvseSecurity::delete_certificate(const CertificateHashData& certificate_hash_data) {
@@ -829,6 +879,10 @@ bool EvseSecurity::update_certificate_links(LeafCertificateType certificate_type
     return changed;
 }
 
+std::string EvseSecurity::get_csms_verify_file(bool attempt_fallback) {
+    return get_verify_file(CaCertificateType::CSMS, attempt_fallback);
+}
+
 std::string EvseSecurity::get_verify_file(CaCertificateType certificate_type, bool attempt_fallback) {
     EVLOG_debug << "Requesting verify file: [" << conversions::ca_certificate_type_to_string(certificate_type) << "]"
                 << " attempt fallback: " << attempt_fallback;
@@ -837,7 +891,7 @@ std::string EvseSecurity::get_verify_file(CaCertificateType certificate_type, bo
     // multiple entries (should be 3) as per the specification
     try {
         X509CertificateBundle verify_file(this->ca_bundle_path_map.at(certificate_type), EncodingFormat::PEM);
-        EVLOG_debug << "Verify file: [" << verify_file.get_path();
+        EVLOG_debug << "Verify file: [" << verify_file.get_path() << "]";
 
         auto& hierarchy = verify_file.get_certficate_hierarchy();
 
