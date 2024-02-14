@@ -15,7 +15,6 @@
 #include <evse_security/certificate/x509_bundle.hpp>
 #include <evse_security/certificate/x509_hierarchy.hpp>
 #include <evse_security/certificate/x509_wrapper.hpp>
-#include <evse_security/crypto/evse_crypto.hpp>
 #include <evse_security/utils/evse_filesystem.hpp>
 
 namespace evse_security {
@@ -37,6 +36,9 @@ static InstallCertificateResult to_install_certificate_result(CertificateValidat
     case CertificateValidationError::IssuerNotFound:
         EVLOG_warning << "Issuer not found";
         return InstallCertificateResult::InvalidCertificateChain;
+    case CertificateValidationError::Unknown:
+        EVLOG_warning << "Invalid format";
+        return InstallCertificateResult::InvalidFormat;
     default:
         return InstallCertificateResult::InvalidCertificateChain;
     }
@@ -397,13 +399,16 @@ InstallCertificateResult EvseSecurity::update_leaf_certificate(const std::string
 
     fs::path cert_path;
     fs::path key_path;
+    CaCertificateType ca_type;
 
     if (certificate_type == LeafCertificateType::CSMS) {
         cert_path = this->directories.csms_leaf_cert_directory;
         key_path = this->directories.csms_leaf_key_directory;
+        ca_type = CaCertificateType::CSMS;
     } else {
         cert_path = this->directories.secc_leaf_cert_directory;
         key_path = this->directories.secc_leaf_key_directory;
+        ca_type = CaCertificateType::V2G;
     }
 
     try {
@@ -414,9 +419,9 @@ InstallCertificateResult EvseSecurity::update_leaf_certificate(const std::string
         }
 
         // Internal since we already acquired the lock
-        const auto result = this->verify_certificate_internal(certificate_chain, certificate_type);
-        if (result != InstallCertificateResult::Accepted) {
-            return result;
+        const auto result = this->verify_certificate_internal(certificate_chain, ca_type);
+        if (result != CertificateValidationError::NoError) {
+            return to_install_certificate_result(result);
         }
 
         // First certificate is always the leaf as per the spec
@@ -1069,16 +1074,25 @@ InstallCertificateResult EvseSecurity::verify_certificate(const std::string& cer
                                                           LeafCertificateType certificate_type) {
     std::lock_guard<std::mutex> guard(EvseSecurity::security_mutex);
 
-    return verify_certificate_internal(certificate_chain, certificate_type);
+    CaCertificateType ca_type;
+    if (certificate_type == LeafCertificateType::CSMS) {
+        ca_type = CaCertificateType::CSMS;
+    } else if (certificate_type == LeafCertificateType::V2G) {
+        ca_type = CaCertificateType::V2G;
+    } else {
+        ca_type = CaCertificateType::MF;
+    }
+
+    return to_install_certificate_result(verify_certificate_internal(certificate_chain, ca_type));
 }
 
-InstallCertificateResult EvseSecurity::verify_certificate_internal(const std::string& certificate_chain,
-                                                                   LeafCertificateType certificate_type) {
+CertificateValidationError EvseSecurity::verify_certificate_internal(const std::string& certificate_chain,
+                                                                   CaCertificateType certificate_type) {
     try {
         X509CertificateBundle certificate(certificate_chain, EncodingFormat::PEM);
         std::vector<X509Wrapper> _certificate_chain = certificate.split();
         if (_certificate_chain.empty()) {
-            return InstallCertificateResult::InvalidFormat;
+            return CertificateValidationError::Unknown;
         }
 
         const auto leaf_certificate = _certificate_chain.at(0);
@@ -1089,13 +1103,7 @@ InstallCertificateResult EvseSecurity::verify_certificate_internal(const std::st
             parent_certificates.emplace_back(_certificate_chain[i].get());
         }
 
-        if (certificate_type == LeafCertificateType::CSMS) {
-            store = this->ca_bundle_path_map.at(CaCertificateType::CSMS);
-        } else if (certificate_type == LeafCertificateType::V2G) {
-            store = this->ca_bundle_path_map.at(CaCertificateType::V2G);
-        } else {
-            store = this->ca_bundle_path_map.at(CaCertificateType::MF);
-        }
+        store_file = this->ca_bundle_path_map.at(certificate_type);
 
         CertificateValidationError validated{};
 
@@ -1122,14 +1130,10 @@ InstallCertificateResult EvseSecurity::verify_certificate_internal(const std::st
                                                                       std::nullopt, store);
         }
 
-        if (validated != CertificateValidationError::NoError) {
-            return to_install_certificate_result(validated);
-        }
-
-        return InstallCertificateResult::Accepted;
+        return validated;
     } catch (const CertificateLoadException& e) {
-        EVLOG_warning << "Could not load update leaf certificate because of invalid format";
-        return InstallCertificateResult::InvalidFormat;
+        EVLOG_warning << "Could not validate certificate chain because of invalid format";
+        return CertificateValidationError::Unknown;
     }
 }
 

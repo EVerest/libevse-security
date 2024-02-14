@@ -6,6 +6,7 @@
 
 #include <evse_security/evse_types.hpp>
 #include <evse_security/utils/evse_filesystem_types.hpp>
+#include <evse_security/crypto/evse_crypto.hpp>
 
 #include <map>
 #include <mutex>
@@ -189,8 +190,8 @@ public:
 
 private:
     // Internal versions of the functions do not lock the mutex
-    InstallCertificateResult verify_certificate_internal(const std::string& certificate_chain,
-                                                         LeafCertificateType certificate_type);
+    CertificateValidationError verify_certificate_internal(const std::string& certificate_chain,
+                                                         CaCertificateType certificate_type);
     GetKeyPairResult get_key_pair_internal(LeafCertificateType certificate_type, EncodingFormat encoding);
 
     /// @brief Determines if the total filesize of certificates is > than the max_filesystem_usage bytes
