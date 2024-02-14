@@ -21,6 +21,9 @@ namespace evse_security {
 
 static InstallCertificateResult to_install_certificate_result(CertificateValidationError error) {
     switch (error) {
+    case CertificateValidationError::NoError:
+        EVLOG_info << "Certificate accepted";
+        return InstallCertificateResult::Accepted;
     case CertificateValidationError::Expired:
         EVLOG_warning << "Certificate has expired";
         return InstallCertificateResult::Expired;
@@ -35,12 +38,9 @@ static InstallCertificateResult to_install_certificate_result(CertificateValidat
         return InstallCertificateResult::InvalidSignature;
     case CertificateValidationError::IssuerNotFound:
         EVLOG_warning << "Issuer not found";
-        return InstallCertificateResult::InvalidCertificateChain;
-    case CertificateValidationError::Unknown:
-        EVLOG_warning << "Invalid format";
-        return InstallCertificateResult::InvalidFormat;
+        return InstallCertificateResult::NoRootCertificateInstalled;
     default:
-        return InstallCertificateResult::InvalidCertificateChain;
+        return InstallCertificateResult::InvalidFormat;
     }
 }
 
