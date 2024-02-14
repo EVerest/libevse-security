@@ -1099,7 +1099,8 @@ CertificateValidationError EvseSecurity::verify_certificate_internal(const std::
         std::vector<X509Handle*> parent_certificates;
         fs::path store;
 
-        for (size_t i = 1; i < _certificate_chain.size(); i++) {
+        // Use max 3 certificates, so that an added root certificate is excluded and taken from the bundle
+        for (size_t i = 1; i < std::min(size_t(3), _certificate_chain.size()); i++) {
             parent_certificates.emplace_back(_certificate_chain[i].get());
         }
 
