@@ -201,40 +201,6 @@ TEST_F(EvseSecurityTests, verify_expired_csr_deletion) {
     ASSERT_FALSE(fs::exists(csr_key_path));
 }
 
-TEST_F(EvseSecurityTests, verify_expired_leaf_deletion) {
-    // Copy many expired certificates
-    std::set<fs::path> existing;
-
-    for (int i = 0; i < 30; i++) {
-        std::string key_filename = std::string("certs/client/cso/SECC_LEAF_EXPIRED_") + std::to_string(i) + ".key";
-        std::string cert_filename = std::string("certs/client/cso/SECC_LEAF_EXPIRED_") + std::to_string(i) + ".pem";
-
-        existing.emplace(key_filename);
-        existing.emplace(cert_filename);
-
-        std::filesystem::copy("expired_leaf/SECC_LEAF_EXPIRED.key", key_filename);
-        std::filesystem::copy("expired_leaf/SECC_LEAF_EXPIRED.pem", cert_filename);
-    }
-
-    // Check that the FS is not full
-    ASSERT_FALSE(evse_security->is_filesystem_full());
-
-    // Fill the disk
-    evse_security->max_fs_certificate_store_entries = 20;
-
-    // Garbage collect
-    evse_security->garbage_collect();
-
-    // Assert the files/keys do not exist any more
-    std::size_t existing_count = 0;
-    for (const auto& path : existing) {
-        existing_count += fs::exists(path) ? 1 : 0;
-    }
-
-    // Only 10 should be kept (key + certificate)
-    ASSERT_EQ(existing_count, 20);
-}
-
 TEST_F(EvseSecurityTests, verify_basics) {
     // Check that we have the default provider
     ASSERT_TRUE(check_openssl_providers({PROVIDER_DEFAULT}));

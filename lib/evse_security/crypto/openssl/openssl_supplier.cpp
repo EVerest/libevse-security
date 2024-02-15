@@ -174,7 +174,8 @@ static bool s_generate_key(const KeyGenerationInfo& key_info, KeyHandle_ptr& out
     }
 
 #if EVSE_OPENSSL_VER_3
-    OSSL_PARAM params[2] = {NULL, NULL};
+    OSSL_PARAM params[2];
+    std::memset(&params[0], 0, sizeof(params));
 
     if (bEC) {
         params[0] = OSSL_PARAM_construct_utf8_string("group", group, group_sz);
