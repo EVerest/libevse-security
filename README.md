@@ -36,6 +36,13 @@ make -j$(nproc) install
 make test
 ```
 
+## Certificate Signing Request
+There are two configuration options that will add a DNS name and IP address to the
+subject alternative name in the certificate signing request. 
+By default they are not added.
+- `cmake -DCSR_DNS_NAME=charger.pionix.de ...` to include a DNS name 
+- `cmake -DCSR_IP_ADDRESS=192.168.2.1 ...` to include an IPv4 address 
+
 ## TPM
 There is a configuration option to configure OpenSSL for use with a TPM.<br>
 `cmake` ... `-DUSING_TPM2=ON`<br>
