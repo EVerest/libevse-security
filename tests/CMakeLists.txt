@@ -1,20 +1,25 @@
-
+# Use FetchContent to download and build GoogleTest
+include(FetchContent)
+FetchContent_Declare(
+        gtest
+        GIT_REPOSITORY https://github.com/google/googletest.git
+        GIT_TAG release-1.12.1   
+)
+FetchContent_MakeAvailable(gtest)
 
 set(TEST_TARGET_NAME ${PROJECT_NAME}_tests)
 add_executable(${TEST_TARGET_NAME})
 
-target_include_directories(${TEST_TARGET_NAME} PUBLIC ${GTEST_INCLUDE_DIRS})
+target_include_directories(${TEST_TARGET_NAME} PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
 
 target_sources(${TEST_TARGET_NAME} PRIVATE
     tests.cpp
 )
 
-find_package(GTest REQUIRED)
-
 target_link_libraries(${TEST_TARGET_NAME} PRIVATE
     evse_security
-    ${GTEST_LIBRARIES} 
-    ${GTEST_MAIN_LIBRARIES} 
+    gtest_main
+    gmock_main
 )
 
 if(LIBEVSE_CRYPTO_SUPPLIER_OPENSSL)

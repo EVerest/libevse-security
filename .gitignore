@@ -2,4 +2,5 @@
 !.ci
 !.github
 !.gitignore
-build
+build/
+dist/
