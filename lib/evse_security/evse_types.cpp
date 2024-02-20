@@ -41,6 +41,8 @@ std::string leaf_certificate_type_to_string(LeafCertificateType e) {
         return "V2G";
     case LeafCertificateType::MF:
         return "MF";
+    case LeafCertificateType::Combined:
+        return "Combined";
     default:
         throw std::out_of_range("Could not convert LeafCertificateType to string");
     }

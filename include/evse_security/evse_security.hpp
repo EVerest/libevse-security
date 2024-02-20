@@ -189,6 +189,9 @@ public:
 
 private:
     // Internal versions of the functions do not lock the mutex
+    InstallCertificateResult update_leaf_certificate_internal(const std::string& certificate_chain,
+                                                              LeafCertificateType certificate_type);
+
     InstallCertificateResult verify_certificate_internal(const std::string& certificate_chain,
                                                          LeafCertificateType certificate_type);
     GetKeyPairResult get_key_pair_internal(LeafCertificateType certificate_type, EncodingFormat encoding);

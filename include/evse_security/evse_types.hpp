@@ -25,7 +25,9 @@ enum class CaCertificateType {
 enum class LeafCertificateType {
     CSMS,
     V2G,
-    MF
+    MF,
+    // CSMS + V2G (dual usage)
+    Combined
 };
 
 enum class CertificateType {

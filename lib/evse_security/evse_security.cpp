@@ -389,6 +389,29 @@ InstallCertificateResult EvseSecurity::update_leaf_certificate(const std::string
                                                                LeafCertificateType certificate_type) {
     std::lock_guard<std::mutex> guard(EvseSecurity::security_mutex);
 
+    if(certificate_type != LeafCertificateType::Combined) {
+        return update_leaf_certificate_internal(certificate_chain, certificate_type);
+    } else {
+        if(this->directories.secc_leaf_key_directory == this->directories.csms_leaf_key_directory) {
+            return update_leaf_certificate_internal(certificate_chain, LeafCertificateType::V2G);
+        } else {
+            // In case of a combined directory state, update for both leaf directories
+            InstallCertificateResult result = update_leaf_certificate_internal(certificate_chain, LeafCertificateType::CSMS);
+
+            // If we fail the first, no need to pass in to the second
+            if(result != InstallCertificateResult::Accepted) {
+                return result;
+            }
+
+            return update_leaf_certificate_internal(certificate_chain, LeafCertificateType::V2G);
+        }
+    }
+}
+
+InstallCertificateResult EvseSecurity::update_leaf_certificate_internal(const std::string& certificate_chain,
+                                                                        LeafCertificateType certificate_type) {
+    
+
     if (is_filesystem_full()) {
         EVLOG_error << "Filesystem full, can't install new CA certificate!";
         return InstallCertificateResult::CertificateStoreMaxLengthExceeded;
@@ -400,9 +423,12 @@ InstallCertificateResult EvseSecurity::update_leaf_certificate(const std::string
     if (certificate_type == LeafCertificateType::CSMS) {
         cert_path = this->directories.csms_leaf_cert_directory;
         key_path = this->directories.csms_leaf_key_directory;
-    } else {
+    } else if (certificate_type == LeafCertificateType::V2G) {
         cert_path = this->directories.secc_leaf_cert_directory;
         key_path = this->directories.secc_leaf_key_directory;
+    } else {
+        EVLOG_error << "Invalid certificate type: " << conversions::leaf_certificate_type_to_string(certificate_type);
+        throw new std::runtime_error("Invalid certificate type for updating leaf!");
     }
 
     try {
@@ -712,6 +738,9 @@ std::string EvseSecurity::generate_certificate_signing_request(LeafCertificateTy
         key_path = this->directories.csms_leaf_key_directory / file_name;
     } else if (certificate_type == LeafCertificateType::V2G) {
         key_path = this->directories.secc_leaf_key_directory / file_name;
+    } else if(certificate_type == LeafCertificateType::Combined) {
+        EVLOG_info << "Requested combined (CSMS+V2G) certificate!";
+        key_path = this->directories.secc_leaf_key_directory / file_name;
     } else {
         EVLOG_error << "generate_certificate_signing_request: create filename failed";
         throw std::runtime_error("Attempt to generate CSR for MF certificate");
@@ -737,9 +766,23 @@ std::string EvseSecurity::generate_certificate_signing_request(LeafCertificateTy
     if (false == CryptoSupplier::x509_generate_csr(info, csr)) {
         throw std::runtime_error("Failed to generate certificate signing request!");
     }
+    
+    auto time_now = std::chrono::steady_clock::now();
 
     // Add the key to the managed CRS that we will delete if we can't find a certificate pair within the time
-    managed_csr.emplace(key_path, std::chrono::steady_clock::now());
+    managed_csr.emplace(key_path, time_now);
+
+    // If we request a combined certificate and the directories don't overlap, place the key in both dirs
+    if (certificate_type == LeafCertificateType::Combined && 
+        this->directories.secc_leaf_key_directory != this->directories.csms_leaf_key_directory) {                
+        auto key_path_secondary = this->directories.csms_leaf_key_directory / file_name;
+        EVLOG_info << "Requested combined (CSMS+V2G) certificate with different paths, copying key to new location: " << key_path_secondary;
+        
+        fs::copy(key_path, key_path_secondary);
+
+        // Add the second key path to the managed paths
+        managed_csr.emplace(key_path_secondary, time_now);
+    }
 
     EVLOG_debug << csr;
     return csr;
@@ -1063,6 +1106,9 @@ InstallCertificateResult EvseSecurity::verify_certificate_internal(const std::st
         } else {
             store_file = this->ca_bundle_path_map.at(CaCertificateType::MF);
         }
+
+        auto &hierarchy = certificate.get_certficate_hierarchy();
+        EVLOG_info << "Verification hierarchy: \n" << hierarchy.to_debug_string();
 
         CertificateValidationError validated = CryptoSupplier::x509_verify_certificate_chain(
             leaf_certificate.get(), parent_certificates, true, std::nullopt, store_file);
