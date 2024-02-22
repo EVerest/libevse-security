@@ -43,7 +43,6 @@ option(LIBEVSE_CRYPTO_SUPPLIER_OPENSSL "Default OpenSSL cryptography supplier" O
 
 # dependencies
 find_package(OpenSSL REQUIRED)
-find_package(date)
 
 add_subdirectory(lib)
 
