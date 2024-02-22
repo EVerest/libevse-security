@@ -15,6 +15,10 @@ option(BUILD_TESTING "Build unit tests, used if standalone project" OFF)
 option(EVSE_SECURITY_INSTALL "Install the library (shared data might be installed anyway)" ${EVC_MAIN_PROJECT})
 option(USING_TPM2 "Include code for using OpenSSL 3 and the tpm2 provider" OFF)
 
+if((${CMAKE_PROJECT_NAME} STREQUAL ${PROJECT_NAME} OR ${PROJECT_NAME}_BUILD_TESTING) AND BUILD_TESTING)
+    set(LIBEVSE_SECURITY_BUILD_TESTING ON)
+endif()
+
 if(USING_TPM2)
     # OpenSSL property string when using the default provider
     set(PROPQUERY_DEFAULT "provider!=tpm2")
@@ -66,7 +70,7 @@ if (EVSE_SECURITY_INSTALL)
     )
 endif()
 
-if((${CMAKE_PROJECT_NAME} STREQUAL ${PROJECT_NAME} OR ${PROJECT_NAME}_BUILD_TESTING) AND BUILD_TESTING)
+if(LIBEVSE_SECURITY_BUILD_TESTING)
     include(CTest)
     add_subdirectory(tests)
     set(CMAKE_BUILD_TYPE Debug)
