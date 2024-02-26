@@ -1091,6 +1091,7 @@ CertificateValidationError EvseSecurity::verify_certificate_internal(const std::
         fs::path store;
 
         // Use max 3 certificates, so that an added root certificate is excluded and taken from the bundle
+        // TODO: Use a better way to exclude a possible root certificate in the chain
         for (size_t i = 1; i < std::min(size_t(3), _certificate_chain.size()); i++) {
             parent_certificates.emplace_back(_certificate_chain[i].get());
         }
