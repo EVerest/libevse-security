@@ -1070,20 +1070,11 @@ bool EvseSecurity::verify_file_signature(const fs::path& path, const std::string
     return false;
 }
 
-InstallCertificateResult EvseSecurity::verify_certificate(const std::string& certificate_chain,
-                                                          LeafCertificateType certificate_type) {
+CertificateValidationError EvseSecurity::verify_certificate(const std::string& certificate_chain,
+                                                          CaCertificateType certificate_type) {
     std::lock_guard<std::mutex> guard(EvseSecurity::security_mutex);
 
-    CaCertificateType ca_type;
-    if (certificate_type == LeafCertificateType::CSMS) {
-        ca_type = CaCertificateType::CSMS;
-    } else if (certificate_type == LeafCertificateType::V2G) {
-        ca_type = CaCertificateType::V2G;
-    } else {
-        ca_type = CaCertificateType::MF;
-    }
-
-    return to_install_certificate_result(verify_certificate_internal(certificate_chain, ca_type));
+    return verify_certificate_internal(certificate_chain, certificate_type);
 }
 
 CertificateValidationError EvseSecurity::verify_certificate_internal(const std::string& certificate_chain,

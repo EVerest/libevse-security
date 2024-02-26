@@ -89,8 +89,8 @@ public:
     /// @param certificate_chain PEM formatted certificate or certificate chain
     /// @param certificate_type type of the leaf certificate
     /// @return result of the operation
-    InstallCertificateResult verify_certificate(const std::string& certificate_chain,
-                                                const LeafCertificateType certificate_type);
+    CertificateValidationError verify_certificate(const std::string& certificate_chain,
+                                                const CaCertificateType certificate_type);
 
     /// @brief Verifies the given \p certificate_chain for the given \p certificate_type against the respective CA
     /// certificates for the leaf and if valid installs the certificate on the filesystem. Before installing on the
