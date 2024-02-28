@@ -654,7 +654,7 @@ OCSPRequestDataList EvseSecurity::get_ocsp_request_data() {
     return response;
 }
 
-std::vector<OCSPRequestData> EvseSecurity::get_ocsp_request_data(const std::string& certificate_chain,
+OCSPRequestDataList EvseSecurity::get_ocsp_request_data(const std::string& certificate_chain,
                                                                 const CaCertificateType certificate_type) {
     std::lock_guard<std::mutex> guard(EvseSecurity::security_mutex);
 
