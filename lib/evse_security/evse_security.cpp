@@ -1112,10 +1112,18 @@ CertificateValidationError EvseSecurity::verify_certificate_internal(const std::
         std::vector<X509Handle*> parent_certificates;
         fs::path store;
 
-        // Use max 3 certificates, so that an added root certificate is excluded and taken from the bundle
-        // TODO: Use a better way to detect and exclude a possible root certificate in the chain
-        for (size_t i = 1; i < std::min(size_t(3), _certificate_chain.size()); i++) {
-            parent_certificates.emplace_back(_certificate_chain[i].get());
+        // Retrieve the hierarchy in order to check if the chain contains a root certificate
+        X509CertificateHierarchy& hierarchy = certificate.get_certficate_hierarchy();
+        EVLOG_info << "hierarchy:\n" << hierarchy.to_debug_string();
+
+        // Make sure that an added root certificate is excluded and taken from the bundle
+        for (size_t i = 1; i < _certificate_chain.size(); i++) {
+            const auto& cert = _certificate_chain[i];
+            if (hierarchy.is_root(cert)) {
+                EVLOG_warning << "ignore root certificate: " << cert.get_common_name();
+            } else {
+                parent_certificates.emplace_back(cert.get());
+            }
         }
 
         store_file = this->ca_bundle_path_map.at(certificate_type);
