@@ -661,12 +661,20 @@ OCSPRequestDataList EvseSecurity::get_ocsp_request_data(const std::string& certi
     OCSPRequestDataList response;
     std::vector<OCSPRequestData> ocsp_request_data_list;
 
-    X509CertificateBundle ca_bundle(certificate_chain, EncodingFormat::PEM);
-    const auto certificates_of_bundle = ca_bundle.split();
-    for (const auto& certificate : certificates_of_bundle) {
+    X509CertificateBundle leaf_bundle(certificate_chain, EncodingFormat::PEM);
+    X509CertificateBundle root_bundle(this->ca_bundle_path_map.at(certificate_type), EncodingFormat::PEM);
+
+    auto full_list = root_bundle.split();
+    const auto leaf_certificates = leaf_bundle.split();
+    for (const auto& certif : leaf_certificates) {
+        full_list.push_back(std::move(certif));
+    }
+    X509CertificateHierarchy full_hierarchy = X509CertificateHierarchy::build_hierarchy(full_list);
+
+    for (const auto& certificate : leaf_certificates) {
         std::string responder_url = certificate.get_responder_url();
         if (!responder_url.empty()) {
-            auto certificate_hash_data = certificate.get_certificate_hash_data();
+            auto certificate_hash_data = full_hierarchy.get_certificate_hash(certificate);
             OCSPRequestData ocsp_request_data = {certificate_hash_data, responder_url};
             ocsp_request_data_list.push_back(ocsp_request_data);
         }
@@ -1114,7 +1122,6 @@ CertificateValidationError EvseSecurity::verify_certificate_internal(const std::
 
         // Retrieve the hierarchy in order to check if the chain contains a root certificate
         X509CertificateHierarchy& hierarchy = certificate.get_certficate_hierarchy();
-        EVLOG_info << "hierarchy:\n" << hierarchy.to_debug_string();
 
         // Make sure that an added root certificate is excluded and taken from the bundle
         for (size_t i = 1; i < _certificate_chain.size(); i++) {
