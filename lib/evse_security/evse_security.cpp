@@ -260,7 +260,7 @@ InstallCertificateResult EvseSecurity::install_ca_certificate(const std::string&
         X509CertificateBundle existing_certs(ca_bundle_path, EncodingFormat::PEM);
 
         if (existing_certs.is_using_directory()) {
-            std::string filename = conversions::ca_certificate_type_to_string(certificate_type) + "_" +
+            std::string filename = conversions::ca_certificate_type_to_string(certificate_type) + "_ROOT_" +
                                    filesystem_utils::get_random_file_name(PEM_EXTENSION.string());
             fs::path new_path = ca_bundle_path / filename;
 
@@ -1077,14 +1077,26 @@ InstallCertificateResult EvseSecurity::verify_certificate_internal(const std::st
             store = this->ca_bundle_path_map.at(CaCertificateType::MF);
         }
 
+        // We use a root chain instead of relying on OpenSSL since that requires to have
+        // the name of the certificates in the format "hash.0", hash being the subject hash
+        // or to have symlinks in the mentioned format to the certificates in the directory
+        std::vector<X509Wrapper> root_chain;
+
         if (fs::is_directory(store)) {
-            store_dir = store;
+            // In case of a directory load the certificates manually and add them
+            // to the parent certificates
+            X509CertificateBundle roots(store, EncodingFormat::PEM);
+            root_chain = roots.split();
+
+            for (size_t i = 0; i < root_chain.size(); i++) {
+                parent_certificates.emplace_back(root_chain[i].get());
+            }
         } else {
             store_file = store;
         }
 
         CertificateValidationError validated = CryptoSupplier::x509_verify_certificate_chain(
-            leaf_certificate.get(), parent_certificates, true, store_dir, store_file);
+            leaf_certificate.get(), parent_certificates, true, std::nullopt, store_file);
 
         if (validated != CertificateValidationError::NoError) {
             return to_install_certificate_result(validated);

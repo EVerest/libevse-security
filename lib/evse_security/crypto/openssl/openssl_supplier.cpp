@@ -574,9 +574,10 @@ CertificateValidationError OpenSSLSupplier::x509_verify_certificate_chain(X509Ha
         const char* c_dir_path = dir_path.has_value() ? dir_path.value().c_str() : nullptr;
         const char* c_file_path = file_path.has_value() ? file_path.value().c_str() : nullptr;
 
-        if (X509_STORE_load_locations(store_ptr.get(), c_file_path, c_dir_path) != 1) {
+        if (1 != X509_STORE_load_locations(store_ptr.get(), c_file_path, c_dir_path)) {
             return CertificateValidationError::Unknown;
         }
+
         if (dir_path.has_value()) {
             if (X509_STORE_add_lookup(store_ptr.get(), X509_LOOKUP_file()) == nullptr) {
                 return CertificateValidationError::Unknown;
