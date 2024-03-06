@@ -1063,7 +1063,6 @@ InstallCertificateResult EvseSecurity::verify_certificate_internal(const std::st
         std::vector<X509Handle*> parent_certificates;
         fs::path store;
         std::optional<fs::path> store_file;
-        std::optional<fs::path> store_dir;
 
         for (size_t i = 1; i < _certificate_chain.size(); i++) {
             parent_certificates.emplace_back(_certificate_chain[i].get());
