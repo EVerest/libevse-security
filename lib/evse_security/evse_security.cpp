@@ -1079,6 +1079,8 @@ InstallCertificateResult EvseSecurity::verify_certificate_internal(const std::st
         // We use a root chain instead of relying on OpenSSL since that requires to have
         // the name of the certificates in the format "hash.0", hash being the subject hash
         // or to have symlinks in the mentioned format to the certificates in the directory
+        // The root_chain stores the X509Handler pointers, if this goes out of scope then
+        // parent_certificates will point to nothing.
         std::vector<X509Wrapper> root_chain;
 
         if (fs::is_directory(store)) {
