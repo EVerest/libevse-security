@@ -1062,7 +1062,6 @@ InstallCertificateResult EvseSecurity::verify_certificate_internal(const std::st
         const auto leaf_certificate = _certificate_chain.at(0);
         std::vector<X509Handle*> parent_certificates;
         fs::path store;
-        std::optional<fs::path> store_file;
 
         for (size_t i = 1; i < _certificate_chain.size(); i++) {
             parent_certificates.emplace_back(_certificate_chain[i].get());
@@ -1076,28 +1075,30 @@ InstallCertificateResult EvseSecurity::verify_certificate_internal(const std::st
             store = this->ca_bundle_path_map.at(CaCertificateType::MF);
         }
 
-        // We use a root chain instead of relying on OpenSSL since that requires to have
-        // the name of the certificates in the format "hash.0", hash being the subject hash
-        // or to have symlinks in the mentioned format to the certificates in the directory
-        // The root_chain stores the X509Handler pointers, if this goes out of scope then
-        // parent_certificates will point to nothing.
-        std::vector<X509Wrapper> root_chain;
+        CertificateValidationError validated{};
 
         if (fs::is_directory(store)) {
             // In case of a directory load the certificates manually and add them
             // to the parent certificates
             X509CertificateBundle roots(store, EncodingFormat::PEM);
-            root_chain = roots.split();
+
+            // We use a root chain instead of relying on OpenSSL since that requires to have
+            // the name of the certificates in the format "hash.0", hash being the subject hash
+            // or to have symlinks in the mentioned format to the certificates in the directory
+            std::vector<X509Wrapper> root_chain{roots.split()};
 
             for (size_t i = 0; i < root_chain.size(); i++) {
                 parent_certificates.emplace_back(root_chain[i].get());
             }
-        } else {
-            store_file = store;
-        }
 
-        CertificateValidationError validated = CryptoSupplier::x509_verify_certificate_chain(
-            leaf_certificate.get(), parent_certificates, true, std::nullopt, store_file);
+            // The root_chain stores the X509Handler pointers, if this goes out of scope then
+            // parent_certificates will point to nothing.
+            validated = CryptoSupplier::x509_verify_certificate_chain(leaf_certificate.get(), parent_certificates, true,
+                                                                      std::nullopt, std::nullopt);
+        } else {
+            validated = CryptoSupplier::x509_verify_certificate_chain(leaf_certificate.get(), parent_certificates, true,
+                                                                      std::nullopt, store);
+        }
 
         if (validated != CertificateValidationError::NoError) {
             return to_install_certificate_result(validated);
