@@ -1118,7 +1118,7 @@ CertificateValidationError EvseSecurity::verify_certificate_internal(const std::
 
         const auto leaf_certificate = _certificate_chain.at(0);
         std::vector<X509Handle*> parent_certificates;
-        fs::path store;
+        fs::path store = this->ca_bundle_path_map.at(certificate_type);
 
         // Retrieve the hierarchy in order to check if the chain contains a root certificate
         X509CertificateHierarchy& hierarchy = certificate.get_certficate_hierarchy();
@@ -1132,8 +1132,6 @@ CertificateValidationError EvseSecurity::verify_certificate_internal(const std::
                 parent_certificates.emplace_back(cert.get());
             }
         }
-
-        store_file = this->ca_bundle_path_map.at(certificate_type);
 
         CertificateValidationError validated{};
 
