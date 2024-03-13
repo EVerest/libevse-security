@@ -4,9 +4,9 @@
 
 #include <everest/timer.hpp>
 
+#include <evse_security/crypto/evse_crypto.hpp>
 #include <evse_security/evse_types.hpp>
 #include <evse_security/utils/evse_filesystem_types.hpp>
-#include <evse_security/crypto/evse_crypto.hpp>
 
 #include <map>
 #include <mutex>
@@ -87,10 +87,10 @@ public:
     /// @brief Verifies the given \p certificate_chain for the given \p certificate_type against the respective CA
     /// certificates for the leaf.
     /// @param certificate_chain PEM formatted certificate or certificate chain
-    /// @param certificate_type type of the leaf certificate
+    /// @param certificate_type type of the root certificate for which the chain is verified
     /// @return result of the operation
     CertificateValidationError verify_certificate(const std::string& certificate_chain,
-                                                const CaCertificateType certificate_type);
+                                                  const CaCertificateType certificate_type);
 
     /// @brief Verifies the given \p certificate_chain for the given \p certificate_type against the respective CA
     /// certificates for the leaf and if valid installs the certificate on the filesystem. Before installing on the
@@ -123,7 +123,7 @@ public:
     /// @param certificate_type type of the leaf certificate
     /// @return contains OCSP request data
     OCSPRequestDataList get_ocsp_request_data(const std::string& certificate_chain,
-                                            const CaCertificateType certificate_type);
+                                              const CaCertificateType certificate_type);
 
     /// @brief Updates the OCSP cache for the given \p certificate_hash_data with the given \p ocsp_response
     /// @param certificate_hash_data identifies the certificate for which the \p ocsp_response is specified
@@ -198,7 +198,7 @@ public:
 private:
     // Internal versions of the functions do not lock the mutex
     CertificateValidationError verify_certificate_internal(const std::string& certificate_chain,
-                                                         CaCertificateType certificate_type);
+                                                           CaCertificateType certificate_type);
     GetKeyPairResult get_key_pair_internal(LeafCertificateType certificate_type, EncodingFormat encoding);
 
     /// @brief Determines if the total filesize of certificates is > than the max_filesystem_usage bytes

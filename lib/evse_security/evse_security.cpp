@@ -655,7 +655,7 @@ OCSPRequestDataList EvseSecurity::get_ocsp_request_data() {
 }
 
 OCSPRequestDataList EvseSecurity::get_ocsp_request_data(const std::string& certificate_chain,
-                                                                const CaCertificateType certificate_type) {
+                                                        const CaCertificateType certificate_type) {
     std::lock_guard<std::mutex> guard(EvseSecurity::security_mutex);
 
     OCSPRequestDataList response;
@@ -1101,14 +1101,14 @@ bool EvseSecurity::verify_file_signature(const fs::path& path, const std::string
 }
 
 CertificateValidationError EvseSecurity::verify_certificate(const std::string& certificate_chain,
-                                                          CaCertificateType certificate_type) {
+                                                            CaCertificateType certificate_type) {
     std::lock_guard<std::mutex> guard(EvseSecurity::security_mutex);
 
     return verify_certificate_internal(certificate_chain, certificate_type);
 }
 
 CertificateValidationError EvseSecurity::verify_certificate_internal(const std::string& certificate_chain,
-                                                                   CaCertificateType certificate_type) {
+                                                                     CaCertificateType certificate_type) {
     try {
         X509CertificateBundle certificate(certificate_chain, EncodingFormat::PEM);
         std::vector<X509Wrapper> _certificate_chain = certificate.split();
