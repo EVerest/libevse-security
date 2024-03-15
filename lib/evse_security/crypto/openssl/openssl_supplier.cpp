@@ -78,6 +78,9 @@ static CertificateValidationResult to_certificate_error(const int ec) {
         return CertificateValidationResult::IssuerNotFound;
     case X509_V_ERR_UNABLE_TO_VERIFY_LEAF_SIGNATURE:
         return CertificateValidationResult::InvalidLeafSignature;
+    case X509_V_ERR_CERT_CHAIN_TOO_LONG:
+    case X509_V_ERR_CERT_UNTRUSTED:
+        return CertificateValidationResult::InvalidChain;
     default:
         EVLOG_warning << X509_verify_cert_error_string(ec);
         return CertificateValidationResult::Unknown;
