@@ -299,7 +299,7 @@ TEST_F(EvseSecurityTests, verify_directory_bundles) {
     const auto child_cert_str = read_file_to_string(std::filesystem::path("certs/client/csms/CSMS_LEAF.pem"));
 
     ASSERT_EQ(this->evse_security->verify_certificate(child_cert_str, LeafCertificateType::CSMS),
-              InstallCertificateResult::Accepted);
+              CertificateValidationResult::Valid);
 
     // Verifies that directory bundles properly function when verifying a certificate
     this->evse_security->ca_bundle_path_map[CaCertificateType::CSMS] = fs::path("certs/ca/v2g/");
@@ -307,7 +307,7 @@ TEST_F(EvseSecurityTests, verify_directory_bundles) {
 
     // Verify a leaf
     ASSERT_EQ(this->evse_security->verify_certificate(child_cert_str, LeafCertificateType::CSMS),
-              InstallCertificateResult::Accepted);
+              CertificateValidationResult::Valid);
 }
 
 TEST_F(EvseSecurityTests, verify_bundle_management) {
