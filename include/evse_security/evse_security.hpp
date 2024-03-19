@@ -201,9 +201,9 @@ public:
     int get_leaf_expiry_days_count(LeafCertificateType certificate_type);
 
     /// @brief Collects and deletes unfulfilled CSR private keys. It also deletes the expired
-    /// certificates and makes sure the system clock is properly set for detecting expired certificates. A
-    /// minimum of 'DEFAULT_MINIMUM_CERTIFICATE_ENTRIES' certificates to have a safeguard against
-    /// a poorly set system clock
+    /// certificates. The caller must be sure the system clock is properly set for detecting expired
+    /// certificates. A minimum of 'DEFAULT_MINIMUM_CERTIFICATE_ENTRIES' certificates to
+    /// have a safeguard against a poorly set system clock
     void garbage_collect();
 
     /// @brief Verifies the file at the given \p path using the provided \p signing_certificate and \p signature
