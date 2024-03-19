@@ -58,7 +58,7 @@ class EvseSecurity {
 
 public:
     /// @brief Constructor initializes the certificate and key storage using the given \p file_paths for the different
-    /// PKIs. For CA certificates CA either bundle files or directories containing the certificates can be specified.
+    /// PKIs. For CA certificates either CA bundle files or directories containing the certificates can be specified.
     /// For the SECC and CSMS leaf certificates, directories must be specified.
     /// @param file_paths specifies the certificate and key storage locations on the filesystem
     /// @param private_key_password optional password for encrypted private keys
