@@ -45,7 +45,7 @@ We allow any certificate structure with the following recommendations:
 
 **Important:** when requesting leaf certificates with [get_key_pair](https://github.com/EVerest/libevse-security/blob/5cd5f8284229ffd28ae1dfed2137ef194c39e732/lib/evse_security/evse_security.cpp#L820) care should be taken if you require the full certificate chain.
 
-If a full chain is **Leaf->SubCA2->SubCA1->Root**, it is recommended to have the root certificate in a single file, **CSMS_ROOT_CA.pem** for example. The remaining **Leaf->SubCA2->SubCA1** should be placed in a file **CPO_CERT_CHAIN.pem**. 
+If a full chain is **Leaf->SubCA2->SubCA1->Root**, it is recommended to have the root certificate in a single file, **V2G_ROOT_CA.pem** for example. The **Leaf->SubCA2->SubCA1** should be placed in a file e.g. **SECC_CERT_CHAIN.pem**. 
   
 ## Certificate Signing Request
 
