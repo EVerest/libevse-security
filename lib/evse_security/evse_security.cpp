@@ -666,7 +666,7 @@ OCSPRequestDataList EvseSecurity::get_ocsp_request_data(const std::string& certi
 
     try {
         X509CertificateBundle leaf_bundle(certificate_chain, EncodingFormat::PEM);
-        X509CertificateHierarchy hierarchy = leaf_bundle.get_certficate_hierarchy();
+        X509CertificateHierarchy& hierarchy = leaf_bundle.get_certficate_hierarchy();
 
         hierarchy.for_each([&](const X509Node& node) {
             std::string responder_url = node.certificate.get_responder_url();
