@@ -38,53 +38,14 @@ make test
 
 ## Certificate Structure
 
-We recommend the following certificate directory structure:
-```bash
-  .
-  ├── ca
-  │   ├── csms
-  │   │   └── CSMS_ROOT_CA.pem
-  │   ├── cso
-  │   │   ├── CPO_CERT_CHAIN.pem
-  │   │   ├── CPO_SUB_CA1_LEAF.der
-  │   │   ├── CPO_SUB_CA1.pem
-  │   │   ├── CPO_SUB_CA2_LEAF.der
-  │   │   └── CPO_SUB_CA2.pem
-  │   ├── mf
-  │   │   └── MF_ROOT_CA.pem
-  │   ├── mo
-  │   │   ├── INTERMEDIATE_MO_CA_CERTS.pem
-  │   │   ├── MO_ROOT_CA.der
-  │   │   ├── MO_ROOT_CA.pem
-  │   │   ├── MO_SUB_CA1.der
-  │   │   ├── MO_SUB_CA1.pem
-  │   │   ├── MO_SUB_CA2.der
-  │   │   └── MO_SUB_CA2.pem
-  │   └── v2g
-  │       ├── V2G_ROOT_CA.der
-  │       └── V2G_ROOT_CA.pem
-  ├── client
-  │   ├── csms
-  │   │   ├── CPO_CERT_CHAIN.pem
-  │   │   ├── CPO_SUB_CA1.key
-  │   │   ├── CPO_SUB_CA2.key
-  │   │   ├── SECC_LEAF.der
-  │   │   ├── SECC_LEAF.key
-  │   │   └── SECC_LEAF.pem
-  │   ├── cso
-  │   │   ├── CPO_CERT_CHAIN.pem
-  │   │   ├── CPO_SUB_CA1.key
-  │   │   ├── CPO_SUB_CA2.key
-  │   │   ├── SECC_LEAF.der
-  │   │   ├── SECC_LEAF.key
-  │   │   └── SECC_LEAF.pem
-  │   └── v2g
-  │       └── V2G_ROOT_CA.key
-  ```
+We allow any certificate structure with the following recommendations:
+
+- Root CA certificate directories/bundles should not overlap leaf certificates
+- It is not recommended to store any SUBCAs in the root certificate bundle (if using files)
 
 **Important:** when requesting leaf certificates with [get_key_pair](https://github.com/EVerest/libevse-security/blob/5cd5f8284229ffd28ae1dfed2137ef194c39e732/lib/evse_security/evse_security.cpp#L820) care should be taken if you require the full certificate chain.
 
-If a full chain is **Leaf->SubCA2->SubCA1->Root**, it is recommended to have the root certificate in a single file, **CSMS_ROOT_CA.pem** for example, and store it into the **ca/csms** folder. The remaining **Leaf->SubCA2->SubCA1** should be placed in the **CPO_CERT_CHAIN.pem** file located under **client/csms**. 
+If a full chain is **Leaf->SubCA2->SubCA1->Root**, it is recommended to have the root certificate in a single file, **CSMS_ROOT_CA.pem** for example. The remaining **Leaf->SubCA2->SubCA1** should be placed in a file **CPO_CERT_CHAIN.pem**. 
   
 ## Certificate Signing Request
 
@@ -95,7 +56,7 @@ By default they are not added.
 - `cmake -DCSR_DNS_NAME=charger.pionix.de ...` to include a DNS name
 - `cmake -DCSR_IP_ADDRESS=192.168.2.1 ...` to include an IPv4 address
 
-When receiving back a signed CSR, the library will take care to create two files, one containing the **Leaf->SubCA2->SubCA1** and another containing the single **Leaf**. When they both exist, the return of [get_key_pair](https://github.com/EVerest/libevse-security/blob/5cd5f8284229ffd28ae1dfed2137ef194c39e732/include/evse_security/evse_types.hpp#L126) will contain a path to both the single file and the chain file.
+When receiving back a signed CSR, the library will take care to create two files, one containing the **Leaf->SubCA2->SubCA1** chain and another containing the single **Leaf**. When they both exist, the return of [get_key_pair](https://github.com/EVerest/libevse-security/blob/5cd5f8284229ffd28ae1dfed2137ef194c39e732/include/evse_security/evse_types.hpp#L126) will contain a path to both the single file and the chain file.
 
 ## TPM
 There is a configuration option to configure OpenSSL for use with a TPM.<br>
