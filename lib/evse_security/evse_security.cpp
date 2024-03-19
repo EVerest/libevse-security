@@ -641,8 +641,8 @@ OCSPRequestDataList EvseSecurity::get_v2g_ocsp_request_data() {
         // Iterate cache, get hashes
         hierarchy.for_each([&](const X509Node& node) {
             std::string responder_url = node.certificate.get_responder_url();
-            if (!responder_url.empty()) {
-                auto certificate_hash_data = node.hash;
+            auto certificate_hash_data = node.hash;
+            if (!responder_url.empty() and certificate_hash_data.is_valid()) {
                 OCSPRequestData ocsp_request_data = {certificate_hash_data, responder_url};
                 ocsp_request_data_list.push_back(ocsp_request_data);
             }
@@ -666,14 +666,12 @@ OCSPRequestDataList EvseSecurity::get_ocsp_request_data(const std::string& certi
 
     try {
         X509CertificateBundle leaf_bundle(certificate_chain, EncodingFormat::PEM);
-
-        auto leaf_certificates = leaf_bundle.split();
-        X509CertificateHierarchy hierarchy = X509CertificateHierarchy::build_hierarchy(leaf_certificates);
+        X509CertificateHierarchy hierarchy = leaf_bundle.get_certficate_hierarchy();
 
         hierarchy.for_each([&](const X509Node& node) {
             std::string responder_url = node.certificate.get_responder_url();
-            if (!responder_url.empty()) {
-                auto certificate_hash_data = node.hash;
+            auto certificate_hash_data = node.hash;
+            if (!responder_url.empty() and certificate_hash_data.is_valid()) {
                 OCSPRequestData ocsp_request_data = {certificate_hash_data, responder_url};
                 ocsp_request_data_list.push_back(ocsp_request_data);
             }
