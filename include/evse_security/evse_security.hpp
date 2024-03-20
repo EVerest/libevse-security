@@ -114,7 +114,7 @@ public:
     /// @brief Retrieves the certificate count applying the \p certificate_types filter.
     int get_count_of_installed_certificates(const std::vector<CertificateType>& certificate_types);
 
-    /// @brief Command to retrieve the OCSP request data of the V2G certificates (V2G leaf and possibly SubCAs)
+    /// @brief Command to retrieve the OCSP request data of the V2G certificates (SubCAs and possibly V2G leaf)
     /// @return contains OCSP request data
     OCSPRequestDataList get_v2g_ocsp_request_data();
 
