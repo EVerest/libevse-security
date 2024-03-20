@@ -122,7 +122,7 @@ public:
     /// @param certificate_chain PEM formatted certificate or certificate chain
     /// @param certificate_type type of the leaf certificate
     /// @return contains OCSP request data
-    OCSPRequestDataList get_ocsp_request_data(const std::string& certificate_chain);
+    OCSPRequestDataList get_mo_ocsp_request_data(const std::string& certificate_chain);
 
     /// @brief Updates the OCSP cache for the given \p certificate_hash_data with the given \p ocsp_response
     /// @param certificate_hash_data identifies the certificate for which the \p ocsp_response is specified
