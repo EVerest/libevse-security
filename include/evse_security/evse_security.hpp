@@ -118,7 +118,7 @@ public:
     /// @return contains OCSP request data
     OCSPRequestDataList get_v2g_ocsp_request_data();
 
-    /// @brief Retrieves the OCSP request data of the given \p certificate_chain
+    /// @brief Retrieves the OCSP request data of the given contract \p certificate_chain
     /// @param certificate_chain PEM formatted certificate or certificate chain
     /// @param certificate_type type of the leaf certificate
     /// @return contains OCSP request data
