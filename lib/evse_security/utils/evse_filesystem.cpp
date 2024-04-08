@@ -73,7 +73,7 @@ bool write_to_file(const fs::path& file_path, const std::string& data, std::ios:
 }
 
 bool process_file(const fs::path& file_path, size_t buffer_size,
-                  std::function<bool(const std::byte*, std::size_t, bool last_chunk)>&& func) {
+                  std::function<bool(const std::uint8_t*, std::size_t, bool last_chunk)>&& func) {
     std::ifstream file(file_path, std::ios::binary);
 
     if (!file) {
@@ -81,7 +81,7 @@ bool process_file(const fs::path& file_path, size_t buffer_size,
         return false;
     }
 
-    std::vector<std::byte> buffer(buffer_size);
+    std::vector<std::uint8_t> buffer(buffer_size);
     bool interupted = false;
 
     while (file.read(reinterpret_cast<char*>(buffer.data()), buffer_size)) {

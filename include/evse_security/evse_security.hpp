@@ -219,6 +219,26 @@ public:
     static bool verify_file_signature(const fs::path& path, const std::string& signing_certificate,
                                       const std::string signature);
 
+    /// @brief Decodes the base64 encoded string to the raw byte representation
+    /// @param base64_string base64 encoded string
+    /// @return decoded byte vector
+    static std::vector<std::uint8_t> base64_decode_to_bytes(const std::string& base64_string);
+
+    /// @brief Decodes the base64 encoded string to string representation
+    /// @param base64_string base64 encoded string
+    /// @return decoded string array
+    static std::string base64_decode_to_string(const std::string& base64_string);
+
+    /// @brief Encodes the raw bytes to a base64 string
+    /// @param decoded_bytes raw byte array
+    /// @return encoded base64 string
+    static std::string base64_encode_from_bytes(const std::vector<std::uint8_t>& bytes);
+
+    /// @brief Encodes the string containing raw bytes to a base64 string
+    /// @param decoded_bytes string containing raw bytes
+    /// @return encoded base64 string
+    static std::string base64_encode_from_string(const std::string& string);
+
 private:
     // Internal versions of the functions do not lock the mutex
     CertificateValidationResult verify_certificate_internal(const std::string& certificate_chain,

@@ -21,7 +21,7 @@ bool write_to_file(const fs::path& file_path, const std::string& data, std::ios:
 /// returns false, this function will also immediately  return
 /// @return True if the file was properly opened false otherwise
 bool process_file(const fs::path& file_path, size_t buffer_size,
-                  std::function<bool(const std::byte*, std::size_t, bool last_chunk)>&& func);
+                  std::function<bool(const std::uint8_t*, std::size_t, bool last_chunk)>&& func);
 
 std::string get_random_file_name(const std::string& extension);
 
