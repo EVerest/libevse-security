@@ -226,6 +226,7 @@ EvseSecurity::EvseSecurity(const FilePaths& file_paths, const std::optional<std:
                            const std::optional<std::chrono::seconds>& csr_expiry,
                            const std::optional<std::chrono::seconds>& garbage_collect_time) :
     private_key_password(private_key_password) {
+    static_assert(sizeof(std::uint8_t) == 1, "uint8_t not equal to 1 byte!");
 
     std::vector<fs::path> dirs = {
         file_paths.directories.csms_leaf_cert_directory,
@@ -780,14 +781,14 @@ void EvseSecurity::update_ocsp_cache(const CertificateHashData& certificate_hash
 
     try {
         X509CertificateBundle ca_bundle(ca_bundle_path, EncodingFormat::PEM);
-        auto &certificate_hierarchy = ca_bundle.get_certficate_hierarchy();
+        auto& certificate_hierarchy = ca_bundle.get_certficate_hierarchy();
 
         try {
             // Find the certificate
             X509Wrapper cert = certificate_hierarchy.find_certificate(certificate_hash_data);
 
             EVLOG_debug << "Writing OCSP Response to filesystem";
-            if (cert.get_file().has_value()) {                                    
+            if (cert.get_file().has_value()) {
                 const auto ocsp_path = cert.get_file().value().parent_path() / "ocsp";
                 if (!fs::exists(ocsp_path)) {
                     fs::create_directories(ocsp_path);
@@ -800,7 +801,7 @@ void EvseSecurity::update_ocsp_cache(const CertificateHashData& certificate_hash
                 fs << ocsp_response;
                 fs.close();
             }
-        } catch(const NoCertificateFound& e) {
+        } catch (const NoCertificateFound& e) {
             EVLOG_error << "Could not find any certificate for ocsp cache update: " << e.what();
         }
     } catch (const CertificateLoadException& e) {
@@ -816,19 +817,19 @@ std::optional<std::string> EvseSecurity::retrieve_ocsp_cache(const CertificateHa
 
     try {
         X509CertificateBundle ca_bundle(ca_bundle_path, EncodingFormat::PEM);
-        auto &certificate_hierarchy = ca_bundle.get_certficate_hierarchy();
+        auto& certificate_hierarchy = ca_bundle.get_certficate_hierarchy();
 
         try {
             // Find the certificate
             X509Wrapper cert = certificate_hierarchy.find_certificate(certificate_hash_data);
 
             EVLOG_debug << "Reading OCSP Response from filesystem";
-            if (cert.get_file().has_value()) {                                    
+            if (cert.get_file().has_value()) {
                 const auto ocsp_path = cert.get_file().value().parent_path() / "ocsp";
                 const auto ocsp_file_path =
                     ocsp_path / cert.get_file().value().filename().replace_extension(".ocsp.der");
-                
-                if(fs::exists(ocsp_file_path)) {
+
+                if (fs::exists(ocsp_file_path)) {
                     std::ifstream in_fs(ocsp_file_path.c_str());
                     std::string ocsp_response;
 
@@ -838,7 +839,7 @@ std::optional<std::string> EvseSecurity::retrieve_ocsp_cache(const CertificateHa
                     return std::make_optional<std::string>(std::move(ocsp_response));
                 }
             }
-        } catch(const NoCertificateFound& e) {
+        } catch (const NoCertificateFound& e) {
             EVLOG_error << "Could not find any certificate for ocsp cache retrieve: " << e.what();
         }
     } catch (const CertificateLoadException& e) {
@@ -1242,16 +1243,16 @@ bool EvseSecurity::verify_file_signature(const fs::path& path, const std::string
 
     EVLOG_info << "Verifying file signature for " << path.string();
 
-    std::vector<std::byte> sha256_digest;
+    std::vector<std::uint8_t> sha256_digest;
 
     if (false == CryptoSupplier::digest_file_sha256(path, sha256_digest)) {
         EVLOG_error << "Error during digesting file: " << path;
         return false;
     }
 
-    std::vector<std::byte> signature_decoded;
+    std::vector<std::uint8_t> signature_decoded;
 
-    if (false == CryptoSupplier::decode_base64_signature(signature, signature_decoded)) {
+    if (false == CryptoSupplier::base64_decode_to_bytes(signature, signature_decoded)) {
         EVLOG_error << "Error during decoding signature: " << signature;
         return false;
     }
@@ -1272,6 +1273,46 @@ bool EvseSecurity::verify_file_signature(const fs::path& path, const std::string
     }
 
     return false;
+}
+
+std::vector<std::uint8_t> EvseSecurity::base64_decode_to_bytes(const std::string& base64_string) {
+    std::vector<std::uint8_t> decoded_bytes;
+
+    if (false == CryptoSupplier::base64_decode_to_bytes(base64_string, decoded_bytes)) {
+        return {};
+    }
+
+    return decoded_bytes;
+}
+
+std::string EvseSecurity::base64_decode_to_string(const std::string& base64_string) {
+    std::string decoded_string;
+
+    if (false == CryptoSupplier::base64_decode_to_string(base64_string, decoded_string)) {
+        return {};
+    }
+
+    return decoded_string;
+}
+
+std::string EvseSecurity::base64_encode_from_bytes(const std::vector<std::uint8_t>& bytes) {
+    std::string encoded_string;
+
+    if (false == CryptoSupplier::base64_encode_from_bytes(bytes, encoded_string)) {
+        return {};
+    }
+
+    return encoded_string;
+}
+
+std::string EvseSecurity::base64_encode_from_string(const std::string& string) {
+    std::string encoded_string;
+
+    if (false == CryptoSupplier::base64_encode_from_string(string, encoded_string)) {
+        return {};
+    }
+
+    return encoded_string;
 }
 
 CertificateValidationResult EvseSecurity::verify_certificate(const std::string& certificate_chain,
