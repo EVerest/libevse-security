@@ -142,6 +142,11 @@ public:
     /// @param ocsp_response the actual OCSP data
     void update_ocsp_cache(const CertificateHashData& certificate_hash_data, const std::string& ocsp_response);
 
+    /// @brief Retrieves from the OCSP cache for the given \p certificate_hash_data
+    /// @param certificate_hash_data identifies the certificate for which the \p ocsp_response is specified
+    /// @return the actual OCSP data or an exception is thrown if no data is found
+    std::optional<std::string> retrieve_ocsp_cache(const CertificateHashData& certificate_hash_data);
+
     /// @brief Indicates if a CA certificate for the given \p certificate_type is installed on the filesystem
     /// Supports both CA certificate bundles and directories
     /// @param certificate_type
