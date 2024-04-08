@@ -775,6 +775,7 @@ void EvseSecurity::update_ocsp_cache(const CertificateHashData& certificate_hash
                                      const std::string& ocsp_response) {
     std::lock_guard<std::mutex> guard(EvseSecurity::security_mutex);
 
+    // TODO(ioan): shouldn't we also do this for the MO?
     const auto ca_bundle_path = this->ca_bundle_path_map.at(CaCertificateType::V2G);
 
     try {
@@ -810,7 +811,41 @@ void EvseSecurity::update_ocsp_cache(const CertificateHashData& certificate_hash
 std::optional<std::string> EvseSecurity::retrieve_ocsp_cache(const CertificateHashData& certificate_hash_data) {
     std::lock_guard<std::mutex> guard(EvseSecurity::security_mutex);
 
-    
+    // TODO(ioan): shouldn't we also do this for the MO?
+    const auto ca_bundle_path = this->ca_bundle_path_map.at(CaCertificateType::V2G);
+
+    try {
+        X509CertificateBundle ca_bundle(ca_bundle_path, EncodingFormat::PEM);
+        auto &certificate_hierarchy = ca_bundle.get_certficate_hierarchy();
+
+        try {
+            // Find the certificate
+            X509Wrapper cert = certificate_hierarchy.find_certificate(certificate_hash_data);
+
+            EVLOG_debug << "Reading OCSP Response from filesystem";
+            if (cert.get_file().has_value()) {                                    
+                const auto ocsp_path = cert.get_file().value().parent_path() / "ocsp";
+                const auto ocsp_file_path =
+                    ocsp_path / cert.get_file().value().filename().replace_extension(".ocsp.der");
+                
+                if(fs::exists(ocsp_file_path)) {
+                    std::ifstream in_fs(ocsp_file_path.c_str());
+                    std::string ocsp_response;
+
+                    in_fs >> ocsp_response;
+                    in_fs.close();
+
+                    return std::make_optional<std::string>(std::move(ocsp_response));
+                }
+            }
+        } catch(const NoCertificateFound& e) {
+            EVLOG_error << "Could not find any certificate for ocsp cache retrieve: " << e.what();
+        }
+    } catch (const CertificateLoadException& e) {
+        EVLOG_error << "Could not retrieve ocsp cache, certificate load failure: " << e.what();
+    }
+
+    return std::nullopt;
 }
 
 bool EvseSecurity::is_ca_certificate_installed(CaCertificateType certificate_type) {
