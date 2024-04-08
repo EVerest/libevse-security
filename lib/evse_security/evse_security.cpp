@@ -779,28 +779,38 @@ void EvseSecurity::update_ocsp_cache(const CertificateHashData& certificate_hash
 
     try {
         X509CertificateBundle ca_bundle(ca_bundle_path, EncodingFormat::PEM);
-        const auto certificates_of_bundle = ca_bundle.split();
+        auto &certificate_hierarchy = ca_bundle.get_certficate_hierarchy();
 
-        for (const auto& cert : certificates_of_bundle) {
-            if (cert == certificate_hash_data) {
-                EVLOG_debug << "Writing OCSP Response to filesystem";
-                if (!cert.get_file().has_value()) {
-                    continue;
-                }
+        try {
+            // Find the certificate
+            X509Wrapper cert = certificate_hierarchy.find_certificate(certificate_hash_data);
+
+            EVLOG_debug << "Writing OCSP Response to filesystem";
+            if (cert.get_file().has_value()) {                                    
                 const auto ocsp_path = cert.get_file().value().parent_path() / "ocsp";
                 if (!fs::exists(ocsp_path)) {
                     fs::create_directories(ocsp_path);
                 }
+
                 const auto ocsp_file_path =
                     ocsp_path / cert.get_file().value().filename().replace_extension(".ocsp.der");
+
                 std::ofstream fs(ocsp_file_path.c_str());
                 fs << ocsp_response;
                 fs.close();
             }
+        } catch(const NoCertificateFound& e) {
+            EVLOG_error << "Could not find any certificate for ocsp cache update: " << e.what();
         }
     } catch (const CertificateLoadException& e) {
         EVLOG_error << "Could not update ocsp cache, certificate load failure: " << e.what();
     }
+}
+
+std::optional<std::string> EvseSecurity::retrieve_ocsp_cache(const CertificateHashData& certificate_hash_data) {
+    std::lock_guard<std::mutex> guard(EvseSecurity::security_mutex);
+
+    
 }
 
 bool EvseSecurity::is_ca_certificate_installed(CaCertificateType certificate_type) {
