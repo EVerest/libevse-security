@@ -917,26 +917,32 @@ static bool base64_encode(const unsigned char* bytes_str, int bytes_size, std::s
     }
 
     EVP_EncodeInit(base64_encode_context_ptr.get());
+    // evp_encode_ctx_set_flags(base64_encode_context_ptr.get(), EVP_ENCODE_CTX_NO_NEWLINES); // Of course it's not
+    // public
+
     if (!base64_encode_context_ptr.get()) {
         EVLOG_error << "Error during EVP_EncodeInit";
         return false;
     }
 
-    int base64_length = ((bytes_size * 4) / 3) + 1;
-    char base64_out[base64_length]; // If it causes issues, replace with 'alloca' on different platform
+    int base64_length = ((bytes_size / 3) * 4) + 2;
+    // If it causes issues, replace with 'alloca' on different platform
+    char base64_out[base64_length + 66]; // + 66 bytes for final block
+    int full_len = 0;
 
     int base64_out_length;
     if (EVP_EncodeUpdate(base64_encode_context_ptr.get(), reinterpret_cast<unsigned char*>(base64_out),
-                         &base64_out_length, bytes_str, base64_length) < 0) {
+                         &base64_out_length, bytes_str, bytes_size) < 0) {
         EVLOG_error << "Error during EVP_EncodeUpdate";
         return false;
     }
+    full_len += base64_out_length;
 
-    int encode_final_out;
-    EVP_EncodeFinal(base64_encode_context_ptr.get(), reinterpret_cast<unsigned char*>(base64_out), &encode_final_out);
+    EVP_EncodeFinal(base64_encode_context_ptr.get(), reinterpret_cast<unsigned char*>(base64_out) + base64_out_length,
+                    &base64_out_length);
+    full_len += base64_out_length;
 
-    out_encoded.clear();
-    out_encoded.insert(std::end(out_encoded), base64_out, base64_out + base64_out_length);
+    out_encoded.assign(base64_out, full_len);
 
     return true;
 }

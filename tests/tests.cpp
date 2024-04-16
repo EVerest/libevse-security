@@ -915,6 +915,22 @@ TEST_F(EvseSecurityTests, verify_expired_csr_deletion) {
     ASSERT_FALSE(fs::exists(csr_key_path));
 }
 
+TEST_F(EvseSecurityTests, verify_base64) {
+    std::string test_string1 = "U29tZSBkYXRhIGZvciB0ZXN0IGNhc2VzLiBTb21lIGRhdGEgZm9yIHRlc3QgY2FzZXMuIFNvbWUgZGF0YSBmb3I"
+                               "gdGVzdCBjYXNlcy4gU29tZSBkYXRhIGZvciB0ZXN0IGNhc2VzLg==";
+
+    std::string decoded = this->evse_security->base64_decode_to_string(test_string1);
+    ASSERT_EQ(
+        decoded,
+        std::string(
+            "Some data for test cases. Some data for test cases. Some data for test cases. Some data for test cases."));
+
+    std::string out_encoded = this->evse_security->base64_encode_from_string(decoded);
+    out_encoded.erase(std::remove(out_encoded.begin(), out_encoded.end(), '\n'), out_encoded.cend());
+
+    ASSERT_EQ(test_string1, out_encoded);
+}
+
 } // namespace evse_security
 
 // FIXME(piet): Add more tests for getRootCertificateHashData (incl. V2GCertificateChain etc.)
