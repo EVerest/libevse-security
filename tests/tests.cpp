@@ -732,7 +732,8 @@ TEST_F(EvseSecurityTests, get_installed_certificates_and_delete_secc_leaf) {
 }
 
 TEST_F(EvseSecurityTests, leaf_cert_starts_in_future_accepted) {
-    const auto v2g_keypair_before = this->evse_security->get_key_pair(LeafCertificateType::V2G, EncodingFormat::PEM);
+    const auto v2g_keypair_before =
+        this->evse_security->get_leaf_certificate_info(LeafCertificateType::V2G, EncodingFormat::PEM);
 
     const auto new_root_ca = read_file_to_string(std::filesystem::path("future_leaf/V2G_ROOT_CA.pem"));
     const auto result_ca = this->evse_security->install_ca_certificate(new_root_ca, CaCertificateType::V2G);
@@ -747,10 +748,11 @@ TEST_F(EvseSecurityTests, leaf_cert_starts_in_future_accepted) {
     ASSERT_TRUE(result_client == InstallCertificateResult::Accepted);
 
     // Check: The certificate is installed, but it isn't actually used
-    const auto v2g_keypair_after = this->evse_security->get_key_pair(LeafCertificateType::V2G, EncodingFormat::PEM);
-    ASSERT_EQ(v2g_keypair_after.pair.value().certificate, v2g_keypair_before.pair.value().certificate);
-    ASSERT_EQ(v2g_keypair_after.pair.value().key, v2g_keypair_before.pair.value().key);
-    ASSERT_EQ(v2g_keypair_after.pair.value().password, v2g_keypair_before.pair.value().password);
+    const auto v2g_keypair_after =
+        this->evse_security->get_leaf_certificate_info(LeafCertificateType::V2G, EncodingFormat::PEM);
+    ASSERT_EQ(v2g_keypair_after.info.value().certificate, v2g_keypair_before.info.value().certificate);
+    ASSERT_EQ(v2g_keypair_after.info.value().key, v2g_keypair_before.info.value().key);
+    ASSERT_EQ(v2g_keypair_after.info.value().password, v2g_keypair_before.info.value().password);
 }
 
 TEST_F(EvseSecurityTests, expired_leaf_cert_rejected) {

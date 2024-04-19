@@ -142,20 +142,20 @@ std::string get_installed_certificates_status_to_string(GetInstalledCertificates
     }
 };
 
-std::string get_key_pair_status_to_string(GetKeyPairStatus e) {
+std::string get_key_pair_status_to_string(GetCertificateInfoStatus e) {
     switch (e) {
-    case GetKeyPairStatus::Accepted:
+    case GetCertificateInfoStatus::Accepted:
         return "Accepted";
-    case GetKeyPairStatus::Rejected:
+    case GetCertificateInfoStatus::Rejected:
         return "Rejected";
-    case GetKeyPairStatus::NotFound:
+    case GetCertificateInfoStatus::NotFound:
         return "NotFound";
-    case GetKeyPairStatus::NotFoundValid:
+    case GetCertificateInfoStatus::NotFoundValid:
         return "NotFoundValid";
-    case GetKeyPairStatus::PrivateKeyNotFound:
+    case GetCertificateInfoStatus::PrivateKeyNotFound:
         return "PrivateKeyNotFound";
     default:
-        throw std::out_of_range("Could not convert GetKeyPairStatus to string");
+        throw std::out_of_range("Could not convert GetCertificateInfoStatus to string");
     }
 };
 

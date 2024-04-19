@@ -186,8 +186,10 @@ public:
     /// the leaf including any possible SUBCAs
     /// @param certificate_type type of the leaf certificate
     /// @param encoding specifies PEM or DER format
+    /// @param include_ocsp if OCSP data should be included
     /// @return contains response result
-    GetKeyPairResult get_key_pair(LeafCertificateType certificate_type, EncodingFormat encoding);
+    GetCertificateInfoResult get_leaf_certificate_info(LeafCertificateType certificate_type, EncodingFormat encoding,
+                                                       bool include_ocsp = false);
 
     /// @brief Checks and updates the symlinks for the V2G leaf certificates and keys to the most recent valid one
     /// @return true if one of the links was updated
@@ -243,7 +245,9 @@ private:
     // Internal versions of the functions do not lock the mutex
     CertificateValidationResult verify_certificate_internal(const std::string& certificate_chain,
                                                             LeafCertificateType certificate_type);
-    GetKeyPairResult get_key_pair_internal(LeafCertificateType certificate_type, EncodingFormat encoding);
+    GetCertificateInfoResult get_leaf_certificate_info_internal(LeafCertificateType certificate_type,
+                                                                EncodingFormat encoding, bool include_ocsp = false);
+    std::optional<std::string> retrieve_ocsp_cache_internal(const CertificateHashData& certificate_hash_data);
     bool is_ca_certificate_installed_internal(CaCertificateType certificate_type);
 
     /// @brief Determines if the total filesize of certificates is > than the max_filesystem_usage bytes
