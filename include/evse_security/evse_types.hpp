@@ -76,7 +76,7 @@ enum class GetInstalledCertificatesStatus {
     NotFound,
 };
 
-enum class GetKeyPairStatus {
+enum class GetCertificateInfoStatus {
     Accepted,
     Rejected,
     NotFound,
@@ -123,15 +123,25 @@ struct OCSPRequestData {
 struct OCSPRequestDataList {
     std::vector<OCSPRequestData> ocsp_request_data_list; ///< A list of OCSP request data
 };
-struct KeyPair {
-    fs::path key;                        ///< The path of the PEM or DER encoded private key
-    fs::path certificate;                ///< The path of the PEM or DER encoded certificate chain
-    fs::path certificate_single;         ///< The path of the PEM or DER encoded certificate
-    std::optional<std::string> password; ///< Specifies the password for the private key if encrypted
+
+struct CertificateOCSP {
+    CertificateHashData hash;
+    std::optional<fs::path> oscsp_data;
 };
-struct GetKeyPairResult {
-    GetKeyPairStatus status;
-    std::optional<KeyPair> pair;
+
+struct CertificateInfo {
+    fs::path key;                               ///< The path of the PEM or DER encoded private key
+    std::optional<fs::path> certificate;        ///< The path of the PEM or DER encoded certificate chain if found
+    std::optional<fs::path> certificate_single; ///< The path of the PEM or DER encoded certificate if found
+    int certificate_count; ///< The count of certificates in the chain, if the chain is available, or if single 1
+    std::optional<std::string> password; ///< Specifies the password for the private key if encrypted
+    std::vector<CertificateOCSP>
+        oscsp; ///< Contains the ordered list of OCSP certificate data based on the chain file order
+};
+
+struct GetCertificateInfoResult {
+    GetCertificateInfoStatus status;
+    std::optional<CertificateInfo> info;
 };
 
 namespace conversions {
@@ -144,7 +154,7 @@ std::string hash_algorithm_to_string(HashAlgorithm e);
 std::string install_certificate_result_to_string(InstallCertificateResult e);
 std::string delete_certificate_result_to_string(DeleteCertificateResult e);
 std::string get_installed_certificates_status_to_string(GetInstalledCertificatesStatus e);
-std::string get_key_pair_status_to_string(GetKeyPairStatus e);
+std::string get_certificate_info_status_to_string(GetCertificateInfoStatus e);
 } // namespace conversions
 
 } // namespace evse_security
