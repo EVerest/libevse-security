@@ -519,7 +519,7 @@ InstallCertificateResult EvseSecurity::update_leaf_certificate(const std::string
 
             // Rename private key file to certificate name for a possible quicker retrieval
             // @see 'get_private_key_path_of_certificate' and 'get_certificate_path_of_key'
-            fs::path new_private_key_path = file_name;
+            fs::path new_private_key_path = file_path;
             new_private_key_path.replace_extension(private_key_path.extension());
 
             if (fs::exists(new_private_key_path) == false) {
@@ -947,15 +947,59 @@ GetKeyPairResult EvseSecurity::get_key_pair_internal(LeafCertificateType certifi
             return result;
         }
 
-        fs::path key_file;
-        fs::path certificate_file;
-        fs::path chain_file;
+        std::optional<X509Wrapper> latest_valid;
+        std::optional<fs::path> found_private_key_path;
 
-        auto certificate = std::move(leaf_certificates.get_latest_valid_certificate());
-        auto private_key_path = get_private_key_path_of_certificate(certificate, key_dir, this->private_key_password);
+        // Iterate all certificates from newest to the oldest
+        leaf_certificates.for_each_chain_ordered(
+            [&](const fs::path& file, const std::vector<X509Wrapper>& chain) {
+                // Search for the first valid where we can find a key
+                if (chain.size() && chain.at(0).is_valid()) {
+                    try {
+                        // Search for the private key
+                        auto priv_key_path =
+                            get_private_key_path_of_certificate(chain.at(0), key_dir, this->private_key_password);
+
+                        // Copy to latest valid
+                        latest_valid = chain.at(0);
+                        found_private_key_path = priv_key_path;
+
+                        // We found, break
+                        return false;
+                    } catch (const NoPrivateKeyException& e) {
+                    }
+                }
+
+                return true;
+            },
+            [](const std::vector<X509Wrapper>& a, const std::vector<X509Wrapper>& b) {
+                // Order from newest to oldest
+                if (a.size() && b.size()) {
+                    return a.at(0).get_valid_to() > b.at(0).get_valid_to();
+                } else {
+                    return false;
+                }
+            });
+
+        if (latest_valid.has_value() == false) {
+            EVLOG_warning << "Could not find valid certificate";
+            result.status = GetKeyPairStatus::NotFoundValid;
+            return result;
+        }
+
+        if (found_private_key_path.has_value() == false) {
+            EVLOG_warning << "Could not find private key for the valid certificate";
+            result.status = GetKeyPairStatus::PrivateKeyNotFound;
+            return result;
+        }
 
         // Key path doesn't change
-        key_file = private_key_path;
+        fs::path key_file = found_private_key_path.value();
+        auto& certificate = latest_valid.value();
+
+        // Paths to search
+        fs::path certificate_file;
+        fs::path chain_file;
 
         X509CertificateBundle leaf_directory(cert_dir, EncodingFormat::PEM);
 
@@ -1000,14 +1044,6 @@ GetKeyPairResult EvseSecurity::get_key_pair_internal(LeafCertificateType certifi
         result.pair = {key_file, chain_file, certificate_file, this->private_key_password};
         result.status = GetKeyPairStatus::Accepted;
 
-        return result;
-    } catch (const NoPrivateKeyException& e) {
-        EVLOG_warning << "Could not find private key for the selected certificate: (" << e.what() << ")";
-        result.status = GetKeyPairStatus::PrivateKeyNotFound;
-        return result;
-    } catch (const NoCertificateValidException& e) {
-        EVLOG_warning << "Could not find valid cerificate";
-        result.status = GetKeyPairStatus::NotFoundValid;
         return result;
     } catch (const CertificateLoadException& e) {
         EVLOG_warning << "Leaf certificate load exception";
