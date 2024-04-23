@@ -512,21 +512,15 @@ InstallCertificateResult EvseSecurity::update_leaf_certificate(const std::string
         if (filesystem_utils::write_to_file(file_path, str_cert, std::ios::out) &&
             filesystem_utils::write_to_file(chain_file_path, str_chain_cert, std::ios::out)) {
 
-            // Remove from managed certificate keys, it is safe, no need to delete
-            if (managed_csr.find(private_key_path) != managed_csr.end()) {
-                managed_csr.erase(managed_csr.find(private_key_path));
+            // Remove from managed certificate keys, the CSR is fulfilled, no need to delete the key
+            // since it is not orphaned any more
+            auto it = managed_csr.find(private_key_path);
+            if (it != managed_csr.end()) {
+                managed_csr.erase(it);
             }
 
-            // Rename private key file to certificate name for a possible quicker retrieval
+            // TODO(ioan): properly rename key path here for fast retrieval
             // @see 'get_private_key_path_of_certificate' and 'get_certificate_path_of_key'
-            fs::path new_private_key_path = file_path;
-            new_private_key_path.replace_extension(private_key_path.extension());
-
-            if (fs::exists(new_private_key_path) == false) {
-                EVLOG_debug << "Updated private keypath: " << private_key_path
-                            << " to new keypath: " << new_private_key_path;
-                fs::rename(private_key_path, new_private_key_path);
-            }
 
             return InstallCertificateResult::Accepted;
         } else {
@@ -861,7 +855,7 @@ std::string EvseSecurity::generate_certificate_signing_request(LeafCertificateTy
     } else if (certificate_type == LeafCertificateType::V2G) {
         key_path = this->directories.secc_leaf_key_directory / file_name;
     } else {
-        EVLOG_error << "generate_certificate_signing_request: create filename failed";
+        EVLOG_error << "Generate CSR: create filename failed";
         throw std::runtime_error("Attempt to generate CSR for MF certificate");
     }
 
@@ -891,15 +885,16 @@ std::string EvseSecurity::generate_certificate_signing_request(LeafCertificateTy
         info.key_info.private_key_pass = private_key_password;
     }
 
-    EVLOG_info << "generate_certificate_signing_request: start";
+    EVLOG_debug << "Generate CSR start";
+
     if (false == CryptoSupplier::x509_generate_csr(info, csr)) {
-        throw std::runtime_error("Failed to generate certificate signing request!");
+        EVLOG_error << "Failed to generate certificate signing request!";
+    } else {
+        // Add the key to the managed CRS that we will delete if we can't find a certificate pair within the time
+        managed_csr.emplace(key_path, std::chrono::steady_clock::now());
     }
 
-    // Add the key to the managed CRS that we will delete if we can't find a certificate pair within the time
-    managed_csr.emplace(key_path, std::chrono::steady_clock::now());
-
-    EVLOG_debug << csr;
+    EVLOG_debug << "Generated CSR end. CSR: " << csr;
     return csr;
 }
 
@@ -1355,8 +1350,8 @@ void EvseSecurity::garbage_collect() {
 
             // Order by expiry date, and keep even expired certificates with a minimum of 10 certificates
             expired_certs.for_each_chain_ordered(
-                [this, &invalid_certificate_files, &skipped, &key_directory](const fs::path& file,
-                                                                             const std::vector<X509Wrapper>& chain) {
+                [this, &invalid_certificate_files, &skipped, &key_directory,
+                 &protected_private_keys](const fs::path& file, const std::vector<X509Wrapper>& chain) {
                     // By default delete all empty
                     if (chain.size() <= 0) {
                         invalid_certificate_files.emplace(file);

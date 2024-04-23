@@ -631,7 +631,7 @@ KeyValidationResult OpenSSLSupplier::x509_check_private_key(X509Handle* handle, 
     } else {
         provider.set_global_mode(OpenSSLProvider::mode_t::default_provider);
     }
-    EVLOG_info << "TPM Key: " << tpm_key;
+    EVLOG_debug << "TPM Key: " << tpm_key;
 
     BIO_ptr bio(BIO_new_mem_buf(private_key.c_str(), -1));
     // Passing password string since if NULL is provided, the password CB will be called
