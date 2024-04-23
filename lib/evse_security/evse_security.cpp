@@ -1341,6 +1341,9 @@ void EvseSecurity::garbage_collect() {
     // Delete certificates first, give the option to cleanup the dangling keys afterwards
     std::set<fs::path> invalid_certificate_files;
 
+    // Private keys that are linked to the skipped certificates and that will not be deleted regardless
+    std::set<fs::path> protected_private_keys;
+
     // Order by latest valid, and keep newest with a safety limit
     for (auto const& [cert_dir, key_dir] : leaf_paths) {
         X509CertificateBundle expired_certs(cert_dir, EncodingFormat::PEM);
@@ -1373,6 +1376,20 @@ void EvseSecurity::garbage_collect() {
                                 } catch (NoPrivateKeyException& e) {
                                 }
                             }
+                        }
+                    } else {
+                        // Add to protected certificate list
+                        try {
+                            fs::path key_file = get_private_key_path_of_certificate(chain[0], key_directory,
+                                                                                    this->private_key_password);
+                            protected_private_keys.emplace(key_file);
+
+                            // Erase all protected keys from the managed CRSs
+                            auto it = managed_csr.find(key_file);
+                            if (it != managed_csr.end()) {
+                                managed_csr.erase(it);
+                            }
+                        } catch (NoPrivateKeyException& e) {
                         }
                     }
 
@@ -1408,6 +1425,11 @@ void EvseSecurity::garbage_collect() {
 
         for (const auto& key_entry : fs::recursive_directory_iterator(key_path)) {
             auto key_file_path = key_entry.path();
+
+            // Skip protected keys
+            if (protected_private_keys.find(key_file_path) != protected_private_keys.end()) {
+                continue;
+            }
 
             if (is_keyfile(key_file_path)) {
                 try {
