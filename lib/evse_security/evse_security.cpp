@@ -949,7 +949,7 @@ GetKeyPairResult EvseSecurity::get_key_pair_internal(LeafCertificateType certifi
         leaf_certificates.for_each_chain_ordered(
             [&](const fs::path& file, const std::vector<X509Wrapper>& chain) {
                 // Search for the first valid where we can find a key
-                if (chain.size() && chain.at(0).is_valid()) {
+                if (not chain.empty() && chain.at(0).is_valid()) {
                     try {
                         // Search for the private key
                         auto priv_key_path =
@@ -969,7 +969,7 @@ GetKeyPairResult EvseSecurity::get_key_pair_internal(LeafCertificateType certifi
             },
             [](const std::vector<X509Wrapper>& a, const std::vector<X509Wrapper>& b) {
                 // Order from newest to oldest
-                if (a.size() && b.size()) {
+                if (not a.empty() && not b.empty()) {
                     return a.at(0).get_valid_to() > b.at(0).get_valid_to();
                 } else {
                     return false;
