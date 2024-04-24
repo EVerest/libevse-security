@@ -6,6 +6,8 @@
 
 #include <evse_security/utils/evse_filesystem_types.hpp>
 
+struct CertificateHashData;
+
 namespace evse_security::filesystem_utils {
 
 bool is_subdirectory(const fs::path& base, const fs::path& subdir);
@@ -24,5 +26,9 @@ bool process_file(const fs::path& file_path, size_t buffer_size,
                   std::function<bool(const std::uint8_t*, std::size_t, bool last_chunk)>&& func);
 
 std::string get_random_file_name(const std::string& extension);
+
+/// @brief Attempts to read a certificate hash from a file. The extension is taken into account
+/// @return True if we could read, false otherwise
+bool read_hash_from_file(const fs::path& file_path, CertificateHashData& out_hash);
 
 } // namespace evse_security::filesystem_utils

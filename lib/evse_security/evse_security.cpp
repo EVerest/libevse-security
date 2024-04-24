@@ -785,6 +785,7 @@ void EvseSecurity::update_ocsp_cache(const CertificateHashData& certificate_hash
         X509CertificateBundle ca_bundle(ca_bundle_path, EncodingFormat::PEM);
         auto& certificate_hierarchy = ca_bundle.get_certficate_hierarchy();
 
+        // TODO: If we already have the hash, over-write, else create a new one
         try {
             // Find the certificate
             X509Wrapper cert = certificate_hierarchy.find_certificate(certificate_hash_data);
@@ -793,15 +794,37 @@ void EvseSecurity::update_ocsp_cache(const CertificateHashData& certificate_hash
             if (cert.get_file().has_value()) {
                 const auto ocsp_path = cert.get_file().value().parent_path() / "ocsp";
 
-                if (!fs::exists(ocsp_path)) {
+                if (false == fs::exists(ocsp_path)) {
                     fs::create_directories(ocsp_path);
+                } else {
+                    // Iterate existing hashes
+                    for (const auto& hash_entry : fs::recursive_directory_iterator(ocsp_path)) {
+                        if (hash_entry.is_regular_file()) {
+                            CertificateHashData read_hash;
+
+                            if (filesystem_utils::read_hash_from_file(hash_entry.path(), read_hash) &&
+                                read_hash == certificate_hash_data) {
+                                EVLOG_debug << "OCSP certificate hash already found, over-writing!";
+
+                                // Over-write the hash file and return
+                                fs::path ocsp_path = hash_entry.path();
+                                ocsp_path.replace_extension(CERT_HASH_EXTENSION);
+
+                                std::ofstream fs(ocsp_path.c_str());
+                                fs << ocsp_response;
+                                fs.close();
+
+                                return;
+                            }
+                        }
+                    }
                 }
 
                 // Randomize filename, since multiple certificates can be stored in same bundle
                 const auto name = filesystem_utils::get_random_file_name("_ocsp");
 
-                const auto ocsp_file_path = ocsp_path / name / ".der";
-                const auto hash_file_path = ocsp_path / name / ".hash";
+                const auto ocsp_file_path = ocsp_path / name / DER_EXTENSION;
+                const auto hash_file_path = ocsp_path / name / CERT_HASH_EXTENSION;
 
                 // Write out OCSP data
                 std::ofstream fs(ocsp_file_path.c_str());
@@ -814,6 +837,8 @@ void EvseSecurity::update_ocsp_cache(const CertificateHashData& certificate_hash
                 hs << certificate_hash_data.issuer_key_hash;
                 hs << certificate_hash_data.serial_number;
                 hs.close();
+
+                EVLOG_debug << "OCSP certificate hash not found, written at path: " << ocsp_file_path;
             } else {
                 EVLOG_error << "Could not find OCSP cache patch directory!";
             }
@@ -852,29 +877,20 @@ EvseSecurity::retrieve_ocsp_cache_internal(const CertificateHashData& certificat
                 // Search through the OCSP directory and see if we can find any related certificate hash data
                 for (const auto& ocsp_entry : fs::directory_iterator(ocsp_path)) {
                     if (ocsp_entry.is_regular_file()) {
-                        if (ocsp_entry.path().extension() == ".hash") {
-                            std::ifstream hs(ocsp_entry.path().c_str());
+                        CertificateHashData read_hash;
 
-                            CertificateHashData read_hash;
+                        if (filesystem_utils::read_hash_from_file(ocsp_entry.path(), read_hash) &&
+                            (read_hash == certificate_hash_data)) {
+                            fs::path replaced_ext = ocsp_entry.path();
+                            replaced_ext.replace_extension(".der");
 
-                            hs >> read_hash.issuer_name_hash;
-                            hs >> read_hash.issuer_key_hash;
-                            hs >> read_hash.serial_number;
+                            std::ifstream in_fs(replaced_ext.c_str());
+                            std::string ocsp_response;
 
-                            hs.close();
+                            in_fs >> ocsp_response;
+                            in_fs.close();
 
-                            if (read_hash == certificate_hash_data) {
-                                fs::path replaced_ext = ocsp_entry.path();
-                                replaced_ext.replace_extension(".der");
-
-                                std::ifstream in_fs(replaced_ext.c_str());
-                                std::string ocsp_response;
-
-                                in_fs >> ocsp_response;
-                                in_fs.close();
-
-                                return std::make_optional<std::string>(std::move(ocsp_response));
-                            }
+                            return std::make_optional<std::string>(std::move(ocsp_response));
                         }
                     }
                 }
