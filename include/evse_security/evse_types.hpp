@@ -144,6 +144,12 @@ struct GetCertificateInfoResult {
     std::optional<CertificateInfo> info;
 };
 
+const fs::path PEM_EXTENSION = ".pem";
+const fs::path DER_EXTENSION = ".der";
+const fs::path KEY_EXTENSION = ".key";
+const fs::path TPM_KEY_EXTENSION = ".tkey";
+const fs::path CERT_HASH_EXTENSION = ".hash";
+
 namespace conversions {
 std::string encoding_format_to_string(EncodingFormat e);
 std::string ca_certificate_type_to_string(CaCertificateType e);

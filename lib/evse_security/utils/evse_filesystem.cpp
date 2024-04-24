@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright 2023 Pionix GmbH and Contributors to EVerest
+#include <evse_security/evse_types.hpp>
 #include <evse_security/utils/evse_filesystem.hpp>
 
 #include <fstream>
@@ -116,6 +117,27 @@ std::string get_random_file_name(const std::string& extension) {
          << distribution(generator) << extension;
 
     return buff.str();
+}
+
+bool read_hash_from_file(const fs::path& file_path, CertificateHashData& out_hash) {
+    if (file_path.extension() == CERT_HASH_EXTENSION) {
+        try {
+            std::ifstream hs(file_path);
+
+            hs >> out_hash.issuer_name_hash;
+            hs >> out_hash.issuer_key_hash;
+            hs >> out_hash.serial_number;
+
+            hs.close();
+
+            return true;
+        } catch (const std::exception& e) {
+            EVLOG_error << "Unknown error occurred while reading cert hash file: " << file_path;
+            return false;
+        }
+    }
+
+    return false;
 }
 
 } // namespace evse_security::filesystem_utils
