@@ -140,4 +140,28 @@ bool read_hash_from_file(const fs::path& file_path, CertificateHashData& out_has
     return false;
 }
 
+bool write_hash_to_file(const fs::path& file_path, const CertificateHashData& hash) {
+    auto real_path = file_path;
+
+    if (file_path.has_extension() == false || file_path.extension() != CERT_HASH_EXTENSION) {
+        real_path.replace_extension(CERT_HASH_EXTENSION);
+    }
+
+    try {
+        // Write out the related hash
+        std::ofstream hs(real_path.c_str());
+        hs << hash.issuer_name_hash;
+        hs << hash.issuer_key_hash;
+        hs << hash.serial_number;
+        hs.close();
+
+        return true;
+    } catch (const std::exception& e) {
+        EVLOG_error << "Unknown error occurred writing cert hash file: " << file_path;
+        return false;
+    }
+
+    return false;
+}
+
 } // namespace evse_security::filesystem_utils

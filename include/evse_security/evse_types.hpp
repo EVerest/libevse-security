@@ -133,10 +133,9 @@ struct CertificateInfo {
     fs::path key;                               ///< The path of the PEM or DER encoded private key
     std::optional<fs::path> certificate;        ///< The path of the PEM or DER encoded certificate chain if found
     std::optional<fs::path> certificate_single; ///< The path of the PEM or DER encoded certificate if found
-    int certificate_count; ///< The count of certificates in the chain, if the chain is available, or if single 1
+    int certificate_count;               ///< The count of certificates, if the chain is available, or 1 if single
     std::optional<std::string> password; ///< Specifies the password for the private key if encrypted
-    std::vector<CertificateOCSP>
-        oscsp; ///< Contains the ordered list of OCSP certificate data based on the chain file order
+    std::vector<CertificateOCSP> oscsp;  ///< The ordered list of OCSP certificate data based on the chain file order
 };
 
 struct GetCertificateInfoResult {
