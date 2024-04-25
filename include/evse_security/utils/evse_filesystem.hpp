@@ -31,4 +31,8 @@ std::string get_random_file_name(const std::string& extension);
 /// @return True if we could read, false otherwise
 bool read_hash_from_file(const fs::path& file_path, CertificateHashData& out_hash);
 
+/// @brief Attempts to write a certificate hash to a file
+/// @return True if we could write, false otherwise
+bool write_hash_to_file(const fs::path& file_path, const CertificateHashData& hash);
+
 } // namespace evse_security::filesystem_utils

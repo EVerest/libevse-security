@@ -398,12 +398,8 @@ DeleteCertificateResult EvseSecurity::delete_certificate(const CertificateHashDa
             X509CertificateBundle root_bundle(ca_bundle_path_map[load], EncodingFormat::PEM);
             X509CertificateBundle leaf_bundle(leaf_certificate_path, EncodingFormat::PEM);
 
-            auto full_list = root_bundle.split();
-            for (X509Wrapper& certif : leaf_bundle.split()) {
-                full_list.push_back(std::move(certif));
-            }
-
-            X509CertificateHierarchy hierarchy = X509CertificateHierarchy::build_hierarchy(full_list);
+            X509CertificateHierarchy hierarchy =
+                std::move(X509CertificateHierarchy::build_hierarchy(root_bundle.split(), leaf_bundle.split()));
 
             EVLOG_debug << "Delete hierarchy:(" << leaf_certificate_path.string() << ")\n"
                         << hierarchy.to_debug_string();
@@ -729,10 +725,9 @@ OCSPRequestDataList get_ocsp_request_data_internal(fs::path& root_path, std::vec
 
     try {
         std::vector<X509Wrapper> full_hierarchy = X509CertificateBundle(root_path, EncodingFormat::PEM).split();
-        std::move(std::begin(leaf_chain), std::end(leaf_chain), std::back_inserter(full_hierarchy));
 
         // Build the full hierarchy
-        auto hierarchy = X509CertificateHierarchy::build_hierarchy(full_hierarchy);
+        auto hierarchy = std::move(X509CertificateHierarchy::build_hierarchy(full_hierarchy, leaf_chain));
 
         // Search for the first valid root, and collect all the chain
         for (auto& root : hierarchy.get_hierarchy()) {
@@ -778,12 +773,18 @@ void EvseSecurity::update_ocsp_cache(const CertificateHashData& certificate_hash
                                      const std::string& ocsp_response) {
     std::lock_guard<std::mutex> guard(EvseSecurity::security_mutex);
 
+    EVLOG_info << "Updating OCSP cache";
+
     // TODO(ioan): shouldn't we also do this for the MO?
     const auto ca_bundle_path = this->ca_bundle_path_map.at(CaCertificateType::V2G);
+    auto leaf_cert_dir = this->directories.secc_leaf_cert_directory; // V2G leafs
 
     try {
         X509CertificateBundle ca_bundle(ca_bundle_path, EncodingFormat::PEM);
-        auto& certificate_hierarchy = ca_bundle.get_certficate_hierarchy();
+        X509CertificateBundle leaf_bundle(leaf_cert_dir, EncodingFormat::PEM);
+
+        auto certificate_hierarchy =
+            std::move(X509CertificateHierarchy::build_hierarchy(ca_bundle.split(), leaf_bundle.split()));
 
         // TODO: If we already have the hash, over-write, else create a new one
         try {
@@ -798,7 +799,7 @@ void EvseSecurity::update_ocsp_cache(const CertificateHashData& certificate_hash
                     fs::create_directories(ocsp_path);
                 } else {
                     // Iterate existing hashes
-                    for (const auto& hash_entry : fs::recursive_directory_iterator(ocsp_path)) {
+                    for (const auto& hash_entry : fs::directory_iterator(ocsp_path)) {
                         if (hash_entry.is_regular_file()) {
                             CertificateHashData read_hash;
 
@@ -810,7 +811,8 @@ void EvseSecurity::update_ocsp_cache(const CertificateHashData& certificate_hash
                                 fs::path ocsp_path = hash_entry.path();
                                 ocsp_path.replace_extension(CERT_HASH_EXTENSION);
 
-                                std::ofstream fs(ocsp_path.c_str());
+                                // Discard previous content
+                                std::ofstream fs(ocsp_path.c_str(), std::ios::trunc);
                                 fs << ocsp_response;
                                 fs.close();
 
@@ -827,16 +829,17 @@ void EvseSecurity::update_ocsp_cache(const CertificateHashData& certificate_hash
                 const auto hash_file_path = ocsp_path / name / CERT_HASH_EXTENSION;
 
                 // Write out OCSP data
-                std::ofstream fs(ocsp_file_path.c_str());
-                fs << ocsp_response;
-                fs.close();
+                try {
+                    std::ofstream fs(ocsp_file_path.c_str());
+                    fs << ocsp_response;
+                    fs.close();
+                } catch (const std::exception& e) {
+                    EVLOG_error << "Could not write OCSP certificate data!";
+                }
 
-                // Write out the related hash
-                std::ofstream hs(hash_file_path.c_str());
-                hs << certificate_hash_data.issuer_name_hash;
-                hs << certificate_hash_data.issuer_key_hash;
-                hs << certificate_hash_data.serial_number;
-                hs.close();
+                if (false == filesystem_utils::write_hash_to_file(hash_file_path, certificate_hash_data)) {
+                    EVLOG_error << "Could not write OCSP certificate hash!";
+                }
 
                 EVLOG_debug << "OCSP certificate hash not found, written at path: " << ocsp_file_path;
             } else {
@@ -860,10 +863,14 @@ std::optional<std::string>
 EvseSecurity::retrieve_ocsp_cache_internal(const CertificateHashData& certificate_hash_data) {
     // TODO(ioan): shouldn't we also do this for the MO?
     const auto ca_bundle_path = this->ca_bundle_path_map.at(CaCertificateType::V2G);
+    const auto leaf_path = this->directories.secc_leaf_key_directory;
 
     try {
         X509CertificateBundle ca_bundle(ca_bundle_path, EncodingFormat::PEM);
-        auto& certificate_hierarchy = ca_bundle.get_certficate_hierarchy();
+        X509CertificateBundle leaf_bundle(leaf_path, EncodingFormat::PEM);
+
+        auto certificate_hierarchy =
+            std::move(X509CertificateHierarchy::build_hierarchy(ca_bundle.split(), leaf_bundle.split()));
 
         try {
             // Find the certificate
@@ -882,7 +889,7 @@ EvseSecurity::retrieve_ocsp_cache_internal(const CertificateHashData& certificat
                         if (filesystem_utils::read_hash_from_file(ocsp_entry.path(), read_hash) &&
                             (read_hash == certificate_hash_data)) {
                             fs::path replaced_ext = ocsp_entry.path();
-                            replaced_ext.replace_extension(".der");
+                            replaced_ext.replace_extension(DER_EXTENSION);
 
                             std::ifstream in_fs(replaced_ext.c_str());
                             std::string ocsp_response;
@@ -1024,18 +1031,23 @@ GetCertificateInfoResult EvseSecurity::get_leaf_certificate_info_internal(LeafCe
 
     fs::path key_dir;
     fs::path cert_dir;
+    CaCertificateType root_type;
 
     if (certificate_type == LeafCertificateType::CSMS) {
         key_dir = this->directories.csms_leaf_key_directory;
         cert_dir = this->directories.csms_leaf_cert_directory;
+        root_type = CaCertificateType::CSMS;
     } else if (certificate_type == LeafCertificateType::V2G) {
         key_dir = this->directories.secc_leaf_key_directory;
         cert_dir = this->directories.secc_leaf_cert_directory;
+        root_type = CaCertificateType::V2G;
     } else {
         EVLOG_warning << "Rejected attempt to retrieve non CSMS/V2G key pair";
         result.status = GetCertificateInfoStatus::Rejected;
         return result;
     }
+
+    fs::path root_dir = ca_bundle_path_map[root_type];
 
     // choose appropriate cert (valid_from / valid_to)
     try {
@@ -1102,7 +1114,10 @@ GetCertificateInfoResult EvseSecurity::get_leaf_certificate_info_internal(LeafCe
         fs::path chain_file;
 
         X509CertificateBundle leaf_directory(cert_dir, EncodingFormat::PEM);
-        auto& hierarchy = leaf_directory.get_certficate_hierarchy();
+        X509CertificateBundle root_bundle(root_dir, EncodingFormat::PEM); // Required for hierarchy
+
+        auto hierarchy =
+            std::move(X509CertificateHierarchy::build_hierarchy(root_bundle.split(), leaf_directory.split()));
 
         const std::vector<X509Wrapper>* leaf_fullchain = nullptr;
         const std::vector<X509Wrapper>* leaf_single = nullptr;
@@ -1518,12 +1533,12 @@ void EvseSecurity::garbage_collect() {
 
     EVLOG_info << "Starting garbage collect!";
 
-    std::vector<std::pair<fs::path, fs::path>> leaf_paths;
+    std::vector<std::tuple<fs::path, fs::path, CaCertificateType>> leaf_paths;
 
-    leaf_paths.push_back(
-        std::make_pair(this->directories.csms_leaf_cert_directory, this->directories.csms_leaf_key_directory));
-    leaf_paths.push_back(
-        std::make_pair(this->directories.secc_leaf_cert_directory, this->directories.secc_leaf_key_directory));
+    leaf_paths.push_back(std::make_tuple(this->directories.csms_leaf_cert_directory,
+                                         this->directories.csms_leaf_key_directory, CaCertificateType::CSMS));
+    leaf_paths.push_back(std::make_tuple(this->directories.secc_leaf_cert_directory,
+                                         this->directories.secc_leaf_key_directory, CaCertificateType::V2G));
 
     // Delete certificates first, give the option to cleanup the dangling keys afterwards
     std::set<fs::path> invalid_certificate_files;
@@ -1532,7 +1547,9 @@ void EvseSecurity::garbage_collect() {
     std::set<fs::path> protected_private_keys;
 
     // Order by latest valid, and keep newest with a safety limit
-    for (auto const& [cert_dir, key_dir] : leaf_paths) {
+    for (auto const& [cert_dir, key_dir, ca_type] : leaf_paths) {
+        // Root bundle required for hash of OCSP cache
+        X509CertificateBundle root_bundle(ca_bundle_path_map[ca_type], EncodingFormat::PEM);
         X509CertificateBundle expired_certs(cert_dir, EncodingFormat::PEM);
 
         // Only handle if we have more than the minimum certificates entry
@@ -1542,26 +1559,62 @@ void EvseSecurity::garbage_collect() {
 
             // Order by expiry date, and keep even expired certificates with a minimum of 10 certificates
             expired_certs.for_each_chain_ordered(
-                [this, &invalid_certificate_files, &skipped, &key_directory,
-                 &protected_private_keys](const fs::path& file, const std::vector<X509Wrapper>& chain) {
+                [this, &invalid_certificate_files, &skipped, &key_directory, &protected_private_keys,
+                 &root_bundle](const fs::path& file, const std::vector<X509Wrapper>& chain) {
                     // By default delete all empty
                     if (chain.size() <= 0) {
                         invalid_certificate_files.emplace(file);
                     }
 
                     if (++skipped > DEFAULT_MINIMUM_CERTIFICATE_ENTRIES) {
-                        // If the chain contains the first expired (leafs are the first)
-                        if (chain.size()) {
-                            if (chain[0].is_expired()) {
-                                invalid_certificate_files.emplace(file);
+                        if (chain.empty()) {
+                            return true;
+                        }
 
-                                // Also attempt to add the key for deletion
-                                try {
-                                    fs::path key_file = get_private_key_path_of_certificate(chain[0], key_directory,
-                                                                                            this->private_key_password);
-                                    invalid_certificate_files.emplace(key_file);
-                                } catch (NoPrivateKeyException& e) {
+                        // If the chain contains the first expired (leafs are the first)
+                        if (chain[0].is_expired()) {
+                            invalid_certificate_files.emplace(file);
+
+                            // Also attempt to add the key for deletion
+                            try {
+                                fs::path key_file = get_private_key_path_of_certificate(chain[0], key_directory,
+                                                                                        this->private_key_password);
+                                invalid_certificate_files.emplace(key_file);
+                            } catch (NoPrivateKeyException& e) {
+                            }
+
+                            auto leaf_chain = chain;
+                            X509CertificateHierarchy hierarchy =
+                                std::move(X509CertificateHierarchy::build_hierarchy(root_bundle.split(), leaf_chain));
+
+                            try {
+                                CertificateHashData ocsp_hash = hierarchy.get_certificate_hash(chain[0]);
+
+                                // Find OCSP cache with hash
+                                if (chain[0].get_file().has_value()) {
+                                    const auto ocsp_path = chain[0].get_file().value().parent_path() / "ocsp";
+
+                                    if (fs::exists(ocsp_path)) {
+                                        for (const auto& hash_entry : fs::directory_iterator(ocsp_path)) {
+                                            if (hash_entry.is_regular_file() == false) {
+                                                continue;
+                                            }
+                                            // Attempt hash read
+                                            CertificateHashData read_hash;
+
+                                            if (filesystem_utils::read_hash_from_file(hash_entry.path(), read_hash) &&
+                                                read_hash == ocsp_hash) {
+
+                                                auto oscp_data_path = hash_entry.path();
+                                                oscp_data_path.replace_extension(CERT_HASH_EXTENSION);
+
+                                                invalid_certificate_files.emplace(hash_entry.path());
+                                                invalid_certificate_files.emplace(oscp_data_path);
+                                            }
+                                        }
+                                    }
                                 }
+                            } catch (const NoCertificateFound& e) {
                             }
                         }
                     } else {
@@ -1606,7 +1659,7 @@ void EvseSecurity::garbage_collect() {
     // at a further invocation after the GC timer will elapse a few times. This behavior
     // was added so that if we have a reset and the CSMS sends us a CSR response while we were
     // down it should still be processed when we boot up and NOT delete the CSRs
-    for (auto const& [cert_dir, keys_dir] : leaf_paths) {
+    for (auto const& [cert_dir, keys_dir, ca_type] : leaf_paths) {
         fs::path cert_path = cert_dir;
         fs::path key_path = keys_dir;
 

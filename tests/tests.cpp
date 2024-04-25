@@ -833,6 +833,8 @@ TEST_F(EvseSecurityTestsExpired, verify_expired_leaf_deletion) {
     // Garbage collect
     evse_security->garbage_collect();
 
+    // TODO: (ioan) test OCSP cache deletion
+
     // Ensure that we have 10 certificates, since we only keep 10, the newest
     {
         X509CertificateBundle full_certs(fs::path("certs/client/cso"), EncodingFormat::PEM);
