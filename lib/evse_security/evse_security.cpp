@@ -865,14 +865,13 @@ void EvseSecurity::update_ocsp_cache(const CertificateHashData& certificate_hash
     }
 }
 
-std::optional<std::string> EvseSecurity::retrieve_ocsp_cache(const CertificateHashData& certificate_hash_data) {
+std::optional<fs::path> EvseSecurity::retrieve_ocsp_cache(const CertificateHashData& certificate_hash_data) {
     std::lock_guard<std::mutex> guard(EvseSecurity::security_mutex);
 
     return retrieve_ocsp_cache_internal(certificate_hash_data);
 }
 
-std::optional<std::string>
-EvseSecurity::retrieve_ocsp_cache_internal(const CertificateHashData& certificate_hash_data) {
+std::optional<fs::path> EvseSecurity::retrieve_ocsp_cache_internal(const CertificateHashData& certificate_hash_data) {
     // TODO(ioan): shouldn't we also do this for the MO?
     const auto ca_bundle_path = this->ca_bundle_path_map.at(CaCertificateType::V2G);
     const auto leaf_path = this->directories.secc_leaf_key_directory;
@@ -903,13 +902,8 @@ EvseSecurity::retrieve_ocsp_cache_internal(const CertificateHashData& certificat
                             fs::path replaced_ext = ocsp_entry.path();
                             replaced_ext.replace_extension(DER_EXTENSION);
 
-                            std::ifstream in_fs(replaced_ext.c_str());
-                            std::string ocsp_response;
-
-                            in_fs >> ocsp_response;
-                            in_fs.close();
-
-                            return std::make_optional<std::string>(std::move(ocsp_response));
+                            // Return the data file's path
+                            return std::make_optional<fs::path>(replaced_ext);
                         }
                     }
                 }
@@ -1182,7 +1176,7 @@ GetCertificateInfoResult EvseSecurity::get_leaf_certificate_info_internal(LeafCe
                 for (const auto& chain_certif : *leaf_fullchain) {
                     try {
                         CertificateHashData hash = hierarchy.get_certificate_hash(chain_certif);
-                        std::optional<std::string> data = retrieve_ocsp_cache_internal(hash);
+                        std::optional<fs::path> data = retrieve_ocsp_cache_internal(hash);
 
                         certificate_ocsp.push_back({hash, data});
                     } catch (const NoCertificateFound& e) {
@@ -1326,8 +1320,10 @@ std::string EvseSecurity::get_verify_file(CaCertificateType certificate_type) {
                     << this->ca_bundle_path_map.at(certificate_type) << " with error: " << e.what();
     }
 
-    throw NoCertificateFound("Could not find any CA certificate for: " +
-                             conversions::ca_certificate_type_to_string(certificate_type));
+    EVLOG_error << "Could not find any CA certificate for: "
+                << conversions::ca_certificate_type_to_string(certificate_type);
+
+    return {};
 }
 
 int EvseSecurity::get_leaf_expiry_days_count(LeafCertificateType certificate_type) {
@@ -1554,107 +1550,112 @@ void EvseSecurity::garbage_collect() {
     // Order by latest valid, and keep newest with a safety limit
     for (auto const& [cert_dir, key_dir, ca_type] : leaf_paths) {
         // Root bundle required for hash of OCSP cache
-        X509CertificateBundle root_bundle(ca_bundle_path_map[ca_type], EncodingFormat::PEM);
-        X509CertificateBundle expired_certs(cert_dir, EncodingFormat::PEM);
+        try {
+            X509CertificateBundle root_bundle(ca_bundle_path_map[ca_type], EncodingFormat::PEM);
+            X509CertificateBundle expired_certs(cert_dir, EncodingFormat::PEM);
 
-        // Only handle if we have more than the minimum certificates entry
-        if (expired_certs.get_certificate_chains_count() > DEFAULT_MINIMUM_CERTIFICATE_ENTRIES) {
-            fs::path key_directory = key_dir;
-            int skipped = 0;
+            // Only handle if we have more than the minimum certificates entry
+            if (expired_certs.get_certificate_chains_count() > DEFAULT_MINIMUM_CERTIFICATE_ENTRIES) {
+                fs::path key_directory = key_dir;
+                int skipped = 0;
 
-            // Order by expiry date, and keep even expired certificates with a minimum of 10 certificates
-            expired_certs.for_each_chain_ordered(
-                [this, &invalid_certificate_files, &skipped, &key_directory, &protected_private_keys,
-                 &root_bundle](const fs::path& file, const std::vector<X509Wrapper>& chain) {
-                    // By default delete all empty
-                    if (chain.size() <= 0) {
-                        invalid_certificate_files.emplace(file);
-                    }
-
-                    if (++skipped > DEFAULT_MINIMUM_CERTIFICATE_ENTRIES) {
-                        if (chain.empty()) {
-                            return true;
+                // Order by expiry date, and keep even expired certificates with a minimum of 10 certificates
+                expired_certs.for_each_chain_ordered(
+                    [this, &invalid_certificate_files, &skipped, &key_directory, &protected_private_keys,
+                     &root_bundle](const fs::path& file, const std::vector<X509Wrapper>& chain) {
+                        // By default delete all empty
+                        if (chain.size() <= 0) {
+                            invalid_certificate_files.emplace(file);
                         }
 
-                        // If the chain contains the first expired (leafs are the first)
-                        if (chain[0].is_expired()) {
-                            invalid_certificate_files.emplace(file);
-
-                            // Also attempt to add the key for deletion
-                            try {
-                                fs::path key_file = get_private_key_path_of_certificate(chain[0], key_directory,
-                                                                                        this->private_key_password);
-                                invalid_certificate_files.emplace(key_file);
-                            } catch (NoPrivateKeyException& e) {
+                        if (++skipped > DEFAULT_MINIMUM_CERTIFICATE_ENTRIES) {
+                            if (chain.empty()) {
+                                return true;
                             }
 
-                            auto leaf_chain = chain;
-                            X509CertificateHierarchy hierarchy =
-                                std::move(X509CertificateHierarchy::build_hierarchy(root_bundle.split(), leaf_chain));
+                            // If the chain contains the first expired (leafs are the first)
+                            if (chain[0].is_expired()) {
+                                invalid_certificate_files.emplace(file);
 
-                            try {
-                                CertificateHashData ocsp_hash = hierarchy.get_certificate_hash(chain[0]);
+                                // Also attempt to add the key for deletion
+                                try {
+                                    fs::path key_file = get_private_key_path_of_certificate(chain[0], key_directory,
+                                                                                            this->private_key_password);
+                                    invalid_certificate_files.emplace(key_file);
+                                } catch (NoPrivateKeyException& e) {
+                                }
 
-                                // Find OCSP cache with hash
-                                if (chain[0].get_file().has_value()) {
-                                    const auto ocsp_path = chain[0].get_file().value().parent_path() / "ocsp";
+                                auto leaf_chain = chain;
+                                X509CertificateHierarchy hierarchy = std::move(
+                                    X509CertificateHierarchy::build_hierarchy(root_bundle.split(), leaf_chain));
 
-                                    if (fs::exists(ocsp_path)) {
-                                        for (const auto& hash_entry : fs::directory_iterator(ocsp_path)) {
-                                            if (hash_entry.is_regular_file() == false) {
-                                                continue;
-                                            }
-                                            // Attempt hash read
-                                            CertificateHashData read_hash;
+                                try {
+                                    CertificateHashData ocsp_hash = hierarchy.get_certificate_hash(chain[0]);
 
-                                            if (filesystem_utils::read_hash_from_file(hash_entry.path(), read_hash) &&
-                                                read_hash == ocsp_hash) {
+                                    // Find OCSP cache with hash
+                                    if (chain[0].get_file().has_value()) {
+                                        const auto ocsp_path = chain[0].get_file().value().parent_path() / "ocsp";
 
-                                                auto oscp_data_path = hash_entry.path();
-                                                oscp_data_path.replace_extension(CERT_HASH_EXTENSION);
+                                        if (fs::exists(ocsp_path)) {
+                                            for (const auto& hash_entry : fs::directory_iterator(ocsp_path)) {
+                                                if (hash_entry.is_regular_file() == false) {
+                                                    continue;
+                                                }
+                                                // Attempt hash read
+                                                CertificateHashData read_hash;
 
-                                                invalid_certificate_files.emplace(hash_entry.path());
-                                                invalid_certificate_files.emplace(oscp_data_path);
+                                                if (filesystem_utils::read_hash_from_file(hash_entry.path(),
+                                                                                          read_hash) &&
+                                                    read_hash == ocsp_hash) {
+
+                                                    auto oscp_data_path = hash_entry.path();
+                                                    oscp_data_path.replace_extension(DER_EXTENSION);
+
+                                                    invalid_certificate_files.emplace(hash_entry.path());
+                                                    invalid_certificate_files.emplace(oscp_data_path);
+                                                }
                                             }
                                         }
                                     }
+                                } catch (const NoCertificateFound& e) {
                                 }
-                            } catch (const NoCertificateFound& e) {
+                            }
+                        } else {
+                            // Add to protected certificate list
+                            try {
+                                fs::path key_file = get_private_key_path_of_certificate(chain[0], key_directory,
+                                                                                        this->private_key_password);
+                                protected_private_keys.emplace(key_file);
+
+                                // Erase all protected keys from the managed CRSs
+                                auto it = managed_csr.find(key_file);
+                                if (it != managed_csr.end()) {
+                                    managed_csr.erase(it);
+                                }
+                            } catch (NoPrivateKeyException& e) {
                             }
                         }
-                    } else {
-                        // Add to protected certificate list
-                        try {
-                            fs::path key_file = get_private_key_path_of_certificate(chain[0], key_directory,
-                                                                                    this->private_key_password);
-                            protected_private_keys.emplace(key_file);
 
-                            // Erase all protected keys from the managed CRSs
-                            auto it = managed_csr.find(key_file);
-                            if (it != managed_csr.end()) {
-                                managed_csr.erase(it);
-                            }
-                        } catch (NoPrivateKeyException& e) {
+                        return true;
+                    },
+                    [](const std::vector<X509Wrapper>& a, const std::vector<X509Wrapper>& b) {
+                        // Order from newest to oldest (newest DEFAULT_MINIMUM_CERTIFICATE_ENTRIES) are kept
+                        // even if they are expired
+                        if (a.size() && b.size()) {
+                            return a.at(0).get_valid_to() > b.at(0).get_valid_to();
+                        } else {
+                            return false;
                         }
-                    }
-
-                    return true;
-                },
-                [](const std::vector<X509Wrapper>& a, const std::vector<X509Wrapper>& b) {
-                    // Order from newest to oldest (newest DEFAULT_MINIMUM_CERTIFICATE_ENTRIES) are kept
-                    // even if they are expired
-                    if (a.size() && b.size()) {
-                        return a.at(0).get_valid_to() > b.at(0).get_valid_to();
-                    } else {
-                        return false;
-                    }
-                });
+                    });
+            }
+        } catch (const CertificateLoadException& e) {
+            EVLOG_warning << "Could not load bundle from file: " << e.what();
         }
-    }
+    } // End leaf for iteration
 
     for (const auto& expired_certificate_file : invalid_certificate_files) {
         if (filesystem_utils::delete_file(expired_certificate_file))
-            EVLOG_debug << "Deleted expired certificate file: " << expired_certificate_file;
+            EVLOG_info << "Deleted expired certificate file: " << expired_certificate_file;
         else
             EVLOG_warning << "Error deleting expired certificate file: " << expired_certificate_file;
     }
@@ -1709,6 +1710,81 @@ void EvseSecurity::garbage_collect() {
         } else {
             ++it;
         }
+    }
+
+    std::set<fs::path> invalid_ocsp_files;
+
+    // Delete all non-owned OCSP data
+    for (const auto& leaf_certificate_path :
+         {directories.secc_leaf_cert_directory, directories.csms_leaf_cert_directory}) {
+        try {
+            bool secc = (leaf_certificate_path == directories.secc_leaf_cert_directory);
+            bool csms = (leaf_certificate_path == directories.csms_leaf_cert_directory) ||
+                        (directories.csms_leaf_cert_directory == directories.secc_leaf_cert_directory);
+
+            CaCertificateType load;
+
+            if (secc)
+                load = CaCertificateType::V2G;
+            else if (csms)
+                load = CaCertificateType::CSMS;
+
+            // Also load the roots since we need to build the hierarchy for correct certificate hashes
+            X509CertificateBundle root_bundle(ca_bundle_path_map[load], EncodingFormat::PEM);
+            X509CertificateBundle leaf_bundle(leaf_certificate_path, EncodingFormat::PEM);
+
+            fs::path leaf_ocsp;
+            fs::path root_ocsp;
+
+            if (root_bundle.is_using_bundle_file()) {
+                root_ocsp = root_bundle.get_path().parent_path() / "ocsp";
+            } else {
+                root_ocsp = root_bundle.get_path() / "ocsp";
+            }
+
+            if (leaf_bundle.is_using_bundle_file()) {
+                leaf_ocsp = leaf_bundle.get_path().parent_path() / "ocsp";
+            } else {
+                leaf_ocsp = leaf_bundle.get_path() / "ocsp";
+            }
+
+            X509CertificateHierarchy hierarchy =
+                std::move(X509CertificateHierarchy::build_hierarchy(root_bundle.split(), leaf_bundle.split()));
+
+            // Iterate all hashes folders and see if any are missing
+            for (auto& ocsp_dir : {leaf_ocsp, root_ocsp}) {
+                if (fs::exists(ocsp_dir)) {
+                    for (auto& ocsp_entry : fs::directory_iterator(ocsp_dir)) {
+                        if (ocsp_entry.is_regular_file() == false) {
+                            continue;
+                        }
+
+                        // Attempt hash read
+                        CertificateHashData read_hash;
+
+                        if (filesystem_utils::read_hash_from_file(ocsp_entry.path(), read_hash)) {
+                            // If we can't find the has, it means it was deleted somehow, add to delete list
+                            if (hierarchy.contains_certificate_hash(read_hash) == false) {
+                                auto oscp_data_path = ocsp_entry.path();
+                                oscp_data_path.replace_extension(DER_EXTENSION);
+
+                                invalid_ocsp_files.emplace(ocsp_entry.path());
+                                invalid_ocsp_files.emplace(oscp_data_path);
+                            }
+                        }
+                    }
+                }
+            }
+        } catch (const CertificateLoadException& e) {
+            EVLOG_warning << "Could not load ca bundle from file: " << leaf_certificate_path;
+        }
+    }
+
+    for (const auto& invalid_ocsp : invalid_ocsp_files) {
+        if (filesystem_utils::delete_file(invalid_ocsp))
+            EVLOG_info << "Deleted invalid ocsp file: " << invalid_ocsp;
+        else
+            EVLOG_warning << "Error deleting invalid ocsp file: " << invalid_ocsp;
     }
 }
 

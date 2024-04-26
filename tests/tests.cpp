@@ -21,7 +21,7 @@
 
 #if USING_OPENSSL_3
 // provider management has changed - ensure tests still work
-#ifndef USING_TPM2
+#ifndef USING_TPM2contains_certificate_hash
 
 #include <evse_security/detail/openssl/openssl_providers.hpp>
 #else
@@ -808,7 +808,7 @@ TEST_F(EvseSecurityTests, verify_oscp_cache) {
     for (auto& ocsp : data.ocsp_request_data_list) {
         std::optional<std::string> data = this->evse_security->retrieve_ocsp_cache(ocsp.certificate_hash_data.value());
         ASSERT_TRUE(data.has_value());
-        ASSERT_EQ(data.value(), ocsp_mock_response_data);
+        ASSERT_EQ(read_file_to_string(data.value()), ocsp_mock_response_data);
     }
 
     int entries = 0;
@@ -847,7 +847,7 @@ TEST_F(EvseSecurityTests, verify_oscp_cache) {
     for (auto& ocsp : data.ocsp_request_data_list) {
         std::optional<std::string> data = this->evse_security->retrieve_ocsp_cache(ocsp.certificate_hash_data.value());
         ASSERT_TRUE(data.has_value());
-        ASSERT_EQ(data.value(), ocsp_mock_response_data_v2);
+        ASSERT_EQ(read_file_to_string(data.value()), ocsp_mock_response_data_v2);
     }
 
     // Make sure the info was over-written
@@ -895,9 +895,76 @@ TEST_F(EvseSecurityTests, verify_oscp_cache) {
     for (int i = 1; i < info.ocsp.size(); ++i) {
         auto& ocsp = info.ocsp[i];
 
-        ASSERT_TRUE(ocsp.oscsp_data.has_value());
-        ASSERT_EQ(ocsp.oscsp_data.value(), ocsp_mock_response_data_v2);
+        ASSERT_TRUE(ocsp.ocsp_path.has_value());
+        ASSERT_EQ(read_file_to_string(ocsp.ocsp_path.value()), ocsp_mock_response_data_v2);
     }
+}
+
+TEST_F(EvseSecurityTests, verify_ocsp_garbage_collect) {
+    std::string ocsp_mock_response_data = "OCSP_MOCK_RESPONSE_DATA";
+
+    OCSPRequestDataList data = this->evse_security->get_v2g_ocsp_request_data();
+    ASSERT_EQ(data.ocsp_request_data_list.size(), 2);
+
+    // Mock a response
+    for (auto& ocsp : data.ocsp_request_data_list) {
+        this->evse_security->update_ocsp_cache(ocsp.certificate_hash_data.value(), ocsp_mock_response_data);
+    }
+
+    // Make sure all info was written and that it is correct
+    fs::path ocsp_path = "certs/ca/v2g/ocsp";
+    fs::path ocsp_path2 = "certs/client/cso/ocsp";
+
+    ASSERT_TRUE(fs::exists(ocsp_path));
+
+    for (auto& ocsp : data.ocsp_request_data_list) {
+        std::optional<fs::path> data = this->evse_security->retrieve_ocsp_cache(ocsp.certificate_hash_data.value());
+        ASSERT_TRUE(data.has_value());
+        ASSERT_EQ(read_file_to_string(data.value()), ocsp_mock_response_data);
+    }
+
+    evse_security->max_fs_certificate_store_entries = 1;
+    ASSERT_TRUE(evse_security->is_filesystem_full());
+
+    // Garbage collect to see that we don't delete improper data
+    this->evse_security->garbage_collect();
+
+    ASSERT_TRUE(fs::exists(ocsp_path));
+    ASSERT_TRUE(fs::exists(ocsp_path2));
+
+    // Check existence of OCSP data
+    int existing = 0;
+    for (auto& ocsp_path : {ocsp_path, ocsp_path2}) {
+        for (auto& ocsp_entry : fs::directory_iterator(ocsp_path)) {
+            auto ext = ocsp_entry.path().extension();
+            if (ext == DER_EXTENSION || ext == CERT_HASH_EXTENSION) {
+                existing++;
+            }
+        }
+    }
+
+    ASSERT_EQ(existing, 8);
+
+    // Delete the certificates that had their OCSP data appended
+    fs::remove("certs/ca/v2g/V2G_CA_BUNDLE.pem");
+    fs::remove("certs/ca/v2g/V2G_ROOT_CA.pem");
+    fs::remove("certs/client/cso/CPO_CERT_CHAIN.pem");
+
+    // Garbage collect again
+    this->evse_security->garbage_collect();
+
+    // Check deletion
+    existing = 0;
+    for (auto& ocsp_path : {ocsp_path, ocsp_path2}) {
+        for (auto& ocsp_entry : fs::directory_iterator(ocsp_path)) {
+            auto ext = ocsp_entry.path().extension();
+            if (ext == DER_EXTENSION || ext == CERT_HASH_EXTENSION) {
+                existing++;
+            }
+        }
+    }
+
+    ASSERT_EQ(existing, 0);
 }
 
 TEST_F(EvseSecurityTestsExpired, verify_expired_leaf_deletion) {
@@ -945,8 +1012,6 @@ TEST_F(EvseSecurityTestsExpired, verify_expired_leaf_deletion) {
 
     // Garbage collect
     evse_security->garbage_collect();
-
-    // TODO: (ioan) test OCSP cache deletion
 
     // Ensure that we have 10 certificates, since we only keep 10, the newest
     {

@@ -93,7 +93,7 @@ std::string hash_algorithm_to_string(HashAlgorithm e) {
     }
 };
 
-HashAlgorithm string_to_hash_algorithm(std::string s) {
+HashAlgorithm string_to_hash_algorithm(const std::string& s) {
     if (s == "SHA256")
         return HashAlgorithm::SHA256;
     else if (s == "SHA384")

@@ -3,6 +3,7 @@
 #include <evse_security/certificate/x509_bundle.hpp>
 
 #include <algorithm>
+#include <fstream>
 
 #include <everest/logging.hpp>
 #include <evse_security/crypto/evse_crypto.hpp>
@@ -43,6 +44,20 @@ X509CertificateBundle::X509CertificateBundle(const std::string& certificate, con
 X509CertificateBundle::X509CertificateBundle(const fs::path& path, const EncodingFormat encoding) :
     hierarchy_invalidated(true) {
     this->path = path;
+
+    // In case the path is missing, create it
+    if (fs::exists(path) == false) {
+        if (path.has_extension()) {
+            if (path.extension() == PEM_EXTENSION) {
+                // Create file if we have an PEM extension
+                std::ofstream new_file(path.c_str());
+                new_file.close();
+            }
+        } else {
+            // Else create a directory
+            fs::create_directories(path);
+        }
+    }
 
     if (fs::is_directory(path)) {
         source = X509CertificateSource::DIRECTORY;
