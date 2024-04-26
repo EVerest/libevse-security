@@ -142,10 +142,11 @@ public:
     /// @param ocsp_response the actual OCSP data
     void update_ocsp_cache(const CertificateHashData& certificate_hash_data, const std::string& ocsp_response);
 
+    // TODO: Switch to path
     /// @brief Retrieves from the OCSP cache for the given \p certificate_hash_data
     /// @param certificate_hash_data identifies the certificate for which the \p ocsp_response is specified
     /// @return the actual OCSP data or an empty value
-    std::optional<std::string> retrieve_ocsp_cache(const CertificateHashData& certificate_hash_data);
+    std::optional<fs::path> retrieve_ocsp_cache(const CertificateHashData& certificate_hash_data);
 
     /// @brief Indicates if a CA certificate for the given \p certificate_type is installed on the filesystem
     /// Supports both CA certificate bundles and directories
@@ -247,7 +248,7 @@ private:
                                                             LeafCertificateType certificate_type);
     GetCertificateInfoResult get_leaf_certificate_info_internal(LeafCertificateType certificate_type,
                                                                 EncodingFormat encoding, bool include_ocsp = false);
-    std::optional<std::string> retrieve_ocsp_cache_internal(const CertificateHashData& certificate_hash_data);
+    std::optional<fs::path> retrieve_ocsp_cache_internal(const CertificateHashData& certificate_hash_data);
     bool is_ca_certificate_installed_internal(CaCertificateType certificate_type);
 
     /// @brief Determines if the total filesize of certificates is > than the max_filesystem_usage bytes
@@ -287,6 +288,7 @@ private:
     FRIEND_TEST(EvseSecurityTests, verify_full_filesystem_install_reject);
     FRIEND_TEST(EvseSecurityTests, verify_full_filesystem);
     FRIEND_TEST(EvseSecurityTests, verify_expired_csr_deletion);
+    FRIEND_TEST(EvseSecurityTests, verify_ocsp_garbage_collect);
     FRIEND_TEST(EvseSecurityTestsExpired, verify_expired_leaf_deletion);
 #endif
 };

@@ -10,6 +10,12 @@
 
 namespace evse_security {
 
+const fs::path PEM_EXTENSION = ".pem";
+const fs::path DER_EXTENSION = ".der";
+const fs::path KEY_EXTENSION = ".key";
+const fs::path TPM_KEY_EXTENSION = ".tkey";
+const fs::path CERT_HASH_EXTENSION = ".hash";
+
 enum class EncodingFormat {
     DER,
     PEM,
@@ -125,8 +131,8 @@ struct OCSPRequestDataList {
 };
 
 struct CertificateOCSP {
-    CertificateHashData hash;
-    std::optional<std::string> oscsp_data;
+    CertificateHashData hash;          ///< Hash of the certificate for which the OCSP data is held
+    std::optional<fs::path> ocsp_path; ///< Path to the file in which the certificate OCSP data is held
 };
 
 struct CertificateInfo {
@@ -142,13 +148,6 @@ struct GetCertificateInfoResult {
     GetCertificateInfoStatus status;
     std::optional<CertificateInfo> info;
 };
-
-const fs::path PEM_EXTENSION = ".pem";
-const fs::path DER_EXTENSION = ".der";
-const fs::path KEY_EXTENSION = ".key";
-const fs::path TPM_KEY_EXTENSION = ".tkey";
-const fs::path CERT_HASH_EXTENSION = ".hash";
-
 namespace conversions {
 std::string encoding_format_to_string(EncodingFormat e);
 std::string ca_certificate_type_to_string(CaCertificateType e);
@@ -156,7 +155,7 @@ std::string leaf_certificate_type_to_string(LeafCertificateType e);
 std::string leaf_certificate_type_to_filename(LeafCertificateType e);
 std::string certificate_type_to_string(CertificateType e);
 std::string hash_algorithm_to_string(HashAlgorithm e);
-HashAlgorithm string_to_hash_algorithm(std::string s);
+HashAlgorithm string_to_hash_algorithm(const std::string& s);
 std::string install_certificate_result_to_string(InstallCertificateResult e);
 std::string delete_certificate_result_to_string(DeleteCertificateResult e);
 std::string get_installed_certificates_status_to_string(GetInstalledCertificatesStatus e);
