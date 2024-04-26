@@ -93,6 +93,17 @@ std::string hash_algorithm_to_string(HashAlgorithm e) {
     }
 };
 
+HashAlgorithm string_to_hash_algorithm(std::string s) {
+    if (s == "SHA256")
+        return HashAlgorithm::SHA256;
+    else if (s == "SHA384")
+        return HashAlgorithm::SHA384;
+    else if (s == "SHA512")
+        return HashAlgorithm::SHA512;
+
+    throw std::out_of_range("Could not convert string to HashAlgorithm");
+}
+
 std::string install_certificate_result_to_string(InstallCertificateResult e) {
     switch (e) {
     case InstallCertificateResult::InvalidSignature:
