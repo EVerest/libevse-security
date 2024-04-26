@@ -123,16 +123,19 @@ bool read_hash_from_file(const fs::path& file_path, CertificateHashData& out_has
     if (file_path.extension() == CERT_HASH_EXTENSION) {
         try {
             std::ifstream hs(file_path);
+            std::string algo;
 
+            hs >> algo;
             hs >> out_hash.issuer_name_hash;
             hs >> out_hash.issuer_key_hash;
             hs >> out_hash.serial_number;
-
             hs.close();
+
+            out_hash.hash_algorithm = conversions::string_to_hash_algorithm(algo);
 
             return true;
         } catch (const std::exception& e) {
-            EVLOG_error << "Unknown error occurred while reading cert hash file: " << file_path;
+            EVLOG_error << "Unknown error occurred while reading cert hash file: " << file_path << " err: " << e.what();
             return false;
         }
     }
@@ -150,14 +153,16 @@ bool write_hash_to_file(const fs::path& file_path, const CertificateHashData& ha
     try {
         // Write out the related hash
         std::ofstream hs(real_path.c_str());
-        hs << hash.issuer_name_hash;
-        hs << hash.issuer_key_hash;
-        hs << hash.serial_number;
+
+        hs << conversions::hash_algorithm_to_string(hash.hash_algorithm) << "\n";
+        hs << hash.issuer_name_hash << "\n";
+        hs << hash.issuer_key_hash << "\n";
+        hs << hash.serial_number << "\n";
         hs.close();
 
         return true;
     } catch (const std::exception& e) {
-        EVLOG_error << "Unknown error occurred writing cert hash file: " << file_path;
+        EVLOG_error << "Unknown error occurred writing cert hash file: " << file_path << " err: " << e.what();
         return false;
     }
 

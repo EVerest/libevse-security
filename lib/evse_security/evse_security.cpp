@@ -742,8 +742,18 @@ OCSPRequestDataList get_ocsp_request_data_internal(fs::path& root_path, std::vec
                     if (!responder_url.empty()) {
                         try {
                             auto certificate_hash_data = hierarchy.get_certificate_hash(certificate);
-                            OCSPRequestData ocsp_request_data = {certificate_hash_data, responder_url};
-                            ocsp_request_data_list.push_back(ocsp_request_data);
+
+                            // Do not insert duplicate hashes, in case we have multiple SUBCAs in different bundles
+                            auto it =
+                                std::find_if(std::begin(ocsp_request_data_list), std::end(ocsp_request_data_list),
+                                             [&certificate_hash_data](const OCSPRequestData& existing_data) {
+                                                 return existing_data.certificate_hash_data == certificate_hash_data;
+                                             });
+
+                            if (it == ocsp_request_data_list.end()) {
+                                OCSPRequestData ocsp_request_data = {certificate_hash_data, responder_url};
+                                ocsp_request_data_list.push_back(ocsp_request_data);
+                            }
                         } catch (const NoCertificateFound& e) {
                             EVLOG_error << "Could not find hash for certificate: " << certificate.get_common_name()
                                         << " with error: " << e.what();
@@ -786,64 +796,66 @@ void EvseSecurity::update_ocsp_cache(const CertificateHashData& certificate_hash
         auto certificate_hierarchy =
             std::move(X509CertificateHierarchy::build_hierarchy(ca_bundle.split(), leaf_bundle.split()));
 
-        // TODO: If we already have the hash, over-write, else create a new one
+        // If we already have the hash, over-write, else create a new one
         try {
-            // Find the certificate
-            X509Wrapper cert = certificate_hierarchy.find_certificate(certificate_hash_data);
+            // Find the certificates, can me multiple if we have SUBcas in multiple bundles
+            std::vector<X509Wrapper> certs = certificate_hierarchy.find_certificates_multi(certificate_hash_data);
 
-            EVLOG_debug << "Writing OCSP Response to filesystem";
-            if (cert.get_file().has_value()) {
-                const auto ocsp_path = cert.get_file().value().parent_path() / "ocsp";
+            for (auto& cert : certs) {
+                EVLOG_debug << "Writing OCSP Response to filesystem";
+                if (cert.get_file().has_value()) {
+                    const auto ocsp_path = cert.get_file().value().parent_path() / "ocsp";
 
-                if (false == fs::exists(ocsp_path)) {
-                    fs::create_directories(ocsp_path);
-                } else {
-                    // Iterate existing hashes
-                    for (const auto& hash_entry : fs::directory_iterator(ocsp_path)) {
-                        if (hash_entry.is_regular_file()) {
-                            CertificateHashData read_hash;
+                    if (false == fs::exists(ocsp_path)) {
+                        fs::create_directories(ocsp_path);
+                    } else {
+                        // Iterate existing hashes
+                        for (const auto& hash_entry : fs::directory_iterator(ocsp_path)) {
+                            if (hash_entry.is_regular_file()) {
+                                CertificateHashData read_hash;
 
-                            if (filesystem_utils::read_hash_from_file(hash_entry.path(), read_hash) &&
-                                read_hash == certificate_hash_data) {
-                                EVLOG_debug << "OCSP certificate hash already found, over-writing!";
+                                if (filesystem_utils::read_hash_from_file(hash_entry.path(), read_hash) &&
+                                    read_hash == certificate_hash_data) {
+                                    EVLOG_debug << "OCSP certificate hash already found, over-writing!";
 
-                                // Over-write the hash file and return
-                                fs::path ocsp_path = hash_entry.path();
-                                ocsp_path.replace_extension(CERT_HASH_EXTENSION);
+                                    // Over-write the data file and return
+                                    fs::path ocsp_path = hash_entry.path();
+                                    ocsp_path.replace_extension(DER_EXTENSION);
 
-                                // Discard previous content
-                                std::ofstream fs(ocsp_path.c_str(), std::ios::trunc);
-                                fs << ocsp_response;
-                                fs.close();
+                                    // Discard previous content
+                                    std::ofstream fs(ocsp_path.c_str(), std::ios::trunc);
+                                    fs << ocsp_response;
+                                    fs.close();
 
-                                return;
+                                    return;
+                                }
                             }
                         }
                     }
+
+                    // Randomize filename, since multiple certificates can be stored in same bundle
+                    const auto name = filesystem_utils::get_random_file_name("_ocsp");
+
+                    const auto ocsp_file_path = (ocsp_path / name) += DER_EXTENSION;
+                    const auto hash_file_path = (ocsp_path / name) += CERT_HASH_EXTENSION;
+
+                    // Write out OCSP data
+                    try {
+                        std::ofstream fs(ocsp_file_path.c_str());
+                        fs << ocsp_response;
+                        fs.close();
+                    } catch (const std::exception& e) {
+                        EVLOG_error << "Could not write OCSP certificate data!";
+                    }
+
+                    if (false == filesystem_utils::write_hash_to_file(hash_file_path, certificate_hash_data)) {
+                        EVLOG_error << "Could not write OCSP certificate hash!";
+                    }
+
+                    EVLOG_debug << "OCSP certificate hash not found, written at path: " << ocsp_file_path;
+                } else {
+                    EVLOG_error << "Could not find OCSP cache patch directory!";
                 }
-
-                // Randomize filename, since multiple certificates can be stored in same bundle
-                const auto name = filesystem_utils::get_random_file_name("_ocsp");
-
-                const auto ocsp_file_path = ocsp_path / name / DER_EXTENSION;
-                const auto hash_file_path = ocsp_path / name / CERT_HASH_EXTENSION;
-
-                // Write out OCSP data
-                try {
-                    std::ofstream fs(ocsp_file_path.c_str());
-                    fs << ocsp_response;
-                    fs.close();
-                } catch (const std::exception& e) {
-                    EVLOG_error << "Could not write OCSP certificate data!";
-                }
-
-                if (false == filesystem_utils::write_hash_to_file(hash_file_path, certificate_hash_data)) {
-                    EVLOG_error << "Could not write OCSP certificate hash!";
-                }
-
-                EVLOG_debug << "OCSP certificate hash not found, written at path: " << ocsp_file_path;
-            } else {
-                EVLOG_error << "Could not find OCSP cache patch directory!";
             }
         } catch (const NoCertificateFound& e) {
             EVLOG_error << "Could not find any certificate for ocsp cache update: " << e.what();
@@ -1114,10 +1126,6 @@ GetCertificateInfoResult EvseSecurity::get_leaf_certificate_info_internal(LeafCe
         fs::path chain_file;
 
         X509CertificateBundle leaf_directory(cert_dir, EncodingFormat::PEM);
-        X509CertificateBundle root_bundle(root_dir, EncodingFormat::PEM); // Required for hierarchy
-
-        auto hierarchy =
-            std::move(X509CertificateHierarchy::build_hierarchy(root_bundle.split(), leaf_directory.split()));
 
         const std::vector<X509Wrapper>* leaf_fullchain = nullptr;
         const std::vector<X509Wrapper>* leaf_single = nullptr;
@@ -1163,6 +1171,12 @@ GetCertificateInfoResult EvseSecurity::get_leaf_certificate_info_internal(LeafCe
 
         // Include OCSP data if possible
         if (include_ocsp && (leaf_fullchain != nullptr || leaf_single != nullptr)) {
+            X509CertificateBundle root_bundle(root_dir, EncodingFormat::PEM); // Required for hierarchy
+
+            auto hierarchy =
+                std::move(X509CertificateHierarchy::build_hierarchy(root_bundle.split(), leaf_directory.split()));
+            EVLOG_debug << "Hierarchy for OCSP data: \n" << hierarchy.to_debug_string();
+
             // Search for OCSP data for each certificate
             if (leaf_fullchain != nullptr) {
                 for (const auto& chain_certif : *leaf_fullchain) {

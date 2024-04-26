@@ -126,7 +126,7 @@ struct OCSPRequestDataList {
 
 struct CertificateOCSP {
     CertificateHashData hash;
-    std::optional<fs::path> oscsp_data;
+    std::optional<std::string> oscsp_data;
 };
 
 struct CertificateInfo {
@@ -135,7 +135,7 @@ struct CertificateInfo {
     std::optional<fs::path> certificate_single; ///< The path of the PEM or DER encoded certificate if found
     int certificate_count;               ///< The count of certificates, if the chain is available, or 1 if single
     std::optional<std::string> password; ///< Specifies the password for the private key if encrypted
-    std::vector<CertificateOCSP> oscsp;  ///< The ordered list of OCSP certificate data based on the chain file order
+    std::vector<CertificateOCSP> ocsp;   ///< The ordered list of OCSP certificate data based on the chain file order
 };
 
 struct GetCertificateInfoResult {
@@ -156,6 +156,7 @@ std::string leaf_certificate_type_to_string(LeafCertificateType e);
 std::string leaf_certificate_type_to_filename(LeafCertificateType e);
 std::string certificate_type_to_string(CertificateType e);
 std::string hash_algorithm_to_string(HashAlgorithm e);
+HashAlgorithm string_to_hash_algorithm(std::string s);
 std::string install_certificate_result_to_string(InstallCertificateResult e);
 std::string delete_certificate_result_to_string(DeleteCertificateResult e);
 std::string get_installed_certificates_status_to_string(GetInstalledCertificatesStatus e);

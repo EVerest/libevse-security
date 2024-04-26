@@ -60,6 +60,10 @@ public:
     /// @brief Searches for the provided hash, throwing a NoCertificateFound if not found
     X509Wrapper find_certificate(const CertificateHashData& hash);
 
+    /// @brief Searches for all the certificates with the provided hash, throwing a NoCertificateFound
+    // if none were found. Can be useful when we have SUB-CAs in multiple bundles
+    std::vector<X509Wrapper> find_certificates_multi(const CertificateHashData& hash);
+
 public:
     std::string to_debug_string();
 

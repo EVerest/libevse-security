@@ -297,7 +297,7 @@ TEST_F(EvseSecurityTests, verify_basics) {
 }
 
 TEST_F(EvseSecurityTests, verify_directory_bundles) {
-    const auto child_cert_str = read_file_to_string(std::filesystem::path("certs/client/csms/CSMS_LEAF.pem"));
+    const auto child_cert_str = read_file_to_string(fs::path("certs/client/csms/CSMS_LEAF.pem"));
 
     ASSERT_EQ(this->evse_security->verify_certificate(child_cert_str, LeafCertificateType::CSMS),
               CertificateValidationResult::Valid);
@@ -785,6 +785,119 @@ TEST_F(EvseSecurityTests, verify_full_filesystem_install_reject) {
         read_file_to_string(std::filesystem::path("certs/to_be_installed/INSTALL_TEST_ROOT_CA1.pem"));
     const auto result = this->evse_security->install_ca_certificate(new_root_ca_1, CaCertificateType::CSMS);
     ASSERT_TRUE(result == InstallCertificateResult::CertificateStoreMaxLengthExceeded);
+}
+
+TEST_F(EvseSecurityTests, verify_oscp_cache) {
+    std::string ocsp_mock_response_data = "OCSP_MOCK_RESPONSE_DATA";
+    std::string ocsp_mock_response_data_v2 = "OCSP_MOCK_RESPONSE_DATA_V2";
+
+    OCSPRequestDataList data = this->evse_security->get_v2g_ocsp_request_data();
+
+    ASSERT_EQ(data.ocsp_request_data_list.size(), 2);
+
+    // Mock a response
+    for (auto& ocsp : data.ocsp_request_data_list) {
+        this->evse_security->update_ocsp_cache(ocsp.certificate_hash_data.value(), ocsp_mock_response_data);
+    }
+
+    // Make sure all info was written and that it is correct
+    fs::path ocsp_path = "certs/ca/v2g/ocsp";
+
+    ASSERT_TRUE(fs::exists(ocsp_path));
+
+    for (auto& ocsp : data.ocsp_request_data_list) {
+        std::optional<std::string> data = this->evse_security->retrieve_ocsp_cache(ocsp.certificate_hash_data.value());
+        ASSERT_TRUE(data.has_value());
+        ASSERT_EQ(data.value(), ocsp_mock_response_data);
+    }
+
+    int entries = 0;
+    for (const auto& ocsp_entry : fs::directory_iterator(ocsp_path)) {
+        ASSERT_TRUE(ocsp_entry.is_regular_file());
+        ASSERT_TRUE(ocsp_entry.path().has_extension());
+
+        auto ext = ocsp_entry.path().extension();
+
+        ASSERT_TRUE(ext == DER_EXTENSION || ext == CERT_HASH_EXTENSION);
+
+        if (ext == DER_EXTENSION) {
+            ASSERT_EQ(read_file_to_string(ocsp_entry.path()), ocsp_mock_response_data);
+        } else if (ext == CERT_HASH_EXTENSION) {
+            CertificateHashData hash;
+            ASSERT_TRUE(filesystem_utils::read_hash_from_file(ocsp_entry.path(), hash));
+
+            // Check that is is contained
+            auto it =
+                std::find_if(data.ocsp_request_data_list.begin(), data.ocsp_request_data_list.end(),
+                             [&hash](OCSPRequestData& req_data) { return (hash == req_data.certificate_hash_data); });
+
+            ASSERT_NE(it, data.ocsp_request_data_list.end());
+        }
+
+        entries++;
+    }
+
+    ASSERT_EQ(entries, 4); // 2 for hash, 2 for data
+
+    // Write data again to test over-writing
+    for (auto& ocsp : data.ocsp_request_data_list) {
+        this->evse_security->update_ocsp_cache(ocsp.certificate_hash_data.value(), ocsp_mock_response_data_v2);
+    }
+
+    for (auto& ocsp : data.ocsp_request_data_list) {
+        std::optional<std::string> data = this->evse_security->retrieve_ocsp_cache(ocsp.certificate_hash_data.value());
+        ASSERT_TRUE(data.has_value());
+        ASSERT_EQ(data.value(), ocsp_mock_response_data_v2);
+    }
+
+    // Make sure the info was over-written
+    entries = 0;
+    for (const auto& ocsp_entry : fs::directory_iterator(ocsp_path)) {
+        ASSERT_TRUE(ocsp_entry.is_regular_file());
+        ASSERT_TRUE(ocsp_entry.path().has_extension());
+
+        auto ext = ocsp_entry.path().extension();
+
+        ASSERT_TRUE(ext == DER_EXTENSION || ext == CERT_HASH_EXTENSION);
+
+        if (ext == DER_EXTENSION) {
+            ASSERT_EQ(read_file_to_string(ocsp_entry.path()), ocsp_mock_response_data_v2);
+        } else if (ext == CERT_HASH_EXTENSION) {
+            CertificateHashData hash;
+            ASSERT_TRUE(filesystem_utils::read_hash_from_file(ocsp_entry.path(), hash));
+
+            // Check that is is contained
+            auto it =
+                std::find_if(data.ocsp_request_data_list.begin(), data.ocsp_request_data_list.end(),
+                             [&hash](OCSPRequestData& req_data) { return (hash == req_data.certificate_hash_data); });
+
+            ASSERT_NE(it, data.ocsp_request_data_list.end());
+        }
+
+        entries++;
+    }
+
+    ASSERT_EQ(entries, 4); // 4 still, since we have to over-write
+
+    // Retrieve OCSP data along with certificates
+    GetCertificateInfoResult response =
+        this->evse_security->get_leaf_certificate_info(LeafCertificateType::V2G, EncodingFormat::PEM, true);
+
+    ASSERT_EQ(response.status, GetCertificateInfoStatus::Accepted);
+    ASSERT_TRUE(response.info.has_value());
+
+    CertificateInfo info = response.info.value();
+
+    ASSERT_EQ(info.certificate_count, 3);
+    ASSERT_EQ(info.ocsp.size(), 3);
+
+    // Skip first that does not have OCSP data
+    for (int i = 1; i < info.ocsp.size(); ++i) {
+        auto& ocsp = info.ocsp[i];
+
+        ASSERT_TRUE(ocsp.oscsp_data.has_value());
+        ASSERT_EQ(ocsp.oscsp_data.value(), ocsp_mock_response_data_v2);
+    }
 }
 
 TEST_F(EvseSecurityTestsExpired, verify_expired_leaf_deletion) {
