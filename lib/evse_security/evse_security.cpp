@@ -638,7 +638,7 @@ EvseSecurity::get_installed_certificates(const std::vector<CertificateType>& cer
                         certificate_chains.push_back(certificate_hash_data_chain);
                     }
                 }
-            } catch(const CertificateLoadException& e) {
+            } catch (const CertificateLoadException& e) {
                 EVLOG_error << "Could not load installed leaf certificates: " << e.what();
             }
         }
@@ -671,7 +671,7 @@ int EvseSecurity::get_count_of_installed_certificates(const std::vector<Certific
         try {
             X509CertificateBundle ca_bundle(unique_dir, EncodingFormat::PEM);
             count += ca_bundle.get_certificate_count();
-        } catch(const CertificateLoadException& e) {
+        } catch (const CertificateLoadException& e) {
             EVLOG_error << "Could not load bundle for certificate count: " << e.what();
         }
     }
@@ -685,7 +685,7 @@ int EvseSecurity::get_count_of_installed_certificates(const std::vector<Certific
         try {
             X509CertificateBundle leaf_bundle(leaf_dir, EncodingFormat::PEM);
             count += leaf_bundle.get_certificate_count();
-        } catch(const CertificateLoadException& e) {
+        } catch (const CertificateLoadException& e) {
             EVLOG_error << "Could not load bundle for certificate count: " << e.what();
         }
     }

@@ -15,7 +15,7 @@ enum class CryptoKeyType {
     EC_secp384r1,  // P-384, ~equiv to rsa 7680
     RSA_TPM20,     // Default TPM RSA, only option allowed for TPM (universal support), 2048 bits
     RSA_3072,      // Default RSA. Protection lifetime: ~2030
-    RSA_7680,      // Protection lifetime: >2031
+    RSA_7680,      // Protection lifetime: >2031. Very long generation time 8-40s on 16 core PC
 };
 
 enum class KeyValidationResult {

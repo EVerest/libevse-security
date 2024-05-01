@@ -41,15 +41,6 @@ TEST_F(OpenSSLSupplierTest, generate_key_RSA_3072) {
     ASSERT_TRUE(res);
 }
 
-TEST_F(OpenSSLSupplierTest, generate_key_RSA_7680) {
-    KeyGenerationInfo info = {
-        CryptoKeyType::RSA_7680, false, std::nullopt, std::nullopt, std::nullopt,
-    };
-    KeyHandle_ptr key;
-    auto res = OpenSSLSupplier::generate_key(info, key);
-    ASSERT_TRUE(res);
-}
-
 TEST_F(OpenSSLSupplierTest, generate_key_EC_prime256v1) {
     KeyGenerationInfo info = {
         CryptoKeyType::EC_prime256v1, false, std::nullopt, std::nullopt, std::nullopt,
