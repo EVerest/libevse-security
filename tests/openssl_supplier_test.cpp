@@ -104,7 +104,7 @@ TEST_F(OpenSSLSupplierTest, x509_generate_csr) {
         .ip_address = std::nullopt,
         {CryptoKeyType::EC_prime256v1, false, std::nullopt, "pki/csr_key.pem", std::nullopt}};
     auto res = OpenSSLSupplier::x509_generate_csr(csr_info, csr);
-    ASSERT_TRUE(res);
+    ASSERT_EQ(res, CertificateSignRequestResult::Valid);
 
     std::ofstream out("csr.pem");
     out << csr;
@@ -124,7 +124,7 @@ TEST_F(OpenSSLSupplierTest, x509_generate_csr_dns) {
         .ip_address = std::nullopt,
         {CryptoKeyType::EC_prime256v1, false, std::nullopt, "pki/csr_key.pem", std::nullopt}};
     auto res = OpenSSLSupplier::x509_generate_csr(csr_info, csr);
-    ASSERT_TRUE(res);
+    ASSERT_EQ(res, CertificateSignRequestResult::Valid);
 
 #ifdef OUTPUT_CSR
     std::ofstream out("csr_dns.pem");
@@ -146,7 +146,7 @@ TEST_F(OpenSSLSupplierTest, x509_generate_csr_ip) {
         .ip_address = "127.0.0.1",
         {CryptoKeyType::EC_prime256v1, false, std::nullopt, "pki/csr_key.pem", std::nullopt}};
     auto res = OpenSSLSupplier::x509_generate_csr(csr_info, csr);
-    ASSERT_TRUE(res);
+    ASSERT_EQ(res, CertificateSignRequestResult::Valid);
 
 #ifdef OUTPUT_CSR
     std::ofstream out("csr_ip.pem");
@@ -168,7 +168,7 @@ TEST_F(OpenSSLSupplierTest, x509_generate_csr_dns_ip) {
         .ip_address = "127.0.0.1",
         {CryptoKeyType::EC_prime256v1, false, std::nullopt, "pki/csr_key.pem", std::nullopt}};
     auto res = OpenSSLSupplier::x509_generate_csr(csr_info, csr);
-    ASSERT_TRUE(res);
+    ASSERT_EQ(res, CertificateSignRequestResult::Valid);
 
 #ifdef OUTPUT_CSR
     std::ofstream out("csr_dns_ip.pem");

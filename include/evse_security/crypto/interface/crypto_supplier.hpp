@@ -71,7 +71,8 @@ public: // X509 certificate utilities
                                       const std::vector<std::uint8_t>& data);
 
     /// @brief Generates a certificate signing request with the provided parameters
-    static bool x509_generate_csr(const CertificateSigningRequestInfo& generation_info, std::string& out_csr);
+    static CertificateSignRequestResult x509_generate_csr(const CertificateSigningRequestInfo& generation_info,
+                                                          std::string& out_csr);
 
 public: // Digesting/decoding utils
     static bool digest_file_sha256(const fs::path& path, std::vector<std::uint8_t>& out_digest);

@@ -91,8 +91,9 @@ bool AbstractCryptoSupplier::x509_verify_signature(X509Handle* handle, const std
     default_crypto_supplier_usage_error() return false;
 }
 
-bool AbstractCryptoSupplier::x509_generate_csr(const CertificateSigningRequestInfo& csr_info, std::string& out_csr) {
-    default_crypto_supplier_usage_error() return false;
+CertificateSignRequestResult AbstractCryptoSupplier::x509_generate_csr(const CertificateSigningRequestInfo& csr_info,
+                                                                       std::string& out_csr) {
+    default_crypto_supplier_usage_error() return CertificateSignRequestResult::Unknown;
 }
 
 bool AbstractCryptoSupplier::digest_file_sha256(const fs::path& path, std::vector<std::uint8_t>& out_digest) {

@@ -165,10 +165,11 @@ public:
     /// @param organization
     /// @param common
     /// @param use_tpm  If the TPM should be used for the CSR request
-    /// @return the PEM formatted certificate signing request
-    std::string generate_certificate_signing_request(LeafCertificateType certificate_type, const std::string& country,
-                                                     const std::string& organization, const std::string& common,
-                                                     bool use_tpm);
+    /// @return the status and an optional PEM formatted certificate signing request string
+    GetCertificateSignRequestResult generate_certificate_signing_request(LeafCertificateType certificate_type,
+                                                                         const std::string& country,
+                                                                         const std::string& organization,
+                                                                         const std::string& common, bool use_tpm);
 
     /// @brief Generates a certificate signing request for the given \p certificate_type , \p country , \p organization
     /// and \p common without using the TPM
@@ -176,9 +177,11 @@ public:
     /// @param country
     /// @param organization
     /// @param common
-    /// @return the PEM formatted certificate signing request
-    std::string generate_certificate_signing_request(LeafCertificateType certificate_type, const std::string& country,
-                                                     const std::string& organization, const std::string& common);
+    /// @return the status and an optional PEM formatted certificate signing request string
+    GetCertificateSignRequestResult generate_certificate_signing_request(LeafCertificateType certificate_type,
+                                                                         const std::string& country,
+                                                                         const std::string& organization,
+                                                                         const std::string& common);
 
     /// @brief Searches the filesystem on the specified directories for the given \p certificate_type and retrieves the
     /// most recent certificate that is already valid and the respective key.  If no certificate is present or no key is
@@ -202,6 +205,9 @@ public:
     /// @param certificate_type
     /// @return CA certificate file
     std::string get_verify_file(CaCertificateType certificate_type);
+
+    /// @brief An extension of 'get_verify_file' with error handling included
+    GetCertificateInfoResult get_ca_certificate_info(CaCertificateType certificate_type);
 
     /// @brief Gets the expiry day count for the leaf certificate of the given \p certificate_type
     /// @param certificate_type
@@ -248,8 +254,13 @@ private:
                                                             LeafCertificateType certificate_type);
     GetCertificateInfoResult get_leaf_certificate_info_internal(LeafCertificateType certificate_type,
                                                                 EncodingFormat encoding, bool include_ocsp = false);
+    GetCertificateInfoResult get_ca_certificate_info_internal(CaCertificateType certificate_type);
     std::optional<fs::path> retrieve_ocsp_cache_internal(const CertificateHashData& certificate_hash_data);
     bool is_ca_certificate_installed_internal(CaCertificateType certificate_type);
+
+    GetCertificateSignRequestResult
+    generate_certificate_signing_request_internal(LeafCertificateType certificate_type,
+                                                  const CertificateSigningRequestInfo& info);
 
     /// @brief Determines if the total filesize of certificates is > than the max_filesystem_usage bytes
     bool is_filesystem_full();

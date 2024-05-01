@@ -396,8 +396,8 @@ TEST_F(EvseSecurityTests, verify_tpm_keygen_csr) {
 
     std::string csr;
 
-    gen = CryptoSupplier::x509_generate_csr(csr_info, csr);
-    ASSERT_TRUE(gen);
+    auto csr_gen = CryptoSupplier::x509_generate_csr(csr_info, csr);
+    ASSERT_EQ(csr_gen, CertificateSignRequestResult::Valid);
 
     std::cout << "TPM csr: " << std::endl << csr << std::endl;
 
@@ -408,8 +408,8 @@ TEST_F(EvseSecurityTests, verify_tpm_keygen_csr) {
 
     csr_info.key_info = info;
 
-    gen = CryptoSupplier::x509_generate_csr(csr_info, csr);
-    ASSERT_TRUE(gen);
+    csr_gen = CryptoSupplier::x509_generate_csr(csr_info, csr);
+    ASSERT_EQ(csr_gen, CertificateSignRequestResult::Valid);
 
     std::cout << "normal csr: " << std::endl << csr << std::endl;
 }
@@ -1051,8 +1051,7 @@ TEST_F(EvseSecurityTestsExpired, verify_expired_leaf_deletion) {
 
 TEST_F(EvseSecurityTests, verify_expired_csr_deletion) {
     // Generate a CSR
-    std::string csr =
-        evse_security->generate_certificate_signing_request(LeafCertificateType::CSMS, "DE", "Pionix", "NA");
+    auto csr = evse_security->generate_certificate_signing_request(LeafCertificateType::CSMS, "DE", "Pionix", "NA");
     fs::path csr_key_path = evse_security->managed_csr.begin()->first;
 
     // Simulate a full fs else no deletion will take place

@@ -25,6 +25,16 @@ enum class KeyValidationResult {
     Unknown,        // Unknown error, not related to provider validation
 };
 
+enum class CertificateSignRequestResult {
+    Valid,
+    KeyGenerationError, // Error when generating the key, maybe invalid key type
+    VersioningError,    // The version could not be set
+    PubkeyError,        // The public key could not be attached
+    ExtensionsError,    // The extensions could not be appended
+    SigningError,       // The CSR could not be signed, maybe key or signing algo invalid
+    Unknown,            // Any other error
+};
+
 struct KeyGenerationInfo {
     CryptoKeyType key_type;
 
@@ -76,5 +86,9 @@ using KeyHandle_ptr = std::unique_ptr<KeyHandle>;
 
 // Transforms a duration of days into seconds
 using days_to_seconds = std::chrono::duration<std::int64_t, std::ratio<86400>>;
+
+namespace conversions {
+std::string get_certificate_sign_request_result_to_string(CertificateSignRequestResult e);
+}
 
 } // namespace evse_security

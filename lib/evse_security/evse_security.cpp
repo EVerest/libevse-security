@@ -962,28 +962,63 @@ void EvseSecurity::certificate_signing_request_failed(const std::string& csr, Le
     // TODO(ioan): delete the pairing key of the CSR
 }
 
-std::string EvseSecurity::generate_certificate_signing_request(LeafCertificateType certificate_type,
-                                                               const std::string& country,
-                                                               const std::string& organization,
-                                                               const std::string& common, bool use_tpm) {
+GetCertificateSignRequestResult
+EvseSecurity::generate_certificate_signing_request_internal(LeafCertificateType certificate_type,
+                                                            const CertificateSigningRequestInfo& info) {
+    GetCertificateSignRequestResult result{};
+
+    EVLOG_info << "Generating CSR for leaf: " << conversions::leaf_certificate_type_to_string(certificate_type);
+
+    std::string csr;
+    CertificateSignRequestResult csr_result = CryptoSupplier::x509_generate_csr(info, csr);
+
+    if (csr_result == CertificateSignRequestResult::Valid) {
+        result.status = GetCertificateSignRequestStatus::Accepted;
+        result.csr = std::move(csr);
+
+        EVLOG_debug << "Generated CSR end. CSR: " << csr;
+
+        // Add the key to the managed CRS that we will delete if we can't find a certificate pair within the time
+        if (info.key_info.private_key_file.has_value()) {
+            managed_csr.emplace(info.key_info.private_key_file.value(), std::chrono::steady_clock::now());
+        }
+    } else {
+        EVLOG_error << "CSR leaf generation error: "
+                    << conversions::get_certificate_sign_request_result_to_string(csr_result);
+
+        if (csr_result == CertificateSignRequestResult::KeyGenerationError) {
+            result.status = GetCertificateSignRequestStatus::KeyGenError;
+        } else {
+            result.status = GetCertificateSignRequestStatus::GenerationError;
+        }
+    }
+
+    return result;
+}
+
+GetCertificateSignRequestResult EvseSecurity::generate_certificate_signing_request(LeafCertificateType certificate_type,
+                                                                                   const std::string& country,
+                                                                                   const std::string& organization,
+                                                                                   const std::string& common,
+                                                                                   bool use_tpm) {
     std::lock_guard<std::mutex> guard(EvseSecurity::security_mutex);
-
-    fs::path key_path;
-
-    EVLOG_info << "Generating CSR: " << conversions::leaf_certificate_type_to_string(certificate_type);
 
     // Make a difference between normal and tpm keys for identification
     const auto file_name =
         conversions::leaf_certificate_type_to_filename(certificate_type) +
         filesystem_utils::get_random_file_name(use_tpm ? TPM_KEY_EXTENSION.string() : KEY_EXTENSION.string());
 
+    fs::path key_path;
     if (certificate_type == LeafCertificateType::CSMS) {
         key_path = this->directories.csms_leaf_key_directory / file_name;
     } else if (certificate_type == LeafCertificateType::V2G) {
         key_path = this->directories.secc_leaf_key_directory / file_name;
     } else {
-        EVLOG_error << "Generate CSR: create filename failed";
-        throw std::runtime_error("Attempt to generate CSR for MF certificate");
+        EVLOG_error << "Generate CSR for non CSMS/V2G leafs!";
+
+        GetCertificateSignRequestResult result{};
+        result.status = GetCertificateSignRequestStatus::InvalidRequestedType;
+        return result;
     }
 
     std::string csr;
@@ -1012,23 +1047,13 @@ std::string EvseSecurity::generate_certificate_signing_request(LeafCertificateTy
         info.key_info.private_key_pass = private_key_password;
     }
 
-    EVLOG_debug << "Generate CSR start";
-
-    if (false == CryptoSupplier::x509_generate_csr(info, csr)) {
-        EVLOG_error << "Failed to generate certificate signing request!";
-    } else {
-        // Add the key to the managed CRS that we will delete if we can't find a certificate pair within the time
-        managed_csr.emplace(key_path, std::chrono::steady_clock::now());
-    }
-
-    EVLOG_debug << "Generated CSR end. CSR: " << csr;
-    return csr;
+    return generate_certificate_signing_request_internal(certificate_type, info);
 }
 
-std::string EvseSecurity::generate_certificate_signing_request(LeafCertificateType certificate_type,
-                                                               const std::string& country,
-                                                               const std::string& organization,
-                                                               const std::string& common) {
+GetCertificateSignRequestResult EvseSecurity::generate_certificate_signing_request(LeafCertificateType certificate_type,
+                                                                                   const std::string& country,
+                                                                                   const std::string& organization,
+                                                                                   const std::string& common) {
     return generate_certificate_signing_request(certificate_type, country, organization, common, false);
 }
 
@@ -1304,8 +1329,8 @@ bool EvseSecurity::update_certificate_links(LeafCertificateType certificate_type
     return changed;
 }
 
-std::string EvseSecurity::get_verify_file(CaCertificateType certificate_type) {
-    std::lock_guard<std::mutex> guard(EvseSecurity::security_mutex);
+GetCertificateInfoResult EvseSecurity::get_ca_certificate_info_internal(CaCertificateType certificate_type) {
+    GetCertificateInfoResult result{};
 
     try {
         // Support bundle files, in case the certificates contain
@@ -1321,12 +1346,23 @@ std::string EvseSecurity::get_verify_file(CaCertificateType certificate_type) {
 
             // Get all roots and search for a valid self-signed
             for (auto& root : hierarchy.get_hierarchy()) {
-                if (root.certificate.is_selfsigned() && root.certificate.is_valid())
-                    return root.certificate.get_file().value_or("");
-            }
-        }
+                if (root.certificate.is_selfsigned() && root.certificate.is_valid()) {
+                    CertificateInfo info;
+                    result.info = info;
 
-        return verify_file.get_path().string();
+                    result.info.value().certificate = root.certificate.get_file().value();
+                    result.status = GetCertificateInfoStatus::Accepted;
+                    return result;
+                }
+            }
+        } else {
+            CertificateInfo info;
+            result.info = info;
+
+            result.info.value().certificate = verify_file.get_path();
+            result.status = GetCertificateInfoStatus::Accepted;
+            return result;
+        }
     } catch (const CertificateLoadException& e) {
         EVLOG_error << "Could not obtain verify file, wrong format for certificate: "
                     << this->ca_bundle_path_map.at(certificate_type) << " with error: " << e.what();
@@ -1334,6 +1370,27 @@ std::string EvseSecurity::get_verify_file(CaCertificateType certificate_type) {
 
     EVLOG_error << "Could not find any CA certificate for: "
                 << conversions::ca_certificate_type_to_string(certificate_type);
+
+    result.status = GetCertificateInfoStatus::NotFound;
+    return result;
+}
+
+GetCertificateInfoResult EvseSecurity::get_ca_certificate_info(CaCertificateType certificate_type) {
+    std::lock_guard<std::mutex> guard(EvseSecurity::security_mutex);
+
+    return get_ca_certificate_info_internal(certificate_type);
+}
+
+std::string EvseSecurity::get_verify_file(CaCertificateType certificate_type) {
+    std::lock_guard<std::mutex> guard(EvseSecurity::security_mutex);
+
+    auto result = get_ca_certificate_info_internal(certificate_type);
+
+    if (result.status == GetCertificateInfoStatus::Accepted && result.info.has_value()) {
+        if (result.info.value().certificate.has_value()) {
+            result.info.value().certificate.value().string();
+        }
+    }
 
     return {};
 }

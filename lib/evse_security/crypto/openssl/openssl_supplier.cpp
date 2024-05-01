@@ -720,7 +720,8 @@ bool OpenSSLSupplier::x509_verify_signature(X509Handle* handle, const std::vecto
     }
 }
 
-bool OpenSSLSupplier::x509_generate_csr(const CertificateSigningRequestInfo& csr_info, std::string& out_csr) {
+CertificateSignRequestResult OpenSSLSupplier::x509_generate_csr(const CertificateSigningRequestInfo& csr_info,
+                                                                std::string& out_csr) {
 
     KeyHandle_ptr gen_key;
     EVP_PKEY_CTX_ptr ctx;
@@ -734,7 +735,7 @@ bool OpenSSLSupplier::x509_generate_csr(const CertificateSigningRequestInfo& csr
     }
 
     if (false == s_generate_key(csr_info.key_info, gen_key, ctx)) {
-        return false;
+        return CertificateSignRequestResult::KeyGenerationError;
     }
 
     EVP_PKEY* key = get(gen_key.get());
@@ -747,13 +748,13 @@ bool OpenSSLSupplier::x509_generate_csr(const CertificateSigningRequestInfo& csr
 
     if (false == X509_REQ_set_version(x509_req_ptr.get(), n_version)) {
         EVLOG_error << "Failed to set csr version!";
-        return false;
+        return CertificateSignRequestResult::VersioningError;
     }
 
     // set public key of x509 req
     if (false == X509_REQ_set_pubkey(x509_req_ptr.get(), key)) {
         EVLOG_error << "Failed to set csr pubkey!";
-        return false;
+        return CertificateSignRequestResult::PubkeyError;
     }
 
     X509_NAME* x509Name = X509_REQ_get_subject_name(x509_req_ptr.get());
@@ -794,9 +795,10 @@ bool OpenSSLSupplier::x509_generate_csr(const CertificateSigningRequestInfo& csr
     X509_EXTENSION_free(ext_basic_constraints);
     X509_EXTENSION_free(ext_san);
     sk_X509_EXTENSION_free(extensions);
+
     if (!result) {
         EVLOG_error << "Failed to add csr extensions!";
-        return false;
+        return CertificateSignRequestResult::ExtensionsError;
     }
 
     // sign the certificate with the private key
@@ -806,7 +808,7 @@ bool OpenSSLSupplier::x509_generate_csr(const CertificateSigningRequestInfo& csr
 
     if (x509_signed == false) {
         EVLOG_error << "Failed to sign csr!";
-        return false;
+        return CertificateSignRequestResult::SigningError;
     }
 
     // write csr
@@ -817,7 +819,8 @@ bool OpenSSLSupplier::x509_generate_csr(const CertificateSigningRequestInfo& csr
     BIO_get_mem_ptr(bio.get(), &mem_csr);
 
     out_csr = std::string(mem_csr->data, mem_csr->length);
-    return true;
+
+    return CertificateSignRequestResult::Valid;
 }
 
 bool OpenSSLSupplier::digest_file_sha256(const fs::path& path, std::vector<std::uint8_t>& out_digest) {

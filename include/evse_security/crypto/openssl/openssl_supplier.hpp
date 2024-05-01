@@ -40,7 +40,8 @@ public:
     static bool x509_verify_signature(X509Handle* handle, const std::vector<std::uint8_t>& signature,
                                       const std::vector<std::uint8_t>& data);
 
-    static bool x509_generate_csr(const CertificateSigningRequestInfo& csr_info, std::string& out_csr);
+    static CertificateSignRequestResult x509_generate_csr(const CertificateSigningRequestInfo& csr_info,
+                                                          std::string& out_csr);
 
 public:
     static bool digest_file_sha256(const fs::path& path, std::vector<std::uint8_t>& out_digest);

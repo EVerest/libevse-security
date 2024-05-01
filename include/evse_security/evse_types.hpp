@@ -90,6 +90,13 @@ enum class GetCertificateInfoStatus {
     PrivateKeyNotFound,
 };
 
+enum class GetCertificateSignRequestStatus {
+    Accepted,
+    InvalidRequestedType, ///< Requested a CSR for non CSMS/V2G leafs
+    KeyGenError,          ///< The key could not be generated with the requested/default parameters
+    GenerationError,      ///< Any other error when creating the CSR
+};
+
 // types of evse_security
 
 struct CertificateHashData {
@@ -148,6 +155,12 @@ struct GetCertificateInfoResult {
     GetCertificateInfoStatus status;
     std::optional<CertificateInfo> info;
 };
+
+struct GetCertificateSignRequestResult {
+    GetCertificateSignRequestStatus status;
+    std::optional<std::string> csr;
+};
+
 namespace conversions {
 std::string encoding_format_to_string(EncodingFormat e);
 std::string ca_certificate_type_to_string(CaCertificateType e);
