@@ -54,9 +54,9 @@ std::string AbstractCryptoSupplier::x509_get_common_name(X509Handle* handle) {
     default_crypto_supplier_usage_error() return {};
 }
 
-void AbstractCryptoSupplier::x509_get_validity(X509Handle* handle, std::int64_t& out_valid_in,
+bool AbstractCryptoSupplier::x509_get_validity(X509Handle* handle, std::int64_t& out_valid_in,
                                                std::int64_t& out_valid_to) {
-    default_crypto_supplier_usage_error()
+    default_crypto_supplier_usage_error() return false;
 }
 
 bool AbstractCryptoSupplier::x509_is_selfsigned(X509Handle* handle) {

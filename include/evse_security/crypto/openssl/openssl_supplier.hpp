@@ -26,7 +26,7 @@ public:
     static std::string x509_get_serial_number(X509Handle* handle);
     static std::string x509_get_issuer_name_hash(X509Handle* handle);
     static std::string x509_get_common_name(X509Handle* handle);
-    static void x509_get_validity(X509Handle* handle, std::int64_t& out_valid_in, std::int64_t& out_valid_to);
+    static bool x509_get_validity(X509Handle* handle, std::int64_t& out_valid_in, std::int64_t& out_valid_to);
     static bool x509_is_selfsigned(X509Handle* handle);
     static bool x509_is_child(X509Handle* child, X509Handle* parent);
     static bool x509_is_equal(X509Handle* a, X509Handle* b);

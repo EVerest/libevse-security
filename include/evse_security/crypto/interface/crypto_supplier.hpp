@@ -43,7 +43,7 @@ public: // X509 certificate utilities
     /// (not yet valid)
     /// @param out_valid_to Valid amount of seconds. A negative value is in the past (expired), a positive one is in the
     /// future
-    static void x509_get_validity(X509Handle* handle, std::int64_t& out_valid_in, std::int64_t& out_valid_to);
+    static bool x509_get_validity(X509Handle* handle, std::int64_t& out_valid_in, std::int64_t& out_valid_to);
 
     static bool x509_is_selfsigned(X509Handle* handle);
     static bool x509_is_child(X509Handle* child, X509Handle* parent);

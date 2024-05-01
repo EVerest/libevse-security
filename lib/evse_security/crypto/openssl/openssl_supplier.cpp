@@ -22,8 +22,6 @@
 #include <openssl/sha.h>
 #include <openssl/x509v3.h>
 
-#define EVSE_OPENSSL_VER_3 (OPENSSL_VERSION_NUMBER >= 0x30000000L)
-
 #include <evse_security/crypto/openssl/openssl_tpm.hpp>
 
 namespace evse_security {
@@ -483,11 +481,12 @@ std::string OpenSSLSupplier::x509_get_responder_url(X509Handle* handle) {
     return responder_url;
 }
 
-void OpenSSLSupplier::x509_get_validity(X509Handle* handle, std::int64_t& out_valid_in, std::int64_t& out_valid_to) {
+bool OpenSSLSupplier::x509_get_validity(X509Handle* handle, std::int64_t& out_valid_in, std::int64_t& out_valid_to) {
     X509* x509 = get(handle);
 
-    if (x509 == nullptr)
-        return;
+    if (x509 == nullptr) {
+        return false;
+    }
 
     // For valid_in and valid_to
     ASN1_TIME* notBefore = X509_get_notBefore(x509);
@@ -500,6 +499,8 @@ void OpenSSLSupplier::x509_get_validity(X509Handle* handle, std::int64_t& out_va
     ASN1_TIME_diff(&day, &sec, nullptr, notAfter);
     out_valid_to =
         std::chrono::duration_cast<std::chrono::seconds>(days_to_seconds(day)).count() + sec; // Convert days to seconds
+
+    return true;
 }
 
 bool OpenSSLSupplier::x509_is_child(X509Handle* child, X509Handle* parent) {
