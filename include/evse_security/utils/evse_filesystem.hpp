@@ -14,6 +14,8 @@ bool is_subdirectory(const fs::path& base, const fs::path& subdir);
 
 /// @brief Should be used to ensure file exists, not for directories
 bool create_file_if_nonexistent(const fs::path& file_path);
+/// @brief Ensure a file exists (if there's an extension), or a directory if no extension is found
+bool create_file_or_dir_if_nonexistent(const fs::path& file_path);
 bool delete_file(const fs::path& file_path);
 
 bool read_from_file(const fs::path& file_path, std::string& out_data);

@@ -103,13 +103,14 @@ static fs::path get_private_key_path_of_certificate(const X509Wrapper& certifica
 
             if (fs::exists(potential_keyfile)) {
                 try {
-                    fsstd::ifstream file(potential_keyfile, std::ios::binary);
-                    std::string private_key((std::istreambuf_iterator<char>(file)), std::istreambuf_iterator<char>());
+                    std::string private_key;
 
-                    if (KeyValidationResult::Valid ==
-                        CryptoSupplier::x509_check_private_key(certificate.get(), private_key, password)) {
-                        EVLOG_debug << "Key found for certificate at path: " << potential_keyfile;
-                        return potential_keyfile;
+                    if (filesystem_utils::read_from_file(potential_keyfile, private_key)) {
+                        if (KeyValidationResult::Valid ==
+                            CryptoSupplier::x509_check_private_key(certificate.get(), private_key, password)) {
+                            EVLOG_debug << "Key found for certificate at path: " << potential_keyfile;
+                            return potential_keyfile;
+                        }
                     }
                 } catch (const std::exception& e) {
                     EVLOG_debug << "Could not load or verify private key at: " << potential_keyfile << ": " << e.what();
@@ -123,13 +124,14 @@ static fs::path get_private_key_path_of_certificate(const X509Wrapper& certifica
             auto key_file_path = entry.path();
             if (is_keyfile(key_file_path)) {
                 try {
-                    fsstd::ifstream file(key_file_path, std::ios::binary);
-                    std::string private_key((std::istreambuf_iterator<char>(file)), std::istreambuf_iterator<char>());
+                    std::string private_key;
 
-                    if (KeyValidationResult::Valid ==
-                        CryptoSupplier::x509_check_private_key(certificate.get(), private_key, password)) {
-                        EVLOG_debug << "Key found for certificate at path: " << key_file_path;
-                        return key_file_path;
+                    if (filesystem_utils::read_from_file(key_file_path, private_key)) {
+                        if (KeyValidationResult::Valid ==
+                            CryptoSupplier::x509_check_private_key(certificate.get(), private_key, password)) {
+                            EVLOG_debug << "Key found for certificate at path: " << key_file_path;
+                            return key_file_path;
+                        }
                     }
                 } catch (const std::exception& e) {
                     EVLOG_debug << "Could not load or verify private key at: " << key_file_path << ": " << e.what();
@@ -151,8 +153,11 @@ static fs::path get_private_key_path_of_certificate(const X509Wrapper& certifica
 /// present in a bundle too
 static std::set<fs::path> get_certificate_path_of_key(const fs::path& key, const fs::path& certificate_path_directory,
                                                       const std::optional<std::string> password) {
-    fsstd::ifstream file(key, std::ios::binary);
-    std::string private_key((std::istreambuf_iterator<char>(file)), std::istreambuf_iterator<char>());
+    std::string private_key;
+
+    if (false == filesystem_utils::read_from_file(key, private_key)) {
+        throw NoPrivateKeyException("Could not read private key from path: " + private_key);
+    }
 
     // Before iterating all bundles, check by certificates from key filename
     fs::path cert_filename = key;
@@ -819,7 +824,7 @@ void EvseSecurity::update_ocsp_cache(const CertificateHashData& certificate_hash
                     const auto ocsp_path = cert.get_file().value().parent_path() / "ocsp";
 
                     if (false == fs::exists(ocsp_path)) {
-                        fs::create_directories(ocsp_path);
+                        filesystem_utils::create_file_or_dir_if_nonexistent(ocsp_path);
                     } else {
                         // Iterate existing hashes
                         for (const auto& hash_entry : fs::directory_iterator(ocsp_path)) {
@@ -1756,6 +1761,8 @@ void EvseSecurity::garbage_collect() {
             }
 
             if (is_keyfile(key_file_path)) {
+                bool error = false;
+
                 try {
                     // Check if we have found any matching certificate
                     get_certificate_path_of_key(key_file_path, keys_dir, this->private_key_password);
@@ -1763,7 +1770,13 @@ void EvseSecurity::garbage_collect() {
                     // If we did not found, add to the potential delete list
                     EVLOG_debug << "Could not find matching certificate for key: " << key_file_path
                                 << " adding to potential deletes";
+                    error = true;
+                } catch (const NoPrivateKeyException& e) {
+                    EVLOG_debug << "Could not load private key: " << key_file_path << " adding to potential deletes";
+                    error = true;
+                }
 
+                if (error) {
                     // Give a chance to be fulfilled by the CSMS
                     if (managed_csr.find(key_file_path) == managed_csr.end()) {
                         managed_csr.emplace(key_file_path, std::chrono::steady_clock::now());

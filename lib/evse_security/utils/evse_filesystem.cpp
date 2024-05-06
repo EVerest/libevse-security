@@ -18,21 +18,30 @@ bool is_subdirectory(const fs::path& base, const fs::path& subdir) {
 }
 
 bool delete_file(const fs::path& file_path) {
-    if (fs::is_regular_file(file_path))
-        return fs::remove(file_path);
+    try {
+        if (fs::is_regular_file(file_path)) {
+            return fs::remove(file_path);
+        }
+    } catch (const std::exception& e) {
+        EVLOG_error << "Filesystem error: " << e.what();
+    }
 
     EVLOG_error << "Error deleting file: " << file_path;
     return false;
 }
 
 bool read_from_file(const fs::path& file_path, std::string& out_data) {
-    if (fs::is_regular_file(file_path)) {
-        fsstd::ifstream file(file_path, std::ios::binary);
+    try {
+        if (fs::is_regular_file(file_path)) {
+            fsstd::ifstream file(file_path, std::ios::binary);
 
-        if (file.is_open()) {
-            out_data = std::string((std::istreambuf_iterator<char>(file)), std::istreambuf_iterator<char>());
-            return true;
+            if (file.is_open()) {
+                out_data = std::string((std::istreambuf_iterator<char>(file)), std::istreambuf_iterator<char>());
+                return true;
+            }
         }
+    } catch (const std::exception& e) {
+        EVLOG_error << "Error while reading from file: " << e.what();
     }
 
     EVLOG_error << "Error reading file: " << file_path;
@@ -40,15 +49,50 @@ bool read_from_file(const fs::path& file_path, std::string& out_data) {
 }
 
 bool create_file_if_nonexistent(const fs::path& file_path) {
-    if (!fs::exists(file_path)) {
-        std::ofstream file(file_path);
-        return true;
-    } else if (fs::is_directory(file_path)) {
-        EVLOG_error << "Attempting to create file over existing directory: " << file_path;
+    if (file_path.empty()) {
+        EVLOG_warning << "Provided empty path!";
         return false;
     }
 
+    try {
+        if (!fs::exists(file_path)) {
+            std::ofstream file(file_path);
+            return true;
+        } else if (fs::is_directory(file_path)) {
+            EVLOG_error << "Attempting to create file over existing directory: " << file_path;
+            return false;
+        }
+    } catch (const std::exception& e) {
+        EVLOG_error << "Error while creating file: " << e.what();
+    }
+
     return true;
+}
+
+bool create_file_or_dir_if_nonexistent(const fs::path& path) {
+    if (path.empty()) {
+        EVLOG_warning << "Provided empty path!";
+        return false;
+    }
+
+    try {
+        // In case the path is missing, create it
+        if (fs::exists(path) == false) {
+            if (path.has_extension()) {
+                std::ofstream new_file(path.c_str());
+                new_file.close();
+                return true;
+            } else {
+                // Else create a directory
+                fs::create_directories(path);
+                return true;
+            }
+        }
+    } catch (const std::exception& e) {
+        EVLOG_error << "Error while creating dir/file: " << e.what();
+    }
+
+    return false;
 }
 
 bool write_to_file(const fs::path& file_path, const std::string& data, std::ios::openmode mode) {
