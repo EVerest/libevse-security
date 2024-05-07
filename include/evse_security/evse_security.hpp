@@ -191,7 +191,7 @@ public:
     /// @param certificate_type type of the leaf certificate
     /// @param encoding specifies PEM or DER format
     /// @param include_ocsp if OCSP data should be included
-    /// @return contains response result
+    /// @return contains response result, with info related to the certificate chain and response status
     GetCertificateInfoResult get_leaf_certificate_info(LeafCertificateType certificate_type, EncodingFormat encoding,
                                                        bool include_ocsp = false);
 
