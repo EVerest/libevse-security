@@ -463,10 +463,27 @@ TEST_F(EvseSecurityTests, verify_v2g_cert_02) {
     ASSERT_TRUE(result != InstallCertificateResult::Accepted);
 }
 
+TEST_F(EvseSecurityTests, retrieve_root_ca) {
+    std::string path = "certs/ca/v2g/V2G_CA_BUNDLE.pem";
+    std::string retrieved_path = this->evse_security->get_verify_file(CaCertificateType::V2G);
+
+    ASSERT_EQ(path, retrieved_path);
+}
+
 TEST_F(EvseSecurityTests, install_root_ca_01) {
     const auto v2g_root_ca = read_file_to_string(fs::path("certs/ca/v2g/V2G_ROOT_CA_NEW.pem"));
     const auto result = this->evse_security->install_ca_certificate(v2g_root_ca, CaCertificateType::V2G);
     ASSERT_TRUE(result == InstallCertificateResult::Accepted);
+
+    std::string path = "certs/ca/v2g/V2G_CA_BUNDLE.pem";
+    ASSERT_EQ(this->evse_security->get_verify_file(CaCertificateType::V2G), path);
+
+    const auto read_v2g_root_ca = read_file_to_string(path);
+    X509CertificateBundle root_bundle(read_v2g_root_ca, EncodingFormat::PEM);
+    X509Wrapper new_root(v2g_root_ca, EncodingFormat::PEM);
+
+    // Assert it was really installed
+    ASSERT_TRUE(root_bundle.contains_certificate(new_root));
 }
 
 TEST_F(EvseSecurityTests, install_root_ca_02) {

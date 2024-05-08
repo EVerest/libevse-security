@@ -1353,18 +1353,20 @@ GetCertificateInfoResult EvseSecurity::get_ca_certificate_info_internal(CaCertif
             for (auto& root : hierarchy.get_hierarchy()) {
                 if (root.certificate.is_selfsigned() && root.certificate.is_valid()) {
                     CertificateInfo info;
-                    result.info = info;
+                    info.certificate = root.certificate.get_file().value();
+                    info.certificate_single = root.certificate.get_file().value();
 
-                    result.info.value().certificate = root.certificate.get_file().value();
+                    result.info = info;
                     result.status = GetCertificateInfoStatus::Accepted;
                     return result;
                 }
             }
         } else {
             CertificateInfo info;
-            result.info = info;
+            info.certificate = verify_file.get_path();
+            info.certificate_single = verify_file.get_path();
 
-            result.info.value().certificate = verify_file.get_path();
+            result.info = info;
             result.status = GetCertificateInfoStatus::Accepted;
             return result;
         }
@@ -1393,7 +1395,7 @@ std::string EvseSecurity::get_verify_file(CaCertificateType certificate_type) {
 
     if (result.status == GetCertificateInfoStatus::Accepted && result.info.has_value()) {
         if (result.info.value().certificate.has_value()) {
-            result.info.value().certificate.value().string();
+            return result.info.value().certificate.value().string();
         }
     }
 
