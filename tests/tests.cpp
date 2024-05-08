@@ -21,7 +21,7 @@
 
 #if USING_OPENSSL_3
 // provider management has changed - ensure tests still work
-#ifndef USING_TPM2contains_certificate_hash
+#ifndef USING_TPM2
 
 #include <evse_security/detail/openssl/openssl_providers.hpp>
 #else

@@ -1414,10 +1414,11 @@ int EvseSecurity::get_leaf_expiry_days_count(LeafCertificateType certificate_typ
             fs::path certificate_path;
 
             if (key_pair.info.has_value()) {
-                if (key_pair.info.value().certificate.has_value())
+                if (key_pair.info.value().certificate.has_value()) {
                     certificate_path = key_pair.info.value().certificate.value();
-                else
+                } else {
                     certificate_path = key_pair.info.value().certificate_single.value();
+                }
             }
 
             if (certificate_path.empty() == false) {
