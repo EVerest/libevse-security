@@ -1159,8 +1159,8 @@ GetCertificateInfoResult EvseSecurity::get_leaf_certificate_info_internal(LeafCe
         auto& certificate = latest_valid.value();
 
         // Paths to search
-        fs::path certificate_file;
-        fs::path chain_file;
+        std::optional<fs::path> certificate_file;
+        std::optional<fs::path> chain_file;
 
         X509CertificateBundle leaf_directory(cert_dir, EncodingFormat::PEM);
 
