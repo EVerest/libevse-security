@@ -1202,16 +1202,16 @@ GetCertificateInfoResult EvseSecurity::get_leaf_certificate_info_internal(LeafCe
         }
 
         if (leaf_fullchain != nullptr) {
-            chain_file = leaf_fullchain->at(0).get_file().value();
-            EVLOG_info << "Leaf fullchain: [" << chain_file << "]";
+            chain_file = leaf_fullchain->at(0).get_file();
+            EVLOG_debug << "Leaf fullchain: [" << chain_file.value_or("INVALID") << "]";
         } else {
             EVLOG_warning << conversions::leaf_certificate_type_to_string(certificate_type)
                           << " leaf requires full bundle, but full bundle not found at path: " << cert_dir;
         }
 
         if (leaf_single != nullptr) {
-            certificate_file = leaf_single->at(0).get_file().value();
-            EVLOG_info << "Leaf single: [" << certificate_file << "]";
+            certificate_file = leaf_single->at(0).get_file();
+            EVLOG_debug << "Leaf single: [" << certificate_file.value_or("INVALID") << "]";
         } else {
             EVLOG_warning << conversions::leaf_certificate_type_to_string(certificate_type)
                           << " single leaf not found at path: " << cert_dir;
