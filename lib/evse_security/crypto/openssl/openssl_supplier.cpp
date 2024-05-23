@@ -140,7 +140,6 @@ constexpr const char* kt_rsa = "RSA";
 constexpr const char* kt_ec = "EC";
 
 static bool s_generate_key(const KeyGenerationInfo& key_info, KeyHandle_ptr& out_key, EVP_PKEY_CTX_ptr& ctx) {
-
     unsigned int bits = 0;
     char group_256[] = "P-256";
     char group_384[] = "P-384";
@@ -180,7 +179,6 @@ static bool s_generate_key(const KeyGenerationInfo& key_info, KeyHandle_ptr& out
         break;
     }
 
-#if EVSE_OPENSSL_VER_3
     OSSL_PARAM params[2];
     std::memset(&params[0], 0, sizeof(params));
 
@@ -226,54 +224,6 @@ static bool s_generate_key(const KeyGenerationInfo& key_info, KeyHandle_ptr& out
     }
 
     auto evp_key = EVP_PKEY_ptr(pkey);
-
-#else
-    constexpr unsigned long RSA_PRIME = 65537;
-    EVP_PKEY_ptr evp_key = EVP_PKEY_ptr(EVP_PKEY_new());
-
-    if (bEC) {
-        // Ignore deprecation warnings on the EC gen functions since we need OpenSSL 1.1 support
-        EC_KEY_ptr ec_key(EC_KEY_new_by_curve_name(nid));
-
-        if (ec_key.get() == nullptr) {
-            EVLOG_error << "Failed create EC key by curve!";
-            bResult = false;
-        }
-
-        if (bResult) {
-            // generate ec key pair
-            if (EC_KEY_generate_key(ec_key.get()) != 1) {
-                EVLOG_error << "Failed to generate EC key!";
-                bResult = false;
-            }
-        }
-
-        if (bResult) {
-            // Not auto-released since on assign the ec_key will be released with the owner evp_pkey
-            EC_KEY* key = ec_key.release();
-
-            // Assigns the key, we must not release it here, since it is 'owned' by the evp_key
-            EVP_PKEY_assign_EC_KEY(evp_key.get(), key);
-        }
-    } else {
-        RSA_ptr rsa_key(RSA_generate_key(bits, RSA_PRIME, nullptr, nullptr));
-
-        if (rsa_key.get() == nullptr) {
-            EVLOG_error << "Failed create RSA key!";
-            ERR_print_errors_fp(stderr);
-            bResult = false;
-        }
-
-        if (bResult) {
-            // Not auto-released since on assign the ec_key will be released with the owner evp_pkey
-            RSA* key = rsa_key.release();
-
-            // Assigns the key, we must not release it here, since it is 'owned' by the evp_key
-            EVP_PKEY_assign_RSA(evp_key.get(), key);
-        }
-    }
-
-#endif
 
     if (bResult) {
         EVLOG_info << "Key export";
@@ -545,12 +495,7 @@ bool OpenSSLSupplier::x509_is_selfsigned(X509Handle* handle) {
     if (x509 == nullptr)
         return false;
 
-// X509_self_signed() was added in OpenSSL 3.0, use a workaround for earlier versions
-#if EVSE_OPENSSL_VER_3
     return (X509_self_signed(x509, 0) == 1);
-#else
-    return (X509_verify(x509, X509_get_pubkey(x509)));
-#endif
 }
 
 bool OpenSSLSupplier::x509_is_equal(X509Handle* a, X509Handle* b) {
