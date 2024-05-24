@@ -674,7 +674,6 @@ CertificateSignRequestResult OpenSSLSupplier::x509_generate_csr(const Certificat
 
     if (csr_info.key_info.generate_on_tpm) {
         provider.set_global_mode(OpenSSLProvider::mode_t::tpm2_provider);
-
     } else {
         provider.set_global_mode(OpenSSLProvider::mode_t::default_provider);
     }
@@ -688,17 +687,28 @@ CertificateSignRequestResult OpenSSLSupplier::x509_generate_csr(const Certificat
     // X509 CSR request
     X509_REQ_ptr x509_req_ptr(X509_REQ_new());
 
+    if (nullptr == x509_req_ptr.get()) {
+        EVLOG_error << "Failed to create CSR request!";
+        ERR_print_errors_fp(stderr);
+
+        return CertificateSignRequestResult::Unknown;
+    }
+
     // set version of x509 req
     int n_version = csr_info.n_version;
 
     if (false == X509_REQ_set_version(x509_req_ptr.get(), n_version)) {
         EVLOG_error << "Failed to set csr version!";
+        ERR_print_errors_fp(stderr);
+
         return CertificateSignRequestResult::VersioningError;
     }
 
     // set public key of x509 req
     if (false == X509_REQ_set_pubkey(x509_req_ptr.get(), key)) {
         EVLOG_error << "Failed to set csr pubkey!";
+        ERR_print_errors_fp(stderr);
+
         return CertificateSignRequestResult::PubkeyError;
     }
 
@@ -743,16 +753,18 @@ CertificateSignRequestResult OpenSSLSupplier::x509_generate_csr(const Certificat
 
     if (!result) {
         EVLOG_error << "Failed to add csr extensions!";
+        ERR_print_errors_fp(stderr);
+
         return CertificateSignRequestResult::ExtensionsError;
     }
 
     // sign the certificate with the private key
-    bool x509_signed = false;
-
-    x509_signed = X509_REQ_sign(x509_req_ptr.get(), key, EVP_sha256());
+    bool x509_signed = X509_REQ_sign(x509_req_ptr.get(), key, EVP_sha256());
 
     if (x509_signed == false) {
-        EVLOG_error << "Failed to sign csr!";
+        EVLOG_error << "Failed to sign csr with error!";
+        ERR_print_errors_fp(stderr);
+
         return CertificateSignRequestResult::SigningError;
     }
 
