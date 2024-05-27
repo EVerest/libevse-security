@@ -286,6 +286,39 @@ TEST_F(EvseSecurityTests, verify_normal_keygen) {
     ASSERT_TRUE(gen);
 }
 
+TEST_F(EvseSecurityTests, verify_keygen_csr) {
+    KeyGenerationInfo info;
+    KeyHandle_ptr key;
+
+    info.key_type = CryptoKeyType::EC_prime256v1;
+    info.generate_on_tpm = false;
+
+    info.public_key_file = fs::path("key/pubkey.key");
+    info.private_key_file = fs::path("key/privkey.key");
+
+    bool gen = CryptoSupplier::generate_key(info, key);
+    ASSERT_TRUE(gen);
+
+    CertificateSigningRequestInfo csr_info;
+    csr_info.n_version = 0;
+    csr_info.commonName = "pionix_01";
+    csr_info.organization = "PionixDE";
+    csr_info.country = "DE";
+
+    info.public_key_file = fs::path("key/csr_pubkey.tkey");
+    info.private_key_file = fs::path("key/csr_privkey.tkey");
+    info.key_type = CryptoKeyType::RSA_2048;
+
+    csr_info.key_info = info;
+
+    std::string csr;
+
+    auto csr_gen = CryptoSupplier::x509_generate_csr(csr_info, csr);
+    ASSERT_EQ(csr_gen, CertificateSignRequestResult::Valid);
+
+    std::cout << "Csr: " << std::endl << csr << std::endl;
+}
+
 /// \brief get_certificate_hash_data() throws exception if called with no issuer and a non-self-signed cert
 TEST_F(EvseSecurityTests, get_certificate_hash_data_non_self_signed_requires_issuer) {
     const auto non_self_signed_cert_str =
