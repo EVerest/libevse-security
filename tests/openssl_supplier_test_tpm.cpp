@@ -19,6 +19,7 @@ static std::string getFile(const std::string name) {
 class OpenSSLSupplierTpmTest : public testing::Test {
 protected:
     static void SetUpTestSuite() {
+        OpenSSLProvider::cleanup();
         std::system("./create-pki.sh tpm");
     }
 };
@@ -68,10 +69,11 @@ TEST_F(OpenSSLSupplierTpmTest, load_certificates) {
 TEST_F(OpenSSLSupplierTpmTest, x509_check_private_key) {
     auto cert_leaf = getFile("tpm_pki/server_cert.pem");
     auto res_leaf = OpenSSLSupplier::load_certificates(cert_leaf, EncodingFormat::PEM);
+    ASSERT_EQ(res_leaf.size(), 1);
     auto cert = res_leaf[0].get();
     auto key = getFile("tpm_pki/server_priv.pem");
     auto res = OpenSSLSupplier::x509_check_private_key(cert, key, std::nullopt);
-    ASSERT_TRUE(res);
+    ASSERT_EQ(res, KeyValidationResult::Valid);
 }
 
 TEST_F(OpenSSLSupplierTpmTest, x509_verify_certificate_chain) {
@@ -82,14 +84,16 @@ TEST_F(OpenSSLSupplierTpmTest, x509_verify_certificate_chain) {
     auto res_leaf = OpenSSLSupplier::load_certificates(cert_leaf, EncodingFormat::PEM);
 
     std::vector<X509Handle*> parents;
+    std::vector<X509Handle*> untrusted_subcas;
 
     for (auto& i : res_path) {
         parents.push_back(i.get());
     }
 
-    auto res = OpenSSLSupplier::x509_verify_certificate_chain(res_leaf[0].get(), parents, true, std::nullopt,
-                                                              "tpm_pki/root_cert.pem");
-    ASSERT_EQ(res, CertificateValidationError::NoError);
+    ASSERT_EQ(res_leaf.size(), 1);
+    auto res = OpenSSLSupplier::x509_verify_certificate_chain(res_leaf[0].get(), parents, untrusted_subcas, true,
+                                                              std::nullopt, "tpm_pki/root_cert.pem");
+    ASSERT_EQ(res, CertificateValidationResult::Valid);
 }
 
 TEST_F(OpenSSLSupplierTpmTest, x509_generate_csr) {
@@ -109,7 +113,7 @@ TEST_F(OpenSSLSupplierTpmTest, x509_generate_csr) {
     // std::cout << "tpm2 post: " << OSSL_PROVIDER_available(nullptr, "tpm2") << std::endl;
     // std::cout << "base post: " << OSSL_PROVIDER_available(nullptr, "base") << std::endl;
 
-    ASSERT_TRUE(res);
+    ASSERT_EQ(res, CertificateSignRequestResult::Valid);
     ASSERT_GT(csr.size(), 0);
 }
 

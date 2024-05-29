@@ -16,6 +16,8 @@
 
 #include <evse_security/crypto/evse_crypto.hpp>
 
+#include <everest/logging.hpp>
+
 #include <openssl/opensslv.h>
 #define USING_OPENSSL_3 (OPENSSL_VERSION_NUMBER >= 0x30000000L)
 
@@ -108,8 +110,17 @@ bool check_openssl_providers(const std::vector<std::string>& required_providers)
     Info info;
     OSSL_PROVIDER_do_all(nullptr, collector, &info);
 
+    std::cout << "info.providers " << info.providers.size() << " required_providers " << required_providers.size()
+              << std::endl;
+
+    // allow extra providers to exist
+#if 0
     if (info.providers.size() != required_providers.size())
         return false;
+#else
+    if (info.providers.size() < required_providers.size())
+        return false;
+#endif
 
     for (auto& required : required_providers) {
         if (info.providers.find(required) == info.providers.end())

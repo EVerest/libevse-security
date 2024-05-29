@@ -5,6 +5,7 @@
 
 #include <openssl/opensslv.h>
 
+#define DEBUG
 #define USING_OPENSSL_3 (OPENSSL_VERSION_NUMBER >= 0x30000000L)
 
 #if USING_OPENSSL_3 && defined(USING_TPM2)

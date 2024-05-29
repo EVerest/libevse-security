@@ -808,6 +808,7 @@ CertificateSignRequestResult OpenSSLSupplier::x509_generate_csr(const Certificat
 
     if (x509_signed == false) {
         EVLOG_error << "Failed to sign csr!";
+        ERR_print_errors_fp(stderr);
         return CertificateSignRequestResult::SigningError;
     }
 

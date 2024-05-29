@@ -3,6 +3,7 @@
 #pragma once
 
 #include <memory>
+#include <openssl/opensslv.h>
 #include <openssl/x509v3.h>
 
 #define EVSE_OPENSSL_VER_3 (OPENSSL_VERSION_NUMBER >= 0x30000000L)
