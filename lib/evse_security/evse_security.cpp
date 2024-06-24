@@ -1151,7 +1151,7 @@ GetCertificateInfoResult EvseSecurity::get_leaf_certificate_info_internal(LeafCe
             [](const std::vector<X509Wrapper>& a, const std::vector<X509Wrapper>& b) {
                 // Order from newest to oldest
                 if (not a.empty() && not b.empty()) {
-                    return a.at(0).get_valid_to() > b.at(0).get_valid_to();
+                    return a.at(0).get_valid_in() > b.at(0).get_valid_in();
                 } else {
                     return false;
                 }
