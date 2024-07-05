@@ -213,7 +213,7 @@ void X509CertificateHierarchy::insert(X509Wrapper&& inserted_certificate) {
             auto& state = node.state;
 
             // If we have a temporary orphan
-            if (state.is_selfsigned == 0) {
+            if (state.is_orphan == 0) {
                 // Some sanity checks
                 if (state.is_hash_computed)
                     throw InvalidStateException("Orphan certificate can't have a proper hash!");
