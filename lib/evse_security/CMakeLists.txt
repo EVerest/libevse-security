@@ -15,7 +15,7 @@ target_sources(evse_security
 
         crypto/interface/crypto_supplier.cpp
         crypto/interface/crypto_types.cpp
-        crypto/openssl/openssl_supplier.cpp
+        crypto/openssl/openssl_crypto_supplier.cpp
         crypto/openssl/openssl_provider.cpp
 )
 
@@ -88,7 +88,7 @@ if(USING_TPM2 OR USING_CUSTOM_PROVIDER)
         USING_CUSTOM_PROVIDER
         CUSTOM_PROVIDER_NAME="${CUSTOM_PROVIDER_NAME}"
         PROPQUERY_DEFAULT="${PROPQUERY_PROVIDER_DEFAULT}"
-        PROPQUERY_TPM2="${PROPQUERY_PROVIDER_CUSTOM}"
+        PROPQUERY_CUSTOM="${PROPQUERY_PROVIDER_CUSTOM}"
     )
 endif()
 
