@@ -218,7 +218,7 @@ bool OpenSSLSupplier::generate_key(const KeyGenerationInfo& key_info, KeyHandle_
     OpenSSLProvider provider;
     bool bResult = true;
 
-    if (key_info.generate_on_tpm) {
+    if (key_info.generate_on_custom) {
         provider.set_global_mode(OpenSSLProvider::mode_t::custom_provider);
 
     } else {
@@ -648,7 +648,7 @@ CertificateSignRequestResult OpenSSLSupplier::x509_generate_csr(const Certificat
     EVP_PKEY_CTX_ptr ctx;
     OpenSSLProvider provider;
 
-    if (csr_info.key_info.generate_on_tpm) {
+    if (csr_info.key_info.generate_on_custom) {
         provider.set_global_mode(OpenSSLProvider::mode_t::custom_provider);
     } else {
         provider.set_global_mode(OpenSSLProvider::mode_t::default_provider);
