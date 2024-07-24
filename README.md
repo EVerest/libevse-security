@@ -65,8 +65,8 @@ configure whether to use the `default` provider or the `tpm2` provider.
 
 Configuration is managed via propquery strings (see CMakeLists.txt)
 
-- `PROPQUERY_DEFAULT` is the string to use when selecting the default provider
-- `PROPQUERY_TPM2` is the string to use when selecting the tpm2 provider
+- `PROPQUERY_PROVIDER_DEFAULT` is the string to use when selecting the default provider
+- `PROPQUERY_PROVIDER_CUSTOM` is the string to use when selecting the tpm2 provider
 
 propquery|action
 ---------|------
