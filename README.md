@@ -81,6 +81,8 @@ For more information see:
 - [OpenSSL property](https://www.openssl.org/docs/man3.0/man7/property.html)
 - [OpenSSL provider](https://www.openssl.org/docs/man3.0/man7/provider.html)
 
+<b>Note:</b> In case of errors related to CSR signing, update tpm2-openssl to v 1.2.0.
+
 ## Custom Provider
 There is a configuration option to configure OpenSSL for use with a custom provider.<br>
 `cmake` ... `-DUSING_CUSTOM_PROVIDER=ON`<br>
