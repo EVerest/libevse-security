@@ -46,6 +46,20 @@ bool is_custom_key_file(const fs::path& private_key_file_pem) {
 }
 
 #ifdef USING_CUSTOM_PROVIDER
+
+constexpr bool is_custom_provider_tpm() {
+    // custom provider string (see CMakeLists.txt)
+    const char* custom_provider = CUSTOM_PROVIDER_NAME;
+    const char* tpm_provider = "tpm2";
+
+    while (*tpm_provider && (*tpm_provider == *custom_provider)) {
+        ++tpm_provider;
+        ++custom_provider;
+    }
+
+    return (*tpm_provider == *custom_provider);
+}
+
 // ----------------------------------------------------------------------------
 // class OpenSSLProvider OpenSSL 3
 
@@ -139,8 +153,9 @@ bool OpenSSLProvider::load(OSSL_PROVIDER*& default_p, OSSL_PROVIDER*& tpm2_p, OS
     switch (mode) {
     case mode_t::custom_provider:
         if (tpm2_p == nullptr) {
+            // custom provider string (see CMakeLists.txt)
             result = s_load_and_test_provider(tpm2_p, libctx_p, CUSTOM_PROVIDER_NAME);
-            update(flags_t::tpm2_available, result);
+            update(flags_t::custom_provider_available, result);
         }
         break;
     case mode_t::default_provider:
@@ -168,7 +183,7 @@ bool OpenSSLProvider::set_propstr(OSSL_LIB_CTX* libctx, mode_t mode) {
 
 bool OpenSSLProvider::set_mode(OSSL_LIB_CTX* libctx, mode_t mode) {
     bool result;
-    const flags_t f = (libctx == nullptr) ? flags_t::global_tpm2 : flags_t::tls_tpm2;
+    const flags_t f = (libctx == nullptr) ? flags_t::global_custom_provider : flags_t::tls_custom_provider;
 
     const bool apply = update(f, mode == mode_t::custom_provider);
     if (apply) {
@@ -223,6 +238,14 @@ void OpenSSLProvider::cleanup() {
     s_flags = 0;
 }
 
+bool OpenSSLProvider::supports_provider_tpm() {
+    return is_set(flags_t::custom_provider_available) && is_custom_provider_tpm();
+}
+
+bool OpenSSLProvider::supports_provider_custom() {
+    return is_set(flags_t::custom_provider_available);
+}
+
 #else // USING_OPENSSL_3_TPM
 // ----------------------------------------------------------------------------
 // class OpenSSLProvider dummy where OpenSSL 3 is not available
@@ -258,6 +281,14 @@ const char* OpenSSLProvider::propquery(mode_t mode) const {
 }
 
 void OpenSSLProvider::cleanup() {
+}
+
+bool OpenSSLProvider::supports_provider_tpm() {
+    return false;
+}
+
+bool OpenSSLProvider::supports_provider_custom() {
+    return false;
 }
 
 #endif // USING_OPENSSL_3_TPM

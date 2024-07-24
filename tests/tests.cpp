@@ -21,7 +21,7 @@
 #ifdef USING_TPM2
 
 // updates so that existing tests run with the OpenSSLProvider
-#include <evse_security/crypto/openssl/openssl_tpm.hpp>
+#include <evse_security/crypto/openssl/openssl_provider.hpp>
 #include <openssl/provider.h>
 
 namespace evse_security {

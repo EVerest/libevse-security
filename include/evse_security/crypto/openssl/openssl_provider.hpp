@@ -11,6 +11,9 @@
 
 #include <evse_security/utils/evse_filesystem_types.hpp>
 
+// TODO: remove from testing
+#define USING_CUSTOM_PROVIDER 1
+
 // opaque types (from OpenSSL)
 struct ossl_lib_ctx_st;  // OpenSSL OSSL_LIB_CTX;
 struct ossl_provider_st; // OpenSSL OSSL_PROVIDER
@@ -151,17 +154,8 @@ public:
         return s_tls_libctx_p;
     }
 
-    static inline bool supports_provider_tpm() {
-#if USING_CUSTOM_PROVIDER
-        return is_set(flags_t::custom_provider_available) && (0 == std::strcmp(CUSTOM_PROVIDER_NAME, "tmp2"));
-#else
-        return false;
-#endif
-    }
-
-    static inline bool supports_provider_custom() {
-        return is_set(flags_t::custom_provider_available);
-    }
+    static bool supports_provider_tpm();
+    static bool supports_provider_custom();
 
     static void cleanup();
 };
