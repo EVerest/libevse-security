@@ -51,7 +51,7 @@ TEST_F(OpenSSLSupplierTpmTest, generate_key_RSA_TPM20) {
 TEST_F(OpenSSLSupplierTpmTest, generate_key_RSA_3072) {
     // Enable this test manually only if your platform supports 3072 TPM keys
     GTEST_SKIP() << "Skipping TPM2.0 GEN_RSA_3072 test since it is a non-spec value"
-                    "which probably will not be supported on many platforms!";
+                    " which probably will not be supported on many platforms!";
 
     KeyGenerationInfo info = {
         CryptoKeyType::RSA_3072, true, std::nullopt, std::nullopt, std::nullopt,

@@ -11,24 +11,21 @@
 
 #include <evse_security/utils/evse_filesystem_types.hpp>
 
-// TODO: remove from testing
-#define USING_CUSTOM_PROVIDER 1
-
 // opaque types (from OpenSSL)
 struct ossl_lib_ctx_st;  // OpenSSL OSSL_LIB_CTX;
 struct ossl_provider_st; // OpenSSL OSSL_PROVIDER
 
 namespace evse_security {
 
-/// @brief determine if the PEM string is a TSS2 private key
+/// @brief determine if the PEM string is a custom private key
 /// @param private_key_pem string containing the PEM encoded key
-/// @return true when "-----BEGIN TSS2 PRIVATE KEY-----" found
+/// @return true when "-----BEGIN PRIVATE KEY-----" is not found
 /// @note works irrespective of OpenSSL version
 bool is_custom_key_string(const std::string& private_key_pem);
 
-/// @brief determine if the PEM file contains a TSS2 private key
+/// @brief determine if the PEM file contains a custom private key
 /// @param private_key_file_pem filename of the PEM file
-/// @return true when file starts "-----BEGIN TSS2 PRIVATE KEY-----"
+/// @return true when file starts "-----BEGIN PRIVATE KEY-----"
 /// @note works irrespective of OpenSSL version
 bool is_custom_key_file(const fs::path& private_key_file_pem);
 
