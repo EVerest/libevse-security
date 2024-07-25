@@ -564,7 +564,7 @@ KeyValidationResult OpenSSLSupplier::x509_check_private_key(X509Handle* handle, 
 
     OpenSSLProvider provider;
 
-    const bool custom_key = is_custom_key_string(private_key);
+    const bool custom_key = is_custom_private_key_string(private_key);
     if (custom_key) {
         provider.set_global_mode(OpenSSLProvider::mode_t::custom_provider);
     } else {

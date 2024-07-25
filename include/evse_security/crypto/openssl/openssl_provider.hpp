@@ -17,23 +17,26 @@ struct ossl_provider_st; // OpenSSL OSSL_PROVIDER
 
 namespace evse_security {
 
-/// @brief determine if the PEM string is a custom private key
+/// @brief determine if the PEM string is a custom private key. Will
+/// only work for private keys, public keys will always return true
 /// @param private_key_pem string containing the PEM encoded key
-/// @return true when "-----BEGIN PRIVATE KEY-----" is not found
+/// @return true when file does not start "-----BEGIN PRIVATE KEY-----"
 /// @note works irrespective of OpenSSL version
-bool is_custom_key_string(const std::string& private_key_pem);
+bool is_custom_private_key_string(const std::string& private_key_pem);
 
-/// @brief determine if the PEM file contains a custom private key
+/// @brief determine if the PEM file contains a custom private key. Will
+/// only work for private keys, public keys will always return true
 /// @param private_key_file_pem filename of the PEM file
-/// @return true when file starts "-----BEGIN PRIVATE KEY-----"
+/// @return true when file does not start "-----BEGIN PRIVATE KEY-----"
 /// @note works irrespective of OpenSSL version
-bool is_custom_key_file(const fs::path& private_key_file_pem);
+bool is_custom_private_key_file(const fs::path& private_key_file_pem);
 
 /// @brief Manage the loading and configuring of OpenSSL providers
 ///
 /// There are two providers considered:
 /// - 'default'
 /// - 'tpm2' for working with TSS2 keys (protected by a TPM)
+/// The 'tpm2' can be replaced with a custom provider (see CMakeLists.txt)
 ///
 /// There are two contexts:
 /// - 'global' for general use
@@ -106,7 +109,7 @@ private:
         return result;
     }
 
-    bool load(struct ossl_provider_st*& default_p, struct ossl_provider_st*& tpm2_p, struct ossl_lib_ctx_st* libctx_p,
+    bool load(struct ossl_provider_st*& default_p, struct ossl_provider_st*& custom_p, struct ossl_lib_ctx_st* libctx_p,
               mode_t mode);
     inline bool load_global(mode_t mode) {
         return load(s_global_prov_default_p, s_global_prov_custom_p, nullptr, mode);

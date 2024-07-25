@@ -26,12 +26,12 @@ namespace evse_security {
 static auto KEY_HEADER_DEFAULT = "-----BEGIN PRIVATE KEY-----";
 static auto KEY_HEADER_TPM2 = "-----BEGIN TSS2 PRIVATE KEY-----";
 
-bool is_custom_key_string(const std::string& private_key_pem) {
+bool is_custom_private_key_string(const std::string& private_key_pem) {
     // If we can't find the standard header it means it's a custom key
     return private_key_pem.find(KEY_HEADER_DEFAULT) == std::string::npos;
 }
 
-bool is_custom_key_file(const fs::path& private_key_file_pem) {
+bool is_custom_private_key_file(const fs::path& private_key_file_pem) {
     if (fs::is_regular_file(private_key_file_pem)) {
         std::ifstream key_file(private_key_file_pem);
         std::string line;
@@ -39,7 +39,7 @@ bool is_custom_key_file(const fs::path& private_key_file_pem) {
         key_file.close();
 
         // Search for the standard header
-        return line.find(KEY_HEADER_DEFAULT) == std::string::npos;
+        return is_custom_private_key_string(line);
     }
 
     return false;
@@ -49,15 +49,8 @@ bool is_custom_key_file(const fs::path& private_key_file_pem) {
 
 constexpr bool is_custom_provider_tpm() {
     // custom provider string (see CMakeLists.txt)
-    const char* custom_provider = CUSTOM_PROVIDER_NAME;
-    const char* tpm_provider = "tpm2";
-
-    while (*tpm_provider && (*tpm_provider == *custom_provider)) {
-        ++tpm_provider;
-        ++custom_provider;
-    }
-
-    return (*tpm_provider == *custom_provider);
+    constexpr const std::string_view custom_provider(CUSTOM_PROVIDER_NAME);
+    return (custom_provider == "tpm2");
 }
 
 // ----------------------------------------------------------------------------
@@ -148,13 +141,13 @@ OpenSSLProvider::~OpenSSLProvider() {
     s_mux.unlock();
 }
 
-bool OpenSSLProvider::load(OSSL_PROVIDER*& default_p, OSSL_PROVIDER*& tpm2_p, OSSL_LIB_CTX* libctx_p, mode_t mode) {
+bool OpenSSLProvider::load(OSSL_PROVIDER*& default_p, OSSL_PROVIDER*& custom_p, OSSL_LIB_CTX* libctx_p, mode_t mode) {
     bool result = true;
     switch (mode) {
     case mode_t::custom_provider:
-        if (tpm2_p == nullptr) {
+        if (custom_p == nullptr) {
             // custom provider string (see CMakeLists.txt)
-            result = s_load_and_test_provider(tpm2_p, libctx_p, CUSTOM_PROVIDER_NAME);
+            result = s_load_and_test_provider(custom_p, libctx_p, CUSTOM_PROVIDER_NAME);
             update(flags_t::custom_provider_available, result);
         }
         break;
