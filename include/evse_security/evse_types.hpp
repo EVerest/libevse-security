@@ -148,7 +148,7 @@ struct CertificateInfo {
                                                  /// when using 'get_all_valid_certificates_info'
     std::optional<fs::path> certificate;         ///< The path of the PEM or DER encoded certificate chain if found
     std::optional<fs::path> certificate_single;  ///< The path of the PEM or DER encoded single certificate if found
-    int leaf_certificate_count;          ///< The count of certificates, if the chain is available, or 1 if single
+    int certificate_count;               ///< The count of certificates, if the chain is available, or 1 if single
                                          /// (the root is not taken into account because of the OCSP cache)
     std::optional<std::string> password; ///< Specifies the password for the private key if encrypted
     std::vector<CertificateOCSP> ocsp;   ///< The ordered list of OCSP certificate data based on the chain file order

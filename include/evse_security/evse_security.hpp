@@ -272,8 +272,21 @@ private:
     // Internal versions of the functions do not lock the mutex
     CertificateValidationResult verify_certificate_internal(const std::string& certificate_chain,
                                                             LeafCertificateType certificate_type);
+
     GetCertificateInfoResult get_leaf_certificate_info_internal(LeafCertificateType certificate_type,
                                                                 EncodingFormat encoding, bool include_ocsp = false);
+
+    /// @brief Retrieves information related to leaf certificates
+    /// @param include_ocsp if OCSP information should be included
+    /// @param include_root if the root certificate of the leaf should be included in the returned list
+    /// @param include_all_valid if true, all valid leafs will be included, sorted in order, with the newest being
+    /// first. If false, only the newest one will be returned
+    GetCertificateFullInfoResult get_full_leaf_certificate_info_internal(LeafCertificateType certificate_type,
+                                                                         EncodingFormat encoding,
+                                                                         bool include_ocsp = false,
+                                                                         bool include_root = false,
+                                                                         bool include_all_valid = false);
+
     GetCertificateInfoResult get_ca_certificate_info_internal(CaCertificateType certificate_type);
     std::optional<fs::path> retrieve_ocsp_cache_internal(const CertificateHashData& certificate_hash_data);
     bool is_ca_certificate_installed_internal(CaCertificateType certificate_type);
