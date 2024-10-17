@@ -88,12 +88,11 @@ protected:
     }
 };
 
-
 class EvseSecurityTestsMulti : public EvseSecurityTests {
-protected:    
+protected:
     void install_certs() override {
         std::system("./generate_test_certs_multi.sh");
-    }    
+    }
 };
 
 class EvseSecurityTestsExpired : public EvseSecurityTests {
