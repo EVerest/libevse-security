@@ -173,6 +173,10 @@ protected:
     }
 };
 
+TEST_F(EvseSecurityTests, verify_multi_root_leaf_retrieval) {
+
+}
+
 TEST_F(EvseSecurityTests, verify_basics) {
     const char* bundle_path = "certs/ca/v2g/V2G_CA_BUNDLE.pem";
 
