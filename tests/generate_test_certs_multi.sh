@@ -74,8 +74,13 @@ create_certificate SECC_LEAF "${CLIENT_CSO_PATH}" seccLeafCert.cnf 12348 "${CA_C
 # Invalid self-signed CSMS cert
 create_certificate INVALID_CSMS "${CLIENT_INVALID_PATH}" v2gRootCACert.cnf 12345
 
+# V2G alternate root CA
+create_certificate V2G_ROOT_GRIDSYNC_CA "${CA_V2G_PATH}" v2gRootCACert_Alternate.cnf 12345
+# Alternate chargepoint leaf
+create_certificate SECC_LEAF_GRIDSYNC "${CLIENT_CSMS_PATH}" seccLeafCert_Alternate.cnf 12348 "${CA_V2G_PATH}/V2G_ROOT_GRIDSYNC_CA.pem" "${CA_V2G_PATH}/V2G_ROOT_GRIDSYNC_CA.key"
+
 # create cert chain bundles in the V2G root ca and chargepoint leaf dirs
-cat "$CA_CSMS_PATH/CPO_SUB_CA2.pem" "$CA_CSMS_PATH/CPO_SUB_CA1.pem" "$CA_V2G_PATH/V2G_ROOT_CA.pem" > "$CA_V2G_PATH/V2G_CA_BUNDLE.pem"
+cat "$CA_CSMS_PATH/CPO_SUB_CA2.pem" "$CA_CSMS_PATH/CPO_SUB_CA1.pem" "$CA_V2G_PATH/V2G_ROOT_CA.pem" "$CA_V2G_PATH/V2G_ROOT_GRIDSYNC_CA.pem" > "$CA_V2G_PATH/V2G_CA_BUNDLE.pem"
 cat "$CLIENT_CSO_PATH/SECC_LEAF.pem" "$CA_CSMS_PATH/CPO_SUB_CA2.pem" "$CA_CSMS_PATH/CPO_SUB_CA1.pem" > "$CLIENT_CSO_PATH/CPO_CERT_CHAIN.pem"
 
 cp "$CLIENT_CSO_PATH/SECC_LEAF.key" "$CLIENT_CSMS_PATH/CSMS_LEAF.key"

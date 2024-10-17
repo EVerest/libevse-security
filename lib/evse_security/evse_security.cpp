@@ -1109,7 +1109,7 @@ GetCertificateFullInfoResult EvseSecurity::get_all_valid_certificates_info(LeafC
     // returns them
     for (const auto& chain : result.info) {
         // Ignore non-root items
-        if(!chain.certificate_root.has_value()) {
+        if (!chain.certificate_root.has_value()) {
             continue;
         }
 
