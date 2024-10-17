@@ -1108,6 +1108,11 @@ GetCertificateFullInfoResult EvseSecurity::get_all_valid_certificates_info(LeafC
     // The newest are the first, that's how 'get_leaf_certificate_info_internal'
     // returns them
     for (const auto& chain : result.info) {
+        // Ignore non-root items
+        if(!chain.certificate_root.has_value()) {
+            continue;
+        }
+
         const std::string& root = chain.certificate_root.value();
 
         // If we don't contain the unique root yet, it is the newest leaf for that root

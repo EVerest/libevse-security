@@ -174,7 +174,11 @@ protected:
 };
 
 TEST_F(EvseSecurityTests, verify_multi_root_leaf_retrieval) {
+    auto result = this->evse_security->get_all_valid_certificates_info(LeafCertificateType::CSMS, EncodingFormat::PEM, false);
 
+    ASSERT_EQ(result.status, GetCertificateInfoStatus::Accepted);
+
+    std::cout << "Result size: " << result.info.size();
 }
 
 TEST_F(EvseSecurityTests, verify_basics) {
