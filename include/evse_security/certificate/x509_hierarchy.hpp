@@ -57,6 +57,9 @@ public:
     /// @brief returns true if we contain a certificate with the following hash
     bool contains_certificate_hash(const CertificateHashData& hash);
 
+    /// @brief Searches for the root of the provided leaf, throwing a NoCertificateFound if not found
+    X509Wrapper find_certificate_root(const X509Wrapper& leaf);
+
     /// @brief Searches for the provided hash, throwing a NoCertificateFound if not found
     X509Wrapper find_certificate(const CertificateHashData& hash);
 
