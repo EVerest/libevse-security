@@ -208,6 +208,7 @@ public:
     /// will return:
     /// ROOT_V2G_Hubject->SUB_CA1->SUB_CA2->Leaf_Valid_B +
     /// ROOT_V2G_OtherProvider->SUB_CA_O1->SUB_CA_O2->Leav_Valid_A
+    /// Note: non self-signed roots and cross-signed certificates are not supported
     /// @param certificate_type type of leaf certificate that we start the search from
     /// @param encoding specifies PEM or DER format
     /// @param include_ocsp if OCSP data should be included

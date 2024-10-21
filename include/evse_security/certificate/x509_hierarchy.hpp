@@ -37,6 +37,7 @@ struct X509Node {
 
 /// @brief Utility class that is able to build a immutable certificate hierarchy
 /// with a  list of self-signed root certificates and their respective sub-certificates
+/// Note: non self-signed roots and cross-signed certificates are not supported now
 class X509CertificateHierarchy {
 public:
     const std::vector<X509Node>& get_hierarchy() const {
