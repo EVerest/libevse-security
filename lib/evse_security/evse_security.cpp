@@ -1321,8 +1321,7 @@ GetCertificateFullInfoResult EvseSecurity::get_full_leaf_certificate_info_intern
                 X509CertificateBundle root_bundle(root_dir, EncodingFormat::PEM); // Required for hierarchy
 
                 // The hierarchy is required for both roots and the OCSP cache
-                auto hierarchy =
-                    std::move(X509CertificateHierarchy::build_hierarchy(root_bundle.split(), leaf_directory.split()));
+                auto hierarchy = X509CertificateHierarchy::build_hierarchy(root_bundle.split(), leaf_directory.split());
                 EVLOG_debug << "Hierarchy for root/OCSP data: \n" << hierarchy.to_debug_string();
 
                 // Include OCSP data if possible
