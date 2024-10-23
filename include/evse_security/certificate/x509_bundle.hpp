@@ -169,7 +169,7 @@ public:
 
     /// @brief Utility that returns current the certificate hierarchy of this bundle
     /// Invalidated on any add/delete operation
-    X509CertificateHierarchy& get_certficate_hierarchy();
+    X509CertificateHierarchy& get_certificate_hierarchy();
 
 public:
     X509CertificateBundle& operator=(X509CertificateBundle&& other) = default;

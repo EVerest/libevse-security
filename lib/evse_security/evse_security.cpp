@@ -563,7 +563,7 @@ EvseSecurity::get_installed_certificates(const std::vector<CertificateType>& cer
         auto ca_bundle_path = this->ca_bundle_path_map.at(ca_certificate_type);
         try {
             X509CertificateBundle ca_bundle(ca_bundle_path, EncodingFormat::PEM);
-            X509CertificateHierarchy& hierarchy = ca_bundle.get_certficate_hierarchy();
+            X509CertificateHierarchy& hierarchy = ca_bundle.get_certificate_hierarchy();
 
             EVLOG_debug << "Hierarchy:(" << conversions::ca_certificate_type_to_string(ca_certificate_type) << ")\n"
                         << hierarchy.to_debug_string();
@@ -620,7 +620,7 @@ EvseSecurity::get_installed_certificates(const std::vector<CertificateType>& cer
                 }
 
                 // Create the certificate hierarchy
-                X509CertificateHierarchy& hierarchy = ca_bundle.get_certficate_hierarchy();
+                X509CertificateHierarchy& hierarchy = ca_bundle.get_certificate_hierarchy();
                 EVLOG_debug << "Hierarchy:(V2GCertificateChain)\n" << hierarchy.to_debug_string();
 
                 for (auto& root : hierarchy.get_hierarchy()) {
@@ -970,7 +970,7 @@ bool EvseSecurity::is_ca_certificate_installed_internal(CaCertificateType certif
         X509CertificateBundle bundle(this->ca_bundle_path_map.at(certificate_type), EncodingFormat::PEM);
 
         // Search for a valid self-signed root
-        auto& hierarchy = bundle.get_certficate_hierarchy();
+        auto& hierarchy = bundle.get_certificate_hierarchy();
 
         // Get all roots and search for a valid self-signed
         for (auto& root : hierarchy.get_hierarchy()) {
@@ -1499,7 +1499,7 @@ GetCertificateInfoResult EvseSecurity::get_ca_certificate_info_internal(CaCertif
 
         // If we are using a directory, search for the first valid root file
         if (verify_file.is_using_directory()) {
-            auto& hierarchy = verify_file.get_certficate_hierarchy();
+            auto& hierarchy = verify_file.get_certificate_hierarchy();
 
             // Get all roots and search for a valid self-signed
             for (auto& root : hierarchy.get_hierarchy()) {
@@ -1708,7 +1708,7 @@ CertificateValidationResult EvseSecurity::verify_certificate_internal(const std:
         const auto leaf_certificate = _certificate_chain.at(0);
 
         // Retrieve the hierarchy in order to check if the chain contains a root certificate
-        X509CertificateHierarchy& hierarchy = certificate.get_certficate_hierarchy();
+        X509CertificateHierarchy& hierarchy = certificate.get_certificate_hierarchy();
 
         // Build all untrusted intermediary certificates, and exclude any root
         std::vector<X509Handle*> untrusted_subcas;

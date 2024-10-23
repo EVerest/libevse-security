@@ -132,7 +132,7 @@ bool X509CertificateBundle::contains_certificate(const CertificateHashData& cert
     }
 
     // Nothing found, build the hierarchy and search by the issued hash
-    X509CertificateHierarchy& hierarchy = get_certficate_hierarchy();
+    X509CertificateHierarchy& hierarchy = get_certificate_hierarchy();
     return hierarchy.contains_certificate_hash(certificate_hash);
 }
 
@@ -147,7 +147,7 @@ X509Wrapper X509CertificateBundle::find_certificate(const CertificateHashData& c
     }
 
     // Nothing found, build the hierarchy and search by the issued hash
-    X509CertificateHierarchy& hierarchy = get_certficate_hierarchy();
+    X509CertificateHierarchy& hierarchy = get_certificate_hierarchy();
     return hierarchy.find_certificate(certificate_hash);
 }
 
@@ -156,7 +156,7 @@ int X509CertificateBundle::delete_certificate(const X509Wrapper& certificate, bo
 
     if (include_issued) {
         // Include all descendants in the delete list
-        auto& hierarchy = get_certficate_hierarchy();
+        auto& hierarchy = get_certificate_hierarchy();
         to_delete = hierarchy.collect_descendants(certificate);
     }
 
@@ -189,7 +189,7 @@ int X509CertificateBundle::delete_certificate(const X509Wrapper& certificate, bo
 }
 
 int X509CertificateBundle::delete_certificate(const CertificateHashData& data, bool include_issued) {
-    auto& hierarchy = get_certficate_hierarchy();
+    auto& hierarchy = get_certificate_hierarchy();
 
     try {
         // Try to find the certificate by correct hierarchy hash
@@ -344,7 +344,7 @@ void X509CertificateBundle::invalidate_hierarchy() {
     hierarchy_invalidated = true;
 }
 
-X509CertificateHierarchy& X509CertificateBundle::get_certficate_hierarchy() {
+X509CertificateHierarchy& X509CertificateBundle::get_certificate_hierarchy() {
     if (hierarchy_invalidated) {
         EVLOG_info << "Building new certificate hierarchy!";
         hierarchy_invalidated = false;
