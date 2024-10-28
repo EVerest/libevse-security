@@ -1493,10 +1493,11 @@ GetCertificateInfoResult EvseSecurity::get_ca_certificate_info_internal(CaCertif
     try {
         // Support bundle files, in case the certificates contain
         // multiple entries (should be 3) as per the specification
-        X509CertificateBundle verify_file(this->ca_bundle_path_map.at(certificate_type), EncodingFormat::PEM);
+        X509CertificateBundle verify_location(this->ca_bundle_path_map.at(certificate_type), EncodingFormat::PEM);
 
-        EVLOG_info << "Requesting certificate file: [" << conversions::ca_certificate_type_to_string(certificate_type)
-                   << "] file:" << verify_file.get_path();
+        EVLOG_info << "Requesting certificate location: ["
+                   << conversions::ca_certificate_type_to_string(certificate_type)
+                   << "] location:" << verify_location.get_path();
 
         // If we are using a directory, search for the first valid root file
         if (verify_file.is_using_directory()) {
@@ -1516,15 +1517,16 @@ GetCertificateInfoResult EvseSecurity::get_ca_certificate_info_internal(CaCertif
             }
         } else {
             CertificateInfo info;
-            info.certificate = verify_file.get_path();
-            info.certificate_single = verify_file.get_path();
+            info.certificate = verify_location.get_path();
+            info.certificate_single = verify_location.get_path();
 
             result.info = info;
             result.status = GetCertificateInfoStatus::Accepted;
             return result;
         }
+
     } catch (const CertificateLoadException& e) {
-        EVLOG_error << "Could not obtain verify file, wrong format for certificate: "
+        EVLOG_error << "Could not obtain verify location, wrong format for certificate: "
                     << this->ca_bundle_path_map.at(certificate_type) << " with error: " << e.what();
     }
 
@@ -1541,7 +1543,7 @@ GetCertificateInfoResult EvseSecurity::get_ca_certificate_info(CaCertificateType
     return get_ca_certificate_info_internal(certificate_type);
 }
 
-std::string EvseSecurity::get_verify_file(CaCertificateType certificate_type) {
+std::string EvseSecurity::get_verify_location(CaCertificateType certificate_type) {
     std::lock_guard<std::mutex> guard(EvseSecurity::security_mutex);
 
     auto result = get_ca_certificate_info_internal(certificate_type);
