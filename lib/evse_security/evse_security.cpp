@@ -1717,7 +1717,8 @@ CertificateValidationResult EvseSecurity::verify_certificate_internal(const std:
         if (_certificate_chain.size() > 1) {
             for (size_t i = 1; i < _certificate_chain.size(); i++) {
                 const auto& cert = _certificate_chain[i];
-                if (hierarchy.is_root(cert)) {
+                // Ignore our root certificates or if the received certificate is somehow self-signed
+                if (cert.is_selfsigned() || hierarchy.is_internal_root(cert)) {
                     EVLOG_warning << "Ignore root certificate: " << cert.get_common_name();
                 } else {
                     untrusted_subcas.emplace_back(cert.get());

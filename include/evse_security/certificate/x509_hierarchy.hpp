@@ -46,7 +46,7 @@ public:
 
     /// @brief Checks if the provided certificate is a self-signed root CA certificate
     /// contained in our hierarchy
-    bool is_root(const X509Wrapper& certificate) const;
+    bool is_internal_root(const X509Wrapper& certificate) const;
 
     /// @brief Collects all the descendants of the provided certificate
     /// @param top Certificate that issued the descendants

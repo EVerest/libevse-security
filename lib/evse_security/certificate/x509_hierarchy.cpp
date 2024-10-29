@@ -6,7 +6,7 @@
 
 namespace evse_security {
 
-bool X509CertificateHierarchy::is_root(const X509Wrapper& certificate) const {
+bool X509CertificateHierarchy::is_internal_root(const X509Wrapper& certificate) const {
     if (certificate.is_selfsigned()) {
         return (std::find_if(hierarchy.begin(), hierarchy.end(), [&certificate](const X509Node& node) {
                     return node.certificate == certificate;
