@@ -62,7 +62,7 @@ public:
     X509Wrapper find_certificate_root(const X509Wrapper& leaf);
 
     /// @brief Searches for the provided hash, throwing a NoCertificateFound if not found
-    X509Wrapper find_certificate(const CertificateHashData& hash);
+    X509Wrapper find_certificate(const CertificateHashData& hash, bool case_insensitive_comparison = false);
 
     /// @brief Searches for all the certificates with the provided hash, throwing a NoCertificateFound
     // if none were found. Can be useful when we have SUB-CAs in multiple bundles

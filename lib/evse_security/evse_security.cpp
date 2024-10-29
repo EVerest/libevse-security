@@ -410,7 +410,8 @@ DeleteCertificateResult EvseSecurity::delete_certificate(const CertificateHashDa
                         << hierarchy.to_debug_string();
 
             try {
-                X509Wrapper to_delete = hierarchy.find_certificate(certificate_hash_data);
+                X509Wrapper to_delete =
+                    hierarchy.find_certificate(certificate_hash_data, true /* case-insensitive search */);
 
                 if (leaf_bundle.delete_certificate(to_delete, true)) {
                     found_certificate = true;
