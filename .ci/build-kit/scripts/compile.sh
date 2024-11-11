@@ -6,7 +6,7 @@ cmake \
     -G Ninja \
     -DBUILD_TESTING=ON \
     -DCMAKE_BUILD_TYPE=Debug \
-    -DCMAKE_INSTALL_PREFIX="$WORKSPACE_PATH/dist" \
+    -DCMAKE_INSTALL_PREFIX="$EXT_MOUNT/source/dist" \
     -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
 
 retVal=$?
