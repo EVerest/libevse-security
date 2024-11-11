@@ -32,4 +32,4 @@ jobs:
       ctest_report_path: ctest-report
       coverage_report_path: gcovr-coverage
       coverage_xml_path: gcovr-coverage-xml.xml
-      dist_path: source/dist
+      dist_path: build/dist
