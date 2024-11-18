@@ -407,7 +407,7 @@ TEST_F(EvseSecurityTests, verify_v2g_cert_02) {
 
 TEST_F(EvseSecurityTests, retrieve_root_ca) {
     std::string path = "certs/ca/v2g/V2G_CA_BUNDLE.pem";
-    std::string retrieved_path = this->evse_security->get_verify_location(CaCertificateType::V2G);
+    std::string retrieved_path = this->evse_security->get_verify_file(CaCertificateType::V2G);
 
     ASSERT_EQ(path, retrieved_path);
 }
@@ -418,7 +418,7 @@ TEST_F(EvseSecurityTests, install_root_ca_01) {
     ASSERT_TRUE(result == InstallCertificateResult::Accepted);
 
     std::string path = "certs/ca/v2g/V2G_CA_BUNDLE.pem";
-    ASSERT_EQ(this->evse_security->get_verify_location(CaCertificateType::V2G), path);
+    ASSERT_EQ(this->evse_security->get_verify_file(CaCertificateType::V2G), path);
 
     const auto read_v2g_root_ca = read_file_to_string(path);
     X509CertificateBundle root_bundle(read_v2g_root_ca, EncodingFormat::PEM);
