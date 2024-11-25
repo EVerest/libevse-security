@@ -12,6 +12,8 @@
 #include <set>
 #include <stdio.h>
 
+#include <cert_rehash/c_rehash.hpp>
+
 #include <evse_security/certificate/x509_bundle.hpp>
 #include <evse_security/certificate/x509_hierarchy.hpp>
 #include <evse_security/certificate/x509_wrapper.hpp>
@@ -1564,12 +1566,14 @@ std::string EvseSecurity::get_verify_location(CaCertificateType certificate_type
         // multiple entries (should be 3) as per the specification
         X509CertificateBundle verify_location(this->ca_bundle_path_map.at(certificate_type), EncodingFormat::PEM);
 
-        EVLOG_info << "Requesting certificate location: ["
-                   << conversions::ca_certificate_type_to_string(certificate_type)
-                   << "] location:" << verify_location.get_path();
+        const auto location_path = verify_location.get_path();
 
-        if (!verify_location.empty()) {
-            return verify_location.get_path();
+        EVLOG_info << "Requesting certificate location: ["
+                   << conversions::ca_certificate_type_to_string(certificate_type) << "] location:" << location_path;
+
+        if (!verify_location.empty() &&
+            (!verify_location.is_using_directory() || hash_dir(location_path.c_str()) == 0)) {
+            return location_path;
         }
 
     } catch (const CertificateLoadException& e) {
