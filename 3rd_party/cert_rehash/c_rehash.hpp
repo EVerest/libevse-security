@@ -267,8 +267,8 @@ static int hash_dir(const char* dirname) {
 
             for (ei = bi->first_entry; ei; ei = nextei) {
                 nextei = ei->next;
-                EVLOG_debug << "\t(old_id " << ei->old_id << ", need_symlink " << ei->need_symlink << ") Cert "
-                            << std::string(ei->filename, strlen(ei->filename)) << ":";
+                EVLOG_debug << "\t(old_id " << ei->old_id << ", need_symlink " << static_cast<int>(ei->need_symlink)
+                            << ") Cert " << std::string(ei->filename, strlen(ei->filename)) << ":";
 
                 if (ei->old_id < bi->num_needed) {
                     /* Link exists, and is used as-is */
