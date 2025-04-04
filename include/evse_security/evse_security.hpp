@@ -131,8 +131,8 @@ public:
                                                      LeafCertificateType certificate_type);
 
     /// @brief Retrieves all certificates installed on the filesystem applying the \p certificate_type filter.
-    /// TODO:
-    ///
+    /// In the case of the 'V2GCertificateChain', it will return all valid leafs chains, with the newest being
+    /// the first in the list
     /// @param certificate_types
     /// @return contains the certificate hash data chains of the requested \p certificate_type
     GetInstalledCertificatesResult get_installed_certificate(CertificateType certificate_type);
