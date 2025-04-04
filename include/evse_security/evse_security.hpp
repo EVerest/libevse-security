@@ -43,9 +43,17 @@ struct FilePaths {
 struct CertificateQueryParams {
     LeafCertificateType certificate_type;
     EncodingFormat encoding{EncodingFormat::PEM};
+    /// if OCSP information should be included
     bool include_ocsp{false};
+    /// if the root certificate of the leaf should be included in the returned list
     bool include_root{false};
+    /// if true, all valid leafs will be included, sorted in order, with the newest being
+    /// first. If false, only the newest one will be returned
     bool include_all_valid{false};
+    /// if true, will remove all duplicates found, since we can find a leaf for example
+    /// in 2 files, one in 'leaf_single' and one in 'leaf_chain'. For delete routines
+    /// we need both files returned, while for queries (v2g_chain) we don't need duplicates
+    bool remove_duplicates{false};
 };
 
 // Unchangeable security limit for certificate deletion, a min entry count will be always kept (newest)
@@ -295,10 +303,6 @@ private:
                                                                 EncodingFormat encoding, bool include_ocsp = false);
 
     /// @brief Retrieves information related to leaf certificates
-    /// @param include_ocsp if OCSP information should be included
-    /// @param include_root if the root certificate of the leaf should be included in the returned list
-    /// @param include_all_valid if true, all valid leafs will be included, sorted in order, with the newest being
-    /// first. If false, only the newest one will be returned
     GetCertificateFullInfoResult get_full_leaf_certificate_info_internal(const CertificateQueryParams& params);
 
     GetCertificateInfoResult get_ca_certificate_info_internal(CaCertificateType certificate_type);

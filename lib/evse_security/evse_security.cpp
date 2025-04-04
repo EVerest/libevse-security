@@ -602,6 +602,7 @@ EvseSecurity::get_installed_certificates(const std::vector<CertificateType>& cer
         CertificateQueryParams params;
         params.certificate_type = LeafCertificateType::V2G;
         params.include_all_valid = true;
+        params.remove_duplicates = true;
 
         GetCertificateFullInfoResult secc_key_pairs = get_full_leaf_certificate_info_internal(params);
 
@@ -1233,9 +1234,25 @@ EvseSecurity::get_full_leaf_certificate_info_internal(const CertificateQueryPara
                         // Found at least one valid key
                         any_valid_key = true;
 
-                        // Copy to latest valid
                         KeyPairInternal key_pair{chain.at(0), priv_key_path};
-                        valid_leafs.emplace_back(std::move(key_pair));
+
+                        if (params.remove_duplicates) {
+                            // Filter the already added certificates, since we can have a case
+                            // when a leaf is present in 2 files (single/chain) that causes it
+                            // to be added to the list twice by the bundle parser
+                            auto it = std::find_if(valid_leafs.begin(), valid_leafs.end(),
+                                                   [&key_pair](const auto& in_key_pair) {
+                                                       return in_key_pair.certificate == key_pair.certificate;
+                                                   });
+
+                            // None found
+                            if (it == valid_leafs.end()) {
+                                valid_leafs.emplace_back(std::move(key_pair));
+                            }
+                        } else {
+                            // Copy to latest valid
+                            valid_leafs.emplace_back(std::move(key_pair));
+                        }
 
                         // We found, break
                         EVLOG_info << "Found valid leaf: [" << chain.at(0).get_file().value() << "]";

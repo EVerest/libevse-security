@@ -50,12 +50,16 @@ bool equal_certificate_strings(const std::string& cert1, const std::string& cert
     return true;
 }
 
+// #define EVEREST_SKIP_ALL_TESTS
+
 // Used for easy skipping of tests when we want to pinpoint a
 // problem without having to run all the tests each iteration
 #ifdef EVEREST_SKIP_ALL_TESTS
 #define EVSE_SECURITY_GLOBAL_SKIP_TESTS() GTEST_SKIP() << "GTest Skipp All Tests"
 #else
-#define EVSE_SECURITY_GLOBAL_SKIP_TESTS() do {} while(0)
+#define EVSE_SECURITY_GLOBAL_SKIP_TESTS()                                                                              \
+    do {                                                                                                               \
+    } while (0)
 #endif
 
 namespace evse_security {
