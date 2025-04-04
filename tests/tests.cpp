@@ -50,6 +50,14 @@ bool equal_certificate_strings(const std::string& cert1, const std::string& cert
     return true;
 }
 
+// Used for easy skipping of tests when we want to pinpoint a
+// problem without having to run all the tests each iteration
+#ifdef EVEREST_SKIP_ALL_TESTS
+#define EVSE_SECURITY_GLOBAL_SKIP_TESTS() GTEST_SKIP() << "GTest Skipp All Tests"
+#else
+#define EVSE_SECURITY_GLOBAL_SKIP_TESTS() do {} while(0)
+#endif
+
 namespace evse_security {
 
 class EvseSecurityTests : public ::testing::Test {
@@ -181,6 +189,8 @@ protected:
 };
 
 TEST_F(EvseSecurityTests, verify_basics) {
+    EVSE_SECURITY_GLOBAL_SKIP_TESTS();
+
     const char* bundle_path = "certs/ca/v2g/V2G_CA_BUNDLE.pem";
 
     fsstd::ifstream file(bundle_path, std::ios::binary);
@@ -227,6 +237,8 @@ TEST_F(EvseSecurityTests, verify_basics) {
 }
 
 TEST_F(EvseSecurityTests, verify_directory_bundles) {
+    EVSE_SECURITY_GLOBAL_SKIP_TESTS();
+
     const auto child_cert_str = read_file_to_string(fs::path("certs/client/csms/CSMS_LEAF.pem"));
 
     ASSERT_EQ(this->evse_security->verify_certificate(child_cert_str, LeafCertificateType::CSMS),
@@ -242,6 +254,8 @@ TEST_F(EvseSecurityTests, verify_directory_bundles) {
 }
 
 TEST_F(EvseSecurityTests, verify_bundle_management) {
+    EVSE_SECURITY_GLOBAL_SKIP_TESTS();
+
     const char* directory_path = "certs/ca/csms/";
     X509CertificateBundle bundle(fs::path(directory_path), EncodingFormat::PEM);
     ASSERT_TRUE(bundle.split().size() == 2);
@@ -269,6 +283,8 @@ TEST_F(EvseSecurityTests, verify_bundle_management) {
 }
 
 TEST_F(EvseSecurityTests, verify_certificate_counts) {
+    EVSE_SECURITY_GLOBAL_SKIP_TESTS();
+
     // This contains the 'real' fs certifs, we have the leaf chain + the leaf in a seaparate folder
     ASSERT_EQ(this->evse_security->get_count_of_installed_certificates({CertificateType::V2GCertificateChain}), 4);
     // We have 3 certs in the root bundle
@@ -280,6 +296,8 @@ TEST_F(EvseSecurityTests, verify_certificate_counts) {
 }
 
 TEST_F(EvseSecurityTestsMulti, verify_multi_root_leaf_retrieval) {
+    EVSE_SECURITY_GLOBAL_SKIP_TESTS();
+
     auto result =
         this->evse_security->get_all_valid_certificates_info(LeafCertificateType::CSMS, EncodingFormat::PEM, false);
 
@@ -310,6 +328,8 @@ TEST_F(EvseSecurityTestsMulti, verify_multi_root_leaf_retrieval) {
 }
 
 TEST_F(EvseSecurityTests, verify_normal_keygen) {
+    EVSE_SECURITY_GLOBAL_SKIP_TESTS();
+
     KeyGenerationInfo info;
     KeyHandle_ptr key;
 
@@ -324,6 +344,8 @@ TEST_F(EvseSecurityTests, verify_normal_keygen) {
 }
 
 TEST_F(EvseSecurityTests, verify_keygen_csr) {
+    EVSE_SECURITY_GLOBAL_SKIP_TESTS();
+
     KeyGenerationInfo info;
     KeyHandle_ptr key;
 
@@ -358,6 +380,8 @@ TEST_F(EvseSecurityTests, verify_keygen_csr) {
 
 /// \brief get_certificate_hash_data() throws exception if called with no issuer and a non-self-signed cert
 TEST_F(EvseSecurityTests, get_certificate_hash_data_non_self_signed_requires_issuer) {
+    EVSE_SECURITY_GLOBAL_SKIP_TESTS();
+
     const auto non_self_signed_cert_str =
         read_file_to_string(std::filesystem::path("certs/to_be_installed/INSTALL_TEST_ROOT_CA3_SUBCA2.pem"));
     const X509Wrapper non_self_signed_cert(non_self_signed_cert_str, EncodingFormat::PEM);
@@ -366,6 +390,8 @@ TEST_F(EvseSecurityTests, get_certificate_hash_data_non_self_signed_requires_iss
 
 /// \brief get_certificate_hash_data() throws exception if called with the wrong issuer
 TEST_F(EvseSecurityTests, get_certificate_hash_data_wrong_issuer) {
+    EVSE_SECURITY_GLOBAL_SKIP_TESTS();
+
     const auto child_cert_str =
         read_file_to_string(std::filesystem::path("certs/to_be_installed/INSTALL_TEST_ROOT_CA3_SUBCA2.pem"));
     const X509Wrapper child_cert(child_cert_str, EncodingFormat::PEM);
@@ -379,6 +405,8 @@ TEST_F(EvseSecurityTests, get_certificate_hash_data_wrong_issuer) {
 
 /// \brief test verifyChargepointCertificate with valid cert
 TEST_F(EvseSecurityTests, verify_chargepoint_cert_01) {
+    EVSE_SECURITY_GLOBAL_SKIP_TESTS();
+
     const auto client_certificate = read_file_to_string(fs::path("certs/client/csms/CSMS_LEAF.pem"));
     std::cout << client_certificate << std::endl;
     const auto result = this->evse_security->update_leaf_certificate(client_certificate, LeafCertificateType::CSMS);
@@ -387,12 +415,16 @@ TEST_F(EvseSecurityTests, verify_chargepoint_cert_01) {
 
 /// \brief test verifyChargepointCertificate with invalid cert
 TEST_F(EvseSecurityTests, verify_chargepoint_cert_02) {
+    EVSE_SECURITY_GLOBAL_SKIP_TESTS();
+
     const auto result = this->evse_security->update_leaf_certificate("InvalidCertificate", LeafCertificateType::CSMS);
     ASSERT_TRUE(result == InstallCertificateResult::InvalidFormat);
 }
 
 /// \brief test verifyV2GChargingStationCertificate with valid cert
 TEST_F(EvseSecurityTests, verify_v2g_cert_01) {
+    EVSE_SECURITY_GLOBAL_SKIP_TESTS();
+
     const auto client_certificate = read_file_to_string(fs::path("certs/client/cso/SECC_LEAF.pem"));
     const auto result = this->evse_security->update_leaf_certificate(client_certificate, LeafCertificateType::V2G);
     ASSERT_TRUE(result == InstallCertificateResult::Accepted);
@@ -400,12 +432,16 @@ TEST_F(EvseSecurityTests, verify_v2g_cert_01) {
 
 /// \brief test verifyV2GChargingStationCertificate with invalid cert
 TEST_F(EvseSecurityTests, verify_v2g_cert_02) {
+    EVSE_SECURITY_GLOBAL_SKIP_TESTS();
+
     const auto invalid_certificate = read_file_to_string(fs::path("certs/client/invalid/INVALID_CSMS.pem"));
     const auto result = this->evse_security->update_leaf_certificate(invalid_certificate, LeafCertificateType::V2G);
     ASSERT_TRUE(result != InstallCertificateResult::Accepted);
 }
 
 TEST_F(EvseSecurityTests, retrieve_root_ca) {
+    EVSE_SECURITY_GLOBAL_SKIP_TESTS();
+
     std::string path = "certs/ca/v2g/V2G_CA_BUNDLE.pem";
     std::string retrieved_path = this->evse_security->get_verify_file(CaCertificateType::V2G);
 
@@ -413,6 +449,8 @@ TEST_F(EvseSecurityTests, retrieve_root_ca) {
 }
 
 TEST_F(EvseSecurityTests, retrieve_root_location) {
+    EVSE_SECURITY_GLOBAL_SKIP_TESTS();
+
     std::string file_path = "certs/ca/v2g/V2G_CA_BUNDLE.pem";
     std::string retrieved_file_location = this->evse_security->get_verify_location(CaCertificateType::V2G);
 
@@ -420,6 +458,8 @@ TEST_F(EvseSecurityTests, retrieve_root_location) {
 }
 
 TEST_F(EvseSecurityTests, install_root_ca_01) {
+    EVSE_SECURITY_GLOBAL_SKIP_TESTS();
+
     const auto v2g_root_ca = read_file_to_string(fs::path("certs/ca/v2g/V2G_ROOT_CA_NEW.pem"));
     const auto result = this->evse_security->install_ca_certificate(v2g_root_ca, CaCertificateType::V2G);
     ASSERT_TRUE(result == InstallCertificateResult::Accepted);
@@ -436,6 +476,8 @@ TEST_F(EvseSecurityTests, install_root_ca_01) {
 }
 
 TEST_F(EvseSecurityTests, install_root_ca_02) {
+    EVSE_SECURITY_GLOBAL_SKIP_TESTS();
+
     const auto invalid_csms_ca = "-----BEGIN CERTIFICATE-----InvalidCertificate-----END CERTIFICATE-----";
     const auto result = this->evse_security->install_ca_certificate(invalid_csms_ca, CaCertificateType::CSMS);
     ASSERT_EQ(result, InstallCertificateResult::InvalidFormat);
@@ -443,6 +485,8 @@ TEST_F(EvseSecurityTests, install_root_ca_02) {
 
 /// \brief test install two new root certificates
 TEST_F(EvseSecurityTests, install_root_ca_03) {
+    EVSE_SECURITY_GLOBAL_SKIP_TESTS();
+
     const auto pre_installed_certificates =
         this->evse_security->get_installed_certificates({CertificateType::CSMSRootCertificate});
 
@@ -486,6 +530,8 @@ TEST_F(EvseSecurityTests, install_root_ca_03) {
 
 /// \brief test install new root certificates + two child certificates
 TEST_F(EvseSecurityTests, install_root_ca_04) {
+    EVSE_SECURITY_GLOBAL_SKIP_TESTS();
+
     const auto pre_installed_certificates =
         this->evse_security->get_installed_certificates({CertificateType::CSMSRootCertificate});
 
@@ -527,6 +573,8 @@ TEST_F(EvseSecurityTests, install_root_ca_04) {
 
 /// \brief test install expired certificate must be rejected
 TEST_F(EvseSecurityTests, install_root_ca_05) {
+    EVSE_SECURITY_GLOBAL_SKIP_TESTS();
+
     const auto expired_cert = std::string("-----BEGIN CERTIFICATE-----\n") +
                               "MIICsjCCAZqgAwIBAgICMDkwDQYJKoZIhvcNAQELBQAwHDEaMBgGA1UEAwwRT0NU\n" +
                               "VEV4cGlyZWRSb290Q0EwHhcNMjAwMTAxMDAwMDAwWhcNMjEwMTAxMDAwMDAwWjAc\n" +
@@ -549,6 +597,7 @@ TEST_F(EvseSecurityTests, install_root_ca_05) {
 }
 
 TEST_F(EvseSecurityTests, delete_root_ca_01) {
+    EVSE_SECURITY_GLOBAL_SKIP_TESTS();
 
     std::vector<CertificateType> certificate_types;
     certificate_types.push_back(CertificateType::V2GRootCertificate);
@@ -573,6 +622,8 @@ TEST_F(EvseSecurityTests, delete_root_ca_01) {
 }
 
 TEST_F(EvseSecurityTests, delete_root_ca_02) {
+    EVSE_SECURITY_GLOBAL_SKIP_TESTS();
+
     CertificateHashData certificate_hash_data;
     certificate_hash_data.hash_algorithm = HashAlgorithm::SHA256;
     certificate_hash_data.issuer_key_hash = "UnknownKeyHash";
@@ -584,6 +635,8 @@ TEST_F(EvseSecurityTests, delete_root_ca_02) {
 }
 
 TEST_F(EvseSecurityTests, delete_sub_ca_1) {
+    EVSE_SECURITY_GLOBAL_SKIP_TESTS();
+
     const auto new_root_ca_1 =
         read_file_to_string(std::filesystem::path("certs/to_be_installed/INSTALL_TEST_ROOT_CA3.pem"));
     const auto result = this->evse_security->install_ca_certificate(new_root_ca_1, CaCertificateType::CSMS);
@@ -625,6 +678,8 @@ TEST_F(EvseSecurityTests, delete_sub_ca_1) {
 }
 
 TEST_F(EvseSecurityTests, delete_sub_ca_2) {
+    EVSE_SECURITY_GLOBAL_SKIP_TESTS();
+
     const auto new_root_ca_1 =
         read_file_to_string(std::filesystem::path("certs/to_be_installed/INSTALL_TEST_ROOT_CA3.pem"));
     const auto result = this->evse_security->install_ca_certificate(new_root_ca_1, CaCertificateType::CSMS);
@@ -668,6 +723,8 @@ TEST_F(EvseSecurityTests, delete_sub_ca_2) {
 }
 
 TEST_F(EvseSecurityTests, get_installed_certificates_chain_order) {
+    EVSE_SECURITY_GLOBAL_SKIP_TESTS();
+
     std::vector<CertificateType> certificate_types;
     certificate_types.push_back(CertificateType::V2GCertificateChain);
 
@@ -686,6 +743,8 @@ TEST_F(EvseSecurityTests, get_installed_certificates_chain_order) {
 }
 
 TEST_F(EvseSecurityTests, get_installed_certificates_and_delete_secc_leaf) {
+    EVSE_SECURITY_GLOBAL_SKIP_TESTS();
+
     std::vector<CertificateType> certificate_types;
     certificate_types.push_back(CertificateType::V2GRootCertificate);
     certificate_types.push_back(CertificateType::MORootCertificate);
@@ -716,6 +775,8 @@ TEST_F(EvseSecurityTests, get_installed_certificates_and_delete_secc_leaf) {
 }
 
 TEST_F(EvseSecurityTests, leaf_cert_starts_in_future_accepted) {
+    EVSE_SECURITY_GLOBAL_SKIP_TESTS();
+
     const auto v2g_keypair_before =
         this->evse_security->get_leaf_certificate_info(LeafCertificateType::V2G, EncodingFormat::PEM);
 
@@ -740,6 +801,8 @@ TEST_F(EvseSecurityTests, leaf_cert_starts_in_future_accepted) {
 }
 
 TEST_F(EvseSecurityTests, expired_leaf_cert_rejected) {
+    EVSE_SECURITY_GLOBAL_SKIP_TESTS();
+
     const auto new_root_ca = read_file_to_string(std::filesystem::path("expired_leaf/V2G_ROOT_CA.pem"));
     const auto result_ca = this->evse_security->install_ca_certificate(new_root_ca, CaCertificateType::V2G);
     ASSERT_TRUE(result_ca == InstallCertificateResult::Accepted);
@@ -754,6 +817,8 @@ TEST_F(EvseSecurityTests, expired_leaf_cert_rejected) {
 }
 
 TEST_F(EvseSecurityTests, verify_full_filesystem) {
+    EVSE_SECURITY_GLOBAL_SKIP_TESTS();
+
     ASSERT_EQ(evse_security->is_filesystem_full(), false);
 
     evse_security->max_fs_usage_bytes = 1;
@@ -761,6 +826,8 @@ TEST_F(EvseSecurityTests, verify_full_filesystem) {
 }
 
 TEST_F(EvseSecurityTests, verify_full_filesystem_install_reject) {
+    EVSE_SECURITY_GLOBAL_SKIP_TESTS();
+
     evse_security->max_fs_usage_bytes = 1;
     ASSERT_EQ(evse_security->is_filesystem_full(), true);
 
@@ -772,6 +839,8 @@ TEST_F(EvseSecurityTests, verify_full_filesystem_install_reject) {
 }
 
 TEST_F(EvseSecurityTests, verify_oscp_cache) {
+    EVSE_SECURITY_GLOBAL_SKIP_TESTS();
+
     std::string ocsp_mock_response_data = "OCSP_MOCK_RESPONSE_DATA";
     std::string ocsp_mock_response_data_v2 = "OCSP_MOCK_RESPONSE_DATA_V2";
 
@@ -885,6 +954,8 @@ TEST_F(EvseSecurityTests, verify_oscp_cache) {
 }
 
 TEST_F(EvseSecurityTests, verify_ocsp_garbage_collect) {
+    EVSE_SECURITY_GLOBAL_SKIP_TESTS();
+
     std::string ocsp_mock_response_data = "OCSP_MOCK_RESPONSE_DATA";
 
     OCSPRequestDataList data = this->evse_security->get_v2g_ocsp_request_data();
@@ -952,6 +1023,8 @@ TEST_F(EvseSecurityTests, verify_ocsp_garbage_collect) {
 }
 
 TEST_F(EvseSecurityTestsExpired, verify_expired_leaf_deletion) {
+    EVSE_SECURITY_GLOBAL_SKIP_TESTS();
+
     // Check that the FS is not full
     ASSERT_FALSE(evse_security->is_filesystem_full());
 
@@ -1034,6 +1107,8 @@ TEST_F(EvseSecurityTestsExpired, verify_expired_leaf_deletion) {
 }
 
 TEST_F(EvseSecurityTests, verify_expired_csr_deletion) {
+    EVSE_SECURITY_GLOBAL_SKIP_TESTS();
+
     // Generate a CSR
     auto csr = evse_security->generate_certificate_signing_request(LeafCertificateType::CSMS, "DE", "Pionix", "NA");
     fs::path csr_key_path = evse_security->managed_csr.begin()->first;
@@ -1081,6 +1156,8 @@ TEST_F(EvseSecurityTests, verify_expired_csr_deletion) {
 }
 
 TEST_F(EvseSecurityTests, verify_base64) {
+    EVSE_SECURITY_GLOBAL_SKIP_TESTS();
+
     std::string test_string1 = "U29tZSBkYXRhIGZvciB0ZXN0IGNhc2VzLiBTb21lIGRhdGEgZm9yIHRlc3QgY2FzZXMuIFNvbWUgZGF0YSBmb3I"
                                "gdGVzdCBjYXNlcy4gU29tZSBkYXRhIGZvciB0ZXN0IGNhc2VzLg==";
 
