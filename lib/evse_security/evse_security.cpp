@@ -1744,6 +1744,7 @@ CertificateValidationResult EvseSecurity::verify_certificate(const std::string& 
 CertificateValidationResult
 EvseSecurity::verify_certificate(const std::string& certificate_chain,
                                  const std::vector<LeafCertificateType>& certificate_types) {
+    std::lock_guard<std::mutex> guard(EvseSecurity::security_mutex);
     return verify_certificate_internal(certificate_chain, certificate_types);
 }
 
