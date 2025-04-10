@@ -1090,6 +1090,12 @@ GetCertificateSignRequestResult EvseSecurity::generate_certificate_signing_reque
     info.ip_address = std::nullopt;
 #endif
 
+    if (certificate_type == LeafCertificateType::V2G) {
+        info.set_key_usage_flags(CertificateKeyUsage::DIGITAL_SIGNATURE);
+    } else {
+        info.set_key_usage_flags(CertificateKeyUsage::DIGITAL_SIGNATURE, CertificateKeyUsage::KEY_AGREEMENT);
+    }
+
     info.key_info.key_type = CryptoKeyType::EC_prime256v1;
     info.key_info.generate_on_custom = use_custom_provider;
     info.key_info.private_key_file = key_path;

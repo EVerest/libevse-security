@@ -36,6 +36,12 @@ enum class CertificateSignRequestResult {
     Unknown,            // Any other error
 };
 
+enum class CertificateKeyUsage : std::uint8_t {
+    NONE = 0,
+    DIGITAL_SIGNATURE = 0x1 << 0,
+    KEY_AGREEMENT = 0x1 << 1,
+};
+
 struct KeyGenerationInfo {
     CryptoKeyType key_type;
 
@@ -66,6 +72,13 @@ struct CertificateSigningRequestInfo {
     std::optional<std::string> ip_address;
 
     KeyGenerationInfo key_info;
+
+    /// @brief certificate key usage flags, @see CertificateKeyUsage
+    std::uint8_t key_usage_flags = 0;
+
+    template <typename... Args> void set_key_usage_flags(Args... args) {
+        ((key_usage_flags |= (std::uint8_t)args), ...);
+    }
 };
 class CertificateLoadException : public std::runtime_error {
 public:
