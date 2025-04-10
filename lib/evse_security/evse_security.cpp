@@ -834,6 +834,9 @@ OCSPRequestDataList EvseSecurity::generate_ocsp_request_data_internal(const std:
                     } else {
                         EVLOG_error << "Could not find hash for certificate: " << certificate.get_common_name();
                     }
+                } else {
+                    EVLOG_warning << "When generating an OCSP request, could not find responder URL for certificate: "
+                                  << certificate.get_common_name();
                 }
             }
         }
