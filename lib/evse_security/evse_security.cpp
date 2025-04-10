@@ -222,9 +222,6 @@ static std::set<fs::path> get_certificate_path_of_key(const fs::path& key, const
     throw NoCertificateValidException(error);
 }
 
-// Declared here to avoid requirement of X509Wrapper include in header
-static OCSPRequestDataList get_ocsp_request_data_internal(fs::path& root_path, std::vector<X509Wrapper>& leaf_chain);
-
 std::mutex EvseSecurity::security_mutex;
 
 EvseSecurity::EvseSecurity(const FilePaths& file_paths, const std::optional<std::string>& private_key_password,
@@ -732,33 +729,25 @@ int EvseSecurity::get_count_of_installed_certificates(const std::vector<Certific
 OCSPRequestDataList EvseSecurity::get_v2g_ocsp_request_data() {
     std::lock_guard<std::mutex> guard(EvseSecurity::security_mutex);
 
-    try {
-        const auto secc_key_pair =
-            this->get_leaf_certificate_info_internal(LeafCertificateType::V2G, EncodingFormat::PEM);
+    const auto secc_key_pair = this->get_leaf_certificate_info_internal(LeafCertificateType::V2G, EncodingFormat::PEM);
 
-        if (secc_key_pair.status != GetCertificateInfoStatus::Accepted or !secc_key_pair.info.has_value()) {
-            EVLOG_error << "Could not get key pair, for v2g ocsp request!";
-            return OCSPRequestDataList();
-        }
+    if (secc_key_pair.status != GetCertificateInfoStatus::Accepted or !secc_key_pair.info.has_value()) {
+        EVLOG_error << "Could not get key pair, for v2g ocsp request!";
+        return OCSPRequestDataList();
+    }
 
-        std::vector<X509Wrapper> chain;
+    std::string chain{};
 
-        if (secc_key_pair.info.value().certificate.has_value()) {
-            chain = std::move(
-                X509CertificateBundle(secc_key_pair.info.value().certificate.value(), EncodingFormat::PEM).split());
-        } else if (secc_key_pair.info.value().certificate_single.has_value()) {
-            chain = std::move(
-                X509CertificateBundle(secc_key_pair.info.value().certificate_single.value(), EncodingFormat::PEM)
-                    .split());
-        } else {
-            EVLOG_error << "Could not load v2g ocsp cache leaf chain!";
-        }
+    if (secc_key_pair.info.value().certificate.has_value()) {
+        filesystem_utils::read_from_file(secc_key_pair.info.value().certificate.value(), chain);
+    } else if (secc_key_pair.info.value().certificate_single.has_value()) {
+        filesystem_utils::read_from_file(secc_key_pair.info.value().certificate_single.value(), chain);
+    } else {
+        EVLOG_error << "Could not load v2g ocsp cache leaf chain!";
+    }
 
-        if (!chain.empty()) {
-            return get_ocsp_request_data_internal(this->ca_bundle_path_map.at(CaCertificateType::V2G), chain);
-        }
-    } catch (const CertificateLoadException& e) {
-        EVLOG_error << "Could not get v2g ocsp cache, certificate load failure: " << e.what();
+    if (!chain.empty()) {
+        return generate_ocsp_request_data_internal({CaCertificateType::V2G}, chain);
     }
 
     return OCSPRequestDataList();
@@ -767,63 +756,84 @@ OCSPRequestDataList EvseSecurity::get_v2g_ocsp_request_data() {
 OCSPRequestDataList EvseSecurity::get_mo_ocsp_request_data(const std::string& certificate_chain) {
     std::lock_guard<std::mutex> guard(EvseSecurity::security_mutex);
 
-    try {
-        std::vector<X509Wrapper> chain =
-            std::move(X509CertificateBundle(certificate_chain, EncodingFormat::PEM).split());
-
-        // Find the MO root
-        return get_ocsp_request_data_internal(this->ca_bundle_path_map.at(CaCertificateType::MO), chain);
-    } catch (const CertificateLoadException& e) {
-        EVLOG_error << "Could not get mo ocsp cache, certificate load failure: " << e.what();
-    }
-
-    return OCSPRequestDataList();
+    // Test for both MO and V2G roots
+    return generate_ocsp_request_data_internal({CaCertificateType::V2G, CaCertificateType::MO}, certificate_chain);
 }
 
-OCSPRequestDataList get_ocsp_request_data_internal(fs::path& root_path, std::vector<X509Wrapper>& leaf_chain) {
+OCSPRequestDataList EvseSecurity::generate_ocsp_request_data_internal(const std::set<CaCertificateType>& possible_roots,
+                                                                      const std::string& leaf_chain) {
     OCSPRequestDataList response;
-    std::vector<OCSPRequestData> ocsp_request_data_list;
 
+    std::vector<X509Wrapper> chain;
     try {
-        std::vector<X509Wrapper> full_hierarchy = X509CertificateBundle(root_path, EncodingFormat::PEM).split();
+        chain = std::move(X509CertificateBundle(leaf_chain, EncodingFormat::PEM).split());
+    } catch (const CertificateLoadException& e) {
+        EVLOG_error << "Could not generate ocsp request, leaf certificate load failure: " << e.what();
+        return response;
+    }
 
+    std::vector<X509Wrapper> full_root_hierarchy;
+    for (const CaCertificateType& root_type : possible_roots) {
+        const fs::path& root_path = this->ca_bundle_path_map.at(root_type);
+        std::vector<X509Wrapper> root_hierarchy = X509CertificateBundle(root_path, EncodingFormat::PEM).split();
+
+        full_root_hierarchy.insert(full_root_hierarchy.end(), std::make_move_iterator(root_hierarchy.begin()),
+                                   std::make_move_iterator(root_hierarchy.end()));
+    }
+
+    std::vector<OCSPRequestData> ocsp_request_data_list;
+    try {
         // Build the full hierarchy
-        auto hierarchy = std::move(X509CertificateHierarchy::build_hierarchy(full_hierarchy, leaf_chain));
+        auto hierarchy = std::move(X509CertificateHierarchy::build_hierarchy(full_root_hierarchy, chain));
 
         // Search for the first valid root, and collect all the chain
         for (auto& root : hierarchy.get_hierarchy()) {
-            if (root.certificate.is_selfsigned() && root.certificate.is_valid()) {
-                // Collect the chain
-                std::vector<X509Wrapper> descendants = hierarchy.collect_descendants(root.certificate);
-                bool has_proper_descendants = (descendants.size() > 0);
+            // Ignore non-roots and ignore invalid ones
+            if (root.certificate.is_selfsigned() == false || root.certificate.is_valid() == false) {
+                continue;
+            }
 
-                for (auto& certificate : descendants) {
-                    std::string responder_url = certificate.get_responder_url();
+            // Collect the chain, from root->subca1->subca2->leaf
+            std::vector<X509Wrapper> descendants = hierarchy.collect_descendants(root.certificate);
 
-                    if (!responder_url.empty()) {
-                        CertificateHashData certificate_hash_data;
-                        if (hierarchy.get_certificate_hash(certificate, certificate_hash_data)) {
-                            // Do not insert duplicate hashes, in case we have multiple SUBCAs in different bundles
-                            auto it =
-                                std::find_if(std::begin(ocsp_request_data_list), std::end(ocsp_request_data_list),
-                                             [&certificate_hash_data](const OCSPRequestData& existing_data) {
-                                                 return existing_data.certificate_hash_data == certificate_hash_data;
-                                             });
+            if (descendants.size() > 0) {
+                // We must make sure that the full received 'leaf_chain' is present in the descendants
+                for (const X509Wrapper& received_chain_link : chain) {
+                    bool descendants_contain =
+                        std::find(descendants.begin(), descendants.end(), received_chain_link) != descendants.end();
 
-                            if (it == ocsp_request_data_list.end()) {
-                                OCSPRequestData ocsp_request_data = {certificate_hash_data, responder_url};
-                                ocsp_request_data_list.push_back(ocsp_request_data);
-                            }
-                        } else {
-                            EVLOG_error << "Could not find hash for certificate: " << certificate.get_common_name();
-                        }
+                    // A link is missing from the chain, search next root
+                    if (!descendants_contain) {
+                        continue;
                     }
                 }
+            } else {
+                // Search next root
+                continue;
+            }
 
-                // If we have collected the descendants we can break
-                // else we can continue iterating for a proper root
-                if (has_proper_descendants) {
-                    break;
+            // Reverse iteration, since we need to move from the leaf to the root, not the other way around
+            for (auto rit = descendants.rbegin(); rit != descendants.rend(); ++rit) {
+                auto& certificate = *rit;
+
+                std::string responder_url = certificate.get_responder_url();
+
+                if (!responder_url.empty()) {
+                    CertificateHashData certificate_hash_data;
+                    if (hierarchy.get_certificate_hash(certificate, certificate_hash_data)) {
+                        // Do not insert duplicate hashes, in case we have multiple SUBCAs in different bundles
+                        auto it = std::find_if(std::begin(ocsp_request_data_list), std::end(ocsp_request_data_list),
+                                               [&certificate_hash_data](const OCSPRequestData& existing_data) {
+                                                   return existing_data.certificate_hash_data == certificate_hash_data;
+                                               });
+
+                        if (it == ocsp_request_data_list.end()) {
+                            OCSPRequestData ocsp_request_data = {certificate_hash_data, responder_url};
+                            ocsp_request_data_list.push_back(ocsp_request_data);
+                        }
+                    } else {
+                        EVLOG_error << "Could not find hash for certificate: " << certificate.get_common_name();
+                    }
                 }
             }
         }

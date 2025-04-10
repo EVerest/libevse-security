@@ -48,7 +48,12 @@ public:
     /// contained in our hierarchy
     bool is_internal_root(const X509Wrapper& certificate) const;
 
-    /// @brief Collects all the descendants of the provided certificate
+    /// @brief Collects all the descendants of the provided certificate, in the order
+    /// from the root towards the leaf (ROOT->SUBCA1->SUBCA2->LEAF)
+    /// NOTE: this can be a problem when returning certificates to the CSMS that can
+    /// require to have an order from the leaf to the root, case in which the descendants
+    /// have to be reverse iterated
+    ///
     /// @param top Certificate that issued the descendants
     std::vector<X509Wrapper> collect_descendants(const X509Wrapper& top);
 
