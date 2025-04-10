@@ -806,14 +806,34 @@ TEST_F(EvseSecurityTests, verify_full_filesystem_install_reject) {
 
 TEST_F(EvseSecurityTests, verify_oscp_request_mo_generate) {
     // Read a leaf, should work since this SECC will be tested against both MO and V2G
-    const auto mo_leaf = read_file_to_string("certs/client/cso/SECC_LEAF.pem");
-
-    OCSPRequestDataList data = this->evse_security->get_mo_ocsp_request_data(mo_leaf);
+    const auto secc_leaf = read_file_to_string("certs/client/cso/SECC_LEAF.pem");
+    OCSPRequestDataList data = this->evse_security->get_mo_ocsp_request_data(secc_leaf);
 
     // Expect 2 chain certifs, since SECC_LEAF does not have an responder URL
     ASSERT_EQ(data.ocsp_request_data_list.size(), 2);
 
     // Assert an leaf->sec2->sec1 order
+    ASSERT_TRUE(data.ocsp_request_data_list[0].certificate_hash_data.has_value());
+    ASSERT_TRUE(data.ocsp_request_data_list[1].certificate_hash_data.has_value());
+    ASSERT_EQ(data.ocsp_request_data_list[0].certificate_hash_data.value().debug_common_name, std::string("CPOSubCA2"));
+    ASSERT_EQ(data.ocsp_request_data_list[1].certificate_hash_data.value().debug_common_name, std::string("CPOSubCA1"));
+
+    // Read the MO leaf
+    const auto mo_leaf = read_file_to_string("certs/client/mo/MO_LEAF.pem");
+    data = this->evse_security->get_mo_ocsp_request_data(mo_leaf);
+
+    // Expect 2 chain certifs, since leaf does not have an responder URL
+    ASSERT_EQ(data.ocsp_request_data_list.size(), 2);
+    ASSERT_TRUE(data.ocsp_request_data_list[0].certificate_hash_data.has_value());
+    ASSERT_TRUE(data.ocsp_request_data_list[1].certificate_hash_data.has_value());
+    ASSERT_EQ(data.ocsp_request_data_list[0].certificate_hash_data.value().debug_common_name, std::string("MOSubCA2"));
+    ASSERT_EQ(data.ocsp_request_data_list[1].certificate_hash_data.value().debug_common_name, std::string("MOSubCA1"));
+
+    // Read the MO signed by V2G leaf
+    const auto mo_v2g_leaf = read_file_to_string("certs/client/mo/MO_LEAF_V2G.pem");
+    data = this->evse_security->get_mo_ocsp_request_data(mo_v2g_leaf);
+
+    ASSERT_EQ(data.ocsp_request_data_list.size(), 2);
     ASSERT_TRUE(data.ocsp_request_data_list[0].certificate_hash_data.has_value());
     ASSERT_TRUE(data.ocsp_request_data_list[1].certificate_hash_data.has_value());
     ASSERT_EQ(data.ocsp_request_data_list[0].certificate_hash_data.value().debug_common_name, std::string("CPOSubCA2"));
