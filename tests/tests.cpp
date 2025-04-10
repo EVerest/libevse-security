@@ -812,7 +812,7 @@ TEST_F(EvseSecurityTests, verify_oscp_request_mo_generate) {
     // Expect 2 chain certifs, since SECC_LEAF does not have an responder URL
     ASSERT_EQ(data.ocsp_request_data_list.size(), 2);
 
-    // Assert an leaf->sec2->sec1 order
+    // Assert a leaf->sub2->sub1 order
     ASSERT_TRUE(data.ocsp_request_data_list[0].certificate_hash_data.has_value());
     ASSERT_TRUE(data.ocsp_request_data_list[1].certificate_hash_data.has_value());
     ASSERT_EQ(data.ocsp_request_data_list[0].certificate_hash_data.value().debug_common_name, std::string("CPOSubCA2"));
