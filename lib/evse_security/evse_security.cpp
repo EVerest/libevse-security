@@ -801,9 +801,8 @@ OCSPRequestDataList get_ocsp_request_data_internal(fs::path& root_path, std::vec
                     std::string responder_url = certificate.get_responder_url();
 
                     if (!responder_url.empty()) {
-                        try {
-                            auto certificate_hash_data = hierarchy.get_certificate_hash(certificate);
-
+                        CertificateHashData certificate_hash_data;
+                        if (hierarchy.get_certificate_hash(certificate, certificate_hash_data)) {
                             // Do not insert duplicate hashes, in case we have multiple SUBCAs in different bundles
                             auto it =
                                 std::find_if(std::begin(ocsp_request_data_list), std::end(ocsp_request_data_list),
@@ -815,9 +814,8 @@ OCSPRequestDataList get_ocsp_request_data_internal(fs::path& root_path, std::vec
                                 OCSPRequestData ocsp_request_data = {certificate_hash_data, responder_url};
                                 ocsp_request_data_list.push_back(ocsp_request_data);
                             }
-                        } catch (const NoCertificateFound& e) {
-                            EVLOG_error << "Could not find hash for certificate: " << certificate.get_common_name()
-                                        << " with error: " << e.what();
+                        } else {
+                            EVLOG_error << "Could not find hash for certificate: " << certificate.get_common_name();
                         }
                     }
                 }
@@ -1367,21 +1365,19 @@ EvseSecurity::get_full_leaf_certificate_info_internal(const CertificateQueryPara
                     // Search for OCSP data for each certificate
                     if (leaf_fullchain != nullptr) {
                         for (const auto& chain_certif : *leaf_fullchain) {
-                            try {
-                                CertificateHashData hash = hierarchy.get_certificate_hash(chain_certif);
+                            CertificateHashData hash;
+                            if (hierarchy.get_certificate_hash(chain_certif, hash)) {
                                 std::optional<fs::path> data = retrieve_ocsp_cache_internal(hash);
-
                                 certificate_ocsp.push_back({hash, data});
-                            } catch (const NoCertificateFound& e) {
+                            } else {
                                 // Always add to preserve file order
                                 certificate_ocsp.push_back({{}, std::nullopt});
                             }
                         }
                     } else {
-                        try {
-                            CertificateHashData hash = hierarchy.get_certificate_hash(leaf_single->at(0));
+                        CertificateHashData hash;
+                        if (hierarchy.get_certificate_hash(leaf_single->at(0), hash)) {
                             certificate_ocsp.push_back({hash, retrieve_ocsp_cache_internal(hash)});
-                        } catch (const NoCertificateFound& e) {
                         }
                     }
                 }
@@ -1927,35 +1923,32 @@ void EvseSecurity::garbage_collect() {
                                 X509CertificateHierarchy hierarchy = std::move(
                                     X509CertificateHierarchy::build_hierarchy(root_bundle.split(), leaf_chain));
 
-                                try {
-                                    CertificateHashData ocsp_hash = hierarchy.get_certificate_hash(chain[0]);
+                                CertificateHashData ocsp_hash;
 
+                                if (hierarchy.get_certificate_hash(chain[0], ocsp_hash) &&
+                                    chain[0].get_file().has_value()) {
                                     // Find OCSP cache with hash
-                                    if (chain[0].get_file().has_value()) {
-                                        const auto ocsp_path = chain[0].get_file().value().parent_path() / "ocsp";
+                                    const auto ocsp_path = chain[0].get_file().value().parent_path() / "ocsp";
 
-                                        if (fs::exists(ocsp_path)) {
-                                            for (const auto& hash_entry : fs::directory_iterator(ocsp_path)) {
-                                                if (hash_entry.is_regular_file() == false) {
-                                                    continue;
-                                                }
-                                                // Attempt hash read
-                                                CertificateHashData read_hash;
+                                    if (fs::exists(ocsp_path)) {
+                                        for (const auto& hash_entry : fs::directory_iterator(ocsp_path)) {
+                                            if (hash_entry.is_regular_file() == false) {
+                                                continue;
+                                            }
+                                            // Attempt hash read
+                                            CertificateHashData read_hash;
 
-                                                if (filesystem_utils::read_hash_from_file(hash_entry.path(),
-                                                                                          read_hash) &&
-                                                    read_hash == ocsp_hash) {
+                                            if (filesystem_utils::read_hash_from_file(hash_entry.path(), read_hash) &&
+                                                read_hash == ocsp_hash) {
 
-                                                    auto oscp_data_path = hash_entry.path();
-                                                    oscp_data_path.replace_extension(DER_EXTENSION);
+                                                auto oscp_data_path = hash_entry.path();
+                                                oscp_data_path.replace_extension(DER_EXTENSION);
 
-                                                    invalid_certificate_files.emplace(hash_entry.path());
-                                                    invalid_certificate_files.emplace(oscp_data_path);
-                                                }
+                                                invalid_certificate_files.emplace(hash_entry.path());
+                                                invalid_certificate_files.emplace(oscp_data_path);
                                             }
                                         }
                                     }
-                                } catch (const NoCertificateFound& e) {
                                 }
                             }
                         } else {

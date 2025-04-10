@@ -258,7 +258,8 @@ TEST_F(EvseSecurityTests, verify_bundle_management) {
     // Lowest in hierarchy
     X509Wrapper intermediate_cert = bundle.get_certificate_hierarchy().get_hierarchy().at(0).children.at(0).certificate;
 
-    CertificateHashData hash = bundle.get_certificate_hierarchy().get_certificate_hash(intermediate_cert);
+    CertificateHashData hash;
+    ASSERT_TRUE(bundle.get_certificate_hierarchy().get_certificate_hash(intermediate_cert, hash));
     bundle.delete_certificate(hash, true);
 
     // Sync deleted

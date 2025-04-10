@@ -52,8 +52,9 @@ public:
     /// @param top Certificate that issued the descendants
     std::vector<X509Wrapper> collect_descendants(const X509Wrapper& top);
 
-    /// @brief obtains the hash data of the certificate, finding its issuer if needed
-    CertificateHashData get_certificate_hash(const X509Wrapper& certificate);
+    /// @brief Obtains the hash data of the certificate, finding its issuer if needed
+    /// @return True if a hash could be found, false otherwise
+    bool get_certificate_hash(const X509Wrapper& certificate, CertificateHashData& out_hash);
 
     /// @brief returns true if we contain a certificate with the following hash
     bool contains_certificate_hash(const CertificateHashData& hash);
