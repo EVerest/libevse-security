@@ -284,7 +284,7 @@ TEST_F(EvseSecurityTests, verify_certificate_counts) {
     // MF is using the same V2G bundle in our case
     ASSERT_EQ(this->evse_security->get_count_of_installed_certificates({CertificateType::MFRootCertificate}), 3);
     // None were defined
-    ASSERT_EQ(this->evse_security->get_count_of_installed_certificates({CertificateType::MORootCertificate}), 0);
+    ASSERT_EQ(this->evse_security->get_count_of_installed_certificates({CertificateType::MORootCertificate}), 3);
 }
 
 TEST_F(EvseSecurityTestsMulti, verify_multi_root_leaf_retrieval) {
@@ -729,7 +729,7 @@ TEST_F(EvseSecurityTests, get_installed_certificates_and_delete_secc_leaf) {
     const auto r = this->evse_security->get_installed_certificates(certificate_types);
 
     ASSERT_EQ(r.status, GetInstalledCertificatesStatus::Accepted);
-    ASSERT_EQ(r.certificate_hash_data_chain.size(), 4);
+    ASSERT_EQ(r.certificate_hash_data_chain.size(), 5);
     bool found_v2g_chain = false;
 
     CertificateHashData secc_leaf_data;

@@ -798,14 +798,22 @@ OCSPRequestDataList EvseSecurity::generate_ocsp_request_data_internal(const std:
 
             if (descendants.size() > 0) {
                 // We must make sure that the full received 'leaf_chain' is present in the descendants
+                bool missing_link = false;
+
                 for (const X509Wrapper& received_chain_link : chain) {
                     bool descendants_contain =
                         std::find(descendants.begin(), descendants.end(), received_chain_link) != descendants.end();
 
-                    // A link is missing from the chain, search next root
+                    // A link is missing from the chain, break
                     if (!descendants_contain) {
-                        continue;
+                        missing_link = true;
+                        break;
                     }
+                }
+
+                // Search next root
+                if (missing_link) {
+                    continue;
                 }
             } else {
                 // Search next root
