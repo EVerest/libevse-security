@@ -406,6 +406,81 @@ std::string OpenSSLSupplier::x509_get_responder_url(X509Handle* handle) {
     return responder_url;
 }
 
+CertificateKeyUsageFlagsType OpenSSLSupplier::x509_get_key_usage_flags(X509Handle* handle) {
+    CertificateKeyUsageFlagsType flags = 0;
+
+    X509* x509 = get(handle);
+
+    if (x509 == nullptr)
+        return flags;
+
+    uint32_t ext_flags = X509_get_extension_flags(x509);
+
+    // If it has the key extension flags
+    if ((ext_flags & EXFLAG_KUSAGE) != 0) {
+        uint32_t key_flags = X509_get_key_usage(x509);
+
+        if ((key_flags & KU_DIGITAL_SIGNATURE) != 0) {
+            flags |= static_cast<CertificateKeyUsageFlagsType>(CertificateKeyUsageFlags::DIGITAL_SIGNATURE);
+        }
+        if ((key_flags & KU_NON_REPUDIATION) != 0) {
+            flags |= static_cast<CertificateKeyUsageFlagsType>(CertificateKeyUsageFlags::NON_REPUDIATION);
+        }
+        if ((key_flags & KU_KEY_ENCIPHERMENT) != 0) {
+            flags |= static_cast<CertificateKeyUsageFlagsType>(CertificateKeyUsageFlags::KEY_ENCIPHERMENT);
+        }
+        if ((key_flags & KU_DATA_ENCIPHERMENT) != 0) {
+            flags |= static_cast<CertificateKeyUsageFlagsType>(CertificateKeyUsageFlags::DATA_ENCIPHERMENT);
+        }
+        if ((key_flags & KU_KEY_AGREEMENT) != 0) {
+            flags |= static_cast<CertificateKeyUsageFlagsType>(CertificateKeyUsageFlags::KEY_AGREEMENT);
+        }
+        if ((key_flags & KU_KEY_CERT_SIGN) != 0) {
+            flags |= static_cast<CertificateKeyUsageFlagsType>(CertificateKeyUsageFlags::KEY_CERT_SIGN);
+        }
+        if ((key_flags & KU_CRL_SIGN) != 0) {
+            flags |= static_cast<CertificateKeyUsageFlagsType>(CertificateKeyUsageFlags::CRL_SIGN);
+        }
+        if ((key_flags & KU_ENCIPHER_ONLY) != 0) {
+            flags |= static_cast<CertificateKeyUsageFlagsType>(CertificateKeyUsageFlags::ENCIPHER_ONLY);
+        }
+        if ((key_flags & KU_DECIPHER_ONLY) != 0) {
+            flags |= static_cast<CertificateKeyUsageFlagsType>(CertificateKeyUsageFlags::DECIPHER_ONLY);
+        }
+    }
+
+    if ((ext_flags & EXFLAG_XKUSAGE) != 0) {
+        uint32_t ext_key_flags = X509_get_extended_key_usage(x509);
+
+        if ((ext_key_flags & XKU_SSL_SERVER) != 0) {
+            flags |= static_cast<CertificateKeyUsageFlagsType>(CertificateKeyUsageFlags::SSL_SERVER);
+        }
+        if ((ext_key_flags & XKU_SSL_CLIENT) != 0) {
+            flags |= static_cast<CertificateKeyUsageFlagsType>(CertificateKeyUsageFlags::SSL_CLIENT);
+        }
+        if ((ext_key_flags & XKU_SMIME) != 0) {
+            flags |= static_cast<CertificateKeyUsageFlagsType>(CertificateKeyUsageFlags::SMIME);
+        }
+        if ((ext_key_flags & XKU_CODE_SIGN) != 0) {
+            flags |= static_cast<CertificateKeyUsageFlagsType>(CertificateKeyUsageFlags::CODE_SIGN);
+        }
+        if ((ext_key_flags & XKU_OCSP_SIGN) != 0) {
+            flags |= static_cast<CertificateKeyUsageFlagsType>(CertificateKeyUsageFlags::OCSP_SIGN);
+        }
+        if ((ext_key_flags & XKU_TIMESTAMP) != 0) {
+            flags |= static_cast<CertificateKeyUsageFlagsType>(CertificateKeyUsageFlags::TIMESTAMP);
+        }
+        if ((ext_key_flags & XKU_DVCS) != 0) {
+            flags |= static_cast<CertificateKeyUsageFlagsType>(CertificateKeyUsageFlags::DVCS);
+        }
+        if ((ext_key_flags & XKU_ANYEKU) != 0) {
+            flags |= static_cast<CertificateKeyUsageFlagsType>(CertificateKeyUsageFlags::ANYEKU);
+        }
+    }
+
+    return flags;
+}
+
 bool OpenSSLSupplier::x509_get_validity(X509Handle* handle, std::int64_t& out_valid_in, std::int64_t& out_valid_to) {
     X509* x509 = get(handle);
 
@@ -703,12 +778,25 @@ CertificateSignRequestResult OpenSSLSupplier::x509_generate_csr(const Certificat
     std::string key_usage{};
     X509_EXTENSION* ext_key_usage = nullptr;
 
-    if (csr_info.key_usage_flags & (std::uint8_t)CertificateKeyUsage::DIGITAL_SIGNATURE) {
-        key_usage += "digitalSignature";
-    }
+    struct FlagValue {
+        CertificateKeyUsageFlags flag;
+        const char* value;
+    };
 
-    if (csr_info.key_usage_flags & (std::uint8_t)CertificateKeyUsage::KEY_AGREEMENT) {
-        key_usage += ", keyAgreement";
+    constexpr std::array<FlagValue, 2> supported_key_ext = {
+        {{CertificateKeyUsageFlags::DIGITAL_SIGNATURE, "digitalSignature"},
+         {CertificateKeyUsageFlags::KEY_AGREEMENT, "keyAgreement"}}};
+
+    bool first_key_usage = true;
+    for (const auto& key_val : supported_key_ext) {
+        if (csr_info.key_usage_flags & static_cast<CertificateKeyUsageFlagsType>(key_val.flag) != 0) {
+            if (!first_key_usage) {
+                key_usage += ", ";
+                key_usage += key_val.value;
+            }
+
+            first_key_usage = false;
+        }
     }
 
     if (!key_usage.empty()) {

@@ -36,10 +36,31 @@ enum class CertificateSignRequestResult {
     Unknown,            // Any other error
 };
 
-enum class CertificateKeyUsage : std::uint8_t {
+typedef std::uint32_t CertificateKeyUsageFlagsType;
+
+enum class CertificateKeyUsageFlags : CertificateKeyUsageFlagsType {
     NONE = 0,
+
+    // Key usage
     DIGITAL_SIGNATURE = 0x1 << 0,
     KEY_AGREEMENT = 0x1 << 1,
+    KEY_ENCIPHERMENT = 0x1 << 2,
+    KEY_CERT_SIGN = 0x1 << 3,
+    CRL_SIGN = 0x1 << 4,
+    NON_REPUDIATION = 0x1 << 5,
+    DATA_ENCIPHERMENT = 0x1 << 6,
+    ENCIPHER_ONLY = 0x1 << 7,
+    DECIPHER_ONLY = 0x1 << 8,
+
+    // Extended key usage (start from 16)
+    SSL_SERVER = 0x1 << 16,
+    SSL_CLIENT = 0x1 << 17,
+    SMIME = 0x1 << 18,
+    CODE_SIGN = 0x1 << 19,
+    OCSP_SIGN = 0x1 << 20,
+    TIMESTAMP = 0x1 << 21,
+    DVCS = 0x1 << 22,
+    ANYEKU = 0x1 << 23
 };
 
 struct KeyGenerationInfo {

@@ -1091,9 +1091,9 @@ GetCertificateSignRequestResult EvseSecurity::generate_certificate_signing_reque
 #endif
 
     if (certificate_type == LeafCertificateType::V2G) {
-        info.set_key_usage_flags(CertificateKeyUsage::DIGITAL_SIGNATURE);
+        info.set_key_usage_flags(CertificateKeyUsageFlags::DIGITAL_SIGNATURE);
     } else {
-        info.set_key_usage_flags(CertificateKeyUsage::DIGITAL_SIGNATURE, CertificateKeyUsage::KEY_AGREEMENT);
+        info.set_key_usage_flags(CertificateKeyUsageFlags::DIGITAL_SIGNATURE, CertificateKeyUsageFlags::KEY_AGREEMENT);
     }
 
     info.key_info.key_type = CryptoKeyType::EC_prime256v1;

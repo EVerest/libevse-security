@@ -38,6 +38,10 @@ std::string AbstractCryptoSupplier::x509_get_responder_url(X509Handle* handle) {
     default_crypto_supplier_usage_error() return {};
 }
 
+CertificateKeyUsageFlagsType AbstractCryptoSupplier::x509_get_key_usage_flags(X509Handle* handle) {
+    default_crypto_supplier_usage_error() return {};
+}
+
 std::string AbstractCryptoSupplier::x509_get_key_hash(X509Handle* handle) {
     default_crypto_supplier_usage_error() return {};
 }
