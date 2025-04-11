@@ -1065,6 +1065,13 @@ TEST_F(EvseSecurityTestsExpired, verify_expired_leaf_deletion) {
     }
 }
 
+TEST_F(EvseSecurityTests, verify_csr_key_extensions) {
+    auto csr_key_agreem = evse_security->generate_certificate_signing_request(LeafCertificateType::CSMS, "DE", "Pionix", "NA");
+    auto csr_no_key_agreem = evse_security->generate_certificate_signing_request(LeafCertificateType::V2G, "DE", "Pionix", "NA");
+
+    
+}
+
 TEST_F(EvseSecurityTests, verify_expired_csr_deletion) {
     // Generate a CSR
     auto csr = evse_security->generate_certificate_signing_request(LeafCertificateType::CSMS, "DE", "Pionix", "NA");

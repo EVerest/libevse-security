@@ -789,12 +789,12 @@ CertificateSignRequestResult OpenSSLSupplier::x509_generate_csr(const Certificat
 
     bool first_key_usage = true;
     for (const auto& key_val : supported_key_ext) {
-        if (csr_info.key_usage_flags & static_cast<CertificateKeyUsageFlagsType>(key_val.flag) != 0) {
+        if ((csr_info.key_usage_flags & static_cast<CertificateKeyUsageFlagsType>(key_val.flag)) != 0) {
             if (!first_key_usage) {
-                key_usage += ", ";
-                key_usage += key_val.value;
+                key_usage += ", ";                
             }
 
+            key_usage += key_val.value;
             first_key_usage = false;
         }
     }
