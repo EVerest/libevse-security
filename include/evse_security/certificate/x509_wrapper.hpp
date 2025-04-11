@@ -3,9 +3,9 @@
 #pragma once
 
 #include <memory>
+#include <set>
 #include <stdexcept>
 #include <string>
-#include <set>
 
 #include <evse_security/crypto/interface/crypto_types.hpp>
 #include <evse_security/evse_types.hpp>

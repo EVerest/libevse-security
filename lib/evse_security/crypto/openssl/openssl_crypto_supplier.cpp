@@ -791,7 +791,7 @@ CertificateSignRequestResult OpenSSLSupplier::x509_generate_csr(const Certificat
     for (const auto& key_val : supported_key_ext) {
         if ((csr_info.key_usage_flags & static_cast<CertificateKeyUsageFlagsType>(key_val.flag)) != 0) {
             if (!first_key_usage) {
-                key_usage += ", ";                
+                key_usage += ", ";
             }
 
             key_usage += key_val.value;
@@ -825,7 +825,7 @@ CertificateSignRequestResult OpenSSLSupplier::x509_generate_csr(const Certificat
 
     const bool result = X509_REQ_add_extensions(x509_req_ptr.get(), extensions);
 
-    if (ext_key_usage) {
+    if (ext_key_usage != nullptr) {
         X509_EXTENSION_free(ext_key_usage);
     }
 

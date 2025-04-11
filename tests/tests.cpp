@@ -16,7 +16,10 @@
 
 #include <evse_security/crypto/evse_crypto.hpp>
 
+#include <openssl/err.h>
 #include <openssl/opensslv.h>
+#include <openssl/pem.h>
+#include <openssl/x509.h>
 
 #ifdef USING_TPM2
 
@@ -48,6 +51,39 @@ bool equal_certificate_strings(const std::string& cert1, const std::string& cert
     }
 
     return true;
+}
+
+std::vector<std::string> extract_extensions_from_csr(const std::string& csr_string) {
+    BIO* bio = BIO_new_mem_buf(csr_string.data(), csr_string.size());
+    X509_REQ* csr = PEM_read_bio_X509_REQ(bio, NULL, NULL, NULL);
+    BIO_free(bio);
+
+    // Extract extensions
+    STACK_OF(X509_EXTENSION)* extensions = X509_REQ_get_extensions(csr);
+
+    if (!extensions)
+        return {};
+
+    std::vector<std::string> string_exts;
+
+    for (int i = 0; i < sk_X509_EXTENSION_num(extensions); ++i) {
+        X509_EXTENSION* ext = sk_X509_EXTENSION_value(extensions, i);
+        ASN1_OBJECT* obj = X509_EXTENSION_get_object(ext);
+        ASN1_OCTET_STRING* data = X509_EXTENSION_get_data(ext);
+
+        // TODO: extract extensions
+        // Get extension name
+        char ext_data[256];
+        std::memset(ext_data, sizeof(ext_data), 0);
+
+        OBJ_obj2txt(ext_data, sizeof(ext_data), obj, 1);
+        string_exts.push_back(ext_data);
+    }
+
+    sk_X509_EXTENSION_pop_free(extensions, X509_EXTENSION_free);
+    X509_REQ_free(csr);
+
+    return string_exts;
 }
 
 namespace evse_security {
@@ -1066,10 +1102,22 @@ TEST_F(EvseSecurityTestsExpired, verify_expired_leaf_deletion) {
 }
 
 TEST_F(EvseSecurityTests, verify_csr_key_extensions) {
-    auto csr_key_agreem = evse_security->generate_certificate_signing_request(LeafCertificateType::CSMS, "DE", "Pionix", "NA");
-    auto csr_no_key_agreem = evse_security->generate_certificate_signing_request(LeafCertificateType::V2G, "DE", "Pionix", "NA");
+    auto csr_key_agreem =
+        evse_security->generate_certificate_signing_request(LeafCertificateType::CSMS, "DE", "Pionix", "NA");
 
-    
+    ASSERT_EQ(csr_key_agreem.status, GetCertificateSignRequestStatus::Accepted);
+    ASSERT_TRUE(csr_key_agreem.csr.has_value());
+
+    auto exts = extract_extensions_from_csr(csr_key_agreem.csr.value());
+    // TODO: add extension tests
+
+    auto csr_no_key_agreem =
+        evse_security->generate_certificate_signing_request(LeafCertificateType::V2G, "DE", "Pionix", "NA");
+
+    ASSERT_EQ(csr_no_key_agreem.status, GetCertificateSignRequestStatus::Accepted);
+    ASSERT_TRUE(csr_no_key_agreem.csr.has_value());
+
+    exts = extract_extensions_from_csr(csr_no_key_agreem.csr.value());
 }
 
 TEST_F(EvseSecurityTests, verify_expired_csr_deletion) {
