@@ -206,6 +206,67 @@ std::string X509Wrapper::get_responder_url() const {
     return CryptoSupplier::x509_get_responder_url(get());
 }
 
+std::set<CertificateKeyUsageFlags> X509Wrapper::get_key_usage() const {
+    std::set<CertificateKeyUsageFlags> set_flags{};
+
+    CertificateKeyUsageFlagsType flags = CryptoSupplier::x509_get_key_usage_flags(get());
+
+    // Populate set flags
+    if ((flags & static_cast<CertificateKeyUsageFlagsType>(CertificateKeyUsageFlags::DIGITAL_SIGNATURE)) != 0) {
+        set_flags.emplace(CertificateKeyUsageFlags::DIGITAL_SIGNATURE);
+    }
+    if ((flags & static_cast<CertificateKeyUsageFlagsType>(CertificateKeyUsageFlags::KEY_AGREEMENT)) != 0) {
+        set_flags.emplace(CertificateKeyUsageFlags::KEY_AGREEMENT);
+    }
+    if ((flags & static_cast<CertificateKeyUsageFlagsType>(CertificateKeyUsageFlags::KEY_ENCIPHERMENT)) != 0) {
+        set_flags.emplace(CertificateKeyUsageFlags::KEY_ENCIPHERMENT);
+    }
+    if ((flags & static_cast<CertificateKeyUsageFlagsType>(CertificateKeyUsageFlags::KEY_CERT_SIGN)) != 0) {
+        set_flags.emplace(CertificateKeyUsageFlags::KEY_CERT_SIGN);
+    }
+    if ((flags & static_cast<CertificateKeyUsageFlagsType>(CertificateKeyUsageFlags::CRL_SIGN)) != 0) {
+        set_flags.emplace(CertificateKeyUsageFlags::CRL_SIGN);
+    }
+    if ((flags & static_cast<CertificateKeyUsageFlagsType>(CertificateKeyUsageFlags::NON_REPUDIATION)) != 0) {
+        set_flags.emplace(CertificateKeyUsageFlags::NON_REPUDIATION);
+    }
+    if ((flags & static_cast<CertificateKeyUsageFlagsType>(CertificateKeyUsageFlags::DATA_ENCIPHERMENT)) != 0) {
+        set_flags.emplace(CertificateKeyUsageFlags::DATA_ENCIPHERMENT);
+    }
+    if ((flags & static_cast<CertificateKeyUsageFlagsType>(CertificateKeyUsageFlags::ENCIPHER_ONLY)) != 0) {
+        set_flags.emplace(CertificateKeyUsageFlags::ENCIPHER_ONLY);
+    }
+    if ((flags & static_cast<CertificateKeyUsageFlagsType>(CertificateKeyUsageFlags::DECIPHER_ONLY)) != 0) {
+        set_flags.emplace(CertificateKeyUsageFlags::DECIPHER_ONLY);
+    }
+    if ((flags & static_cast<CertificateKeyUsageFlagsType>(CertificateKeyUsageFlags::SSL_SERVER)) != 0) {
+        set_flags.emplace(CertificateKeyUsageFlags::SSL_SERVER);
+    }
+    if ((flags & static_cast<CertificateKeyUsageFlagsType>(CertificateKeyUsageFlags::SSL_CLIENT)) != 0) {
+        set_flags.emplace(CertificateKeyUsageFlags::SSL_CLIENT);
+    }
+    if ((flags & static_cast<CertificateKeyUsageFlagsType>(CertificateKeyUsageFlags::SMIME)) != 0) {
+        set_flags.emplace(CertificateKeyUsageFlags::SMIME);
+    }
+    if ((flags & static_cast<CertificateKeyUsageFlagsType>(CertificateKeyUsageFlags::CODE_SIGN)) != 0) {
+        set_flags.emplace(CertificateKeyUsageFlags::CODE_SIGN);
+    }
+    if ((flags & static_cast<CertificateKeyUsageFlagsType>(CertificateKeyUsageFlags::OCSP_SIGN)) != 0) {
+        set_flags.emplace(CertificateKeyUsageFlags::OCSP_SIGN);
+    }
+    if ((flags & static_cast<CertificateKeyUsageFlagsType>(CertificateKeyUsageFlags::TIMESTAMP)) != 0) {
+        set_flags.emplace(CertificateKeyUsageFlags::TIMESTAMP);
+    }
+    if ((flags & static_cast<CertificateKeyUsageFlagsType>(CertificateKeyUsageFlags::DVCS)) != 0) {
+        set_flags.emplace(CertificateKeyUsageFlags::DVCS);
+    }
+    if ((flags & static_cast<CertificateKeyUsageFlagsType>(CertificateKeyUsageFlags::ANYEKU)) != 0) {
+        set_flags.emplace(CertificateKeyUsageFlags::ANYEKU);
+    }
+
+    return set_flags;
+}
+
 std::string X509Wrapper::get_export_string() const {
     return CryptoSupplier::x509_to_string(get());
 }
