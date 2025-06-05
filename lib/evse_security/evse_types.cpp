@@ -129,16 +129,16 @@ std::string install_certificate_result_to_string(InstallCertificateResult e) {
     }
 };
 
-std::string delete_certificate_result_to_string(DeleteCertificateResult e) {
+std::string delete_certificate_status_to_string(DeleteCertificateStatus e) {
     switch (e) {
-    case DeleteCertificateResult::Accepted:
+    case DeleteCertificateStatus::Accepted:
         return "Accepted";
-    case DeleteCertificateResult::Failed:
+    case DeleteCertificateStatus::Failed:
         return "Failed";
-    case DeleteCertificateResult::NotFound:
+    case DeleteCertificateStatus::NotFound:
         return "NotFound";
     default:
-        throw std::out_of_range("Could not convert DeleteCertificateResult to string");
+        throw std::out_of_range("Could not convert DeleteCertificateStatus to string");
     }
 };
 

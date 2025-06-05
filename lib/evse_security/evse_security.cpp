@@ -356,13 +356,13 @@ InstallCertificateResult EvseSecurity::install_ca_certificate(const std::string&
     }
 }
 
-GetDeleteCertificateResult EvseSecurity::delete_certificate(const CertificateHashData& certificate_hash_data) {
+DeleteCertificateResult EvseSecurity::delete_certificate(const CertificateHashData& certificate_hash_data) {
     std::lock_guard<std::mutex> guard(EvseSecurity::security_mutex);
 
     EVLOG_info << "Delete CA certificate: " << certificate_hash_data.serial_number;
 
-    GetDeleteCertificateResult response;
-    response.result = DeleteCertificateResult::NotFound;
+    DeleteCertificateResult response;
+    response.status = DeleteCertificateStatus::NotFound;
 
     bool found_certificate = false;
     bool failed_to_write = false;
@@ -443,16 +443,16 @@ GetDeleteCertificateResult EvseSecurity::delete_certificate(const CertificateHas
     }
 
     if (!found_certificate) {
-        response.result = DeleteCertificateResult::NotFound;
+        response.status = DeleteCertificateStatus::NotFound;
         return response;
     }
     if (failed_to_write) {
         // at least one certificate could not be deleted from the bundle
-        response.result = DeleteCertificateResult::Failed;
+        response.status = DeleteCertificateStatus::Failed;
         return response;
     }
 
-    response.result = DeleteCertificateResult::Accepted;
+    response.status = DeleteCertificateStatus::Accepted;
     return response;
 }
 

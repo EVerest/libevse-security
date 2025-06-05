@@ -623,7 +623,7 @@ TEST_F(EvseSecurityTests, delete_root_ca_01) {
         root_certs.certificate_hash_data_chain.at(0).certificate_hash_data.serial_number;
     const auto result = this->evse_security->delete_certificate(certificate_hash_data);
 
-    ASSERT_EQ(result.result, DeleteCertificateResult::Accepted);
+    ASSERT_EQ(result.status, DeleteCertificateStatus::Accepted);
     ASSERT_TRUE(result.ca_certificate_type.has_value());
     ASSERT_EQ(result.ca_certificate_type.value(), root_type);
 }
@@ -636,7 +636,7 @@ TEST_F(EvseSecurityTests, delete_root_ca_02) {
     certificate_hash_data.serial_number = "3046";
     const auto result = this->evse_security->delete_certificate(certificate_hash_data);
 
-    ASSERT_EQ(result.result, DeleteCertificateResult::NotFound);
+    ASSERT_EQ(result.status, DeleteCertificateStatus::NotFound);
     ASSERT_FALSE(result.ca_certificate_type.has_value());
     ASSERT_FALSE(result.leaf_certificate_type.has_value());
 }
@@ -662,7 +662,7 @@ TEST_F(EvseSecurityTests, delete_sub_ca_1) {
     const auto subca1_hash_data = subca1_x509.get_certificate_hash_data(root_x509);
 
     const auto delete_result = this->evse_security->delete_certificate(subca1_hash_data);
-    ASSERT_EQ(delete_result.result, DeleteCertificateResult::Accepted);
+    ASSERT_EQ(delete_result.status, DeleteCertificateStatus::Accepted);
     ASSERT_TRUE(delete_result.ca_certificate_type.has_value());
     ASSERT_EQ(delete_result.ca_certificate_type.value(), CaCertificateType::V2G);
 
@@ -707,7 +707,7 @@ TEST_F(EvseSecurityTests, delete_sub_ca_2) {
     const auto subca2_hash_data = subca2_x509.get_certificate_hash_data(subca1_x509);
 
     const auto delete_result = this->evse_security->delete_certificate(subca2_hash_data);
-    ASSERT_EQ(delete_result.result, DeleteCertificateResult::Accepted);
+    ASSERT_EQ(delete_result.status, DeleteCertificateStatus::Accepted);
     ASSERT_TRUE(delete_result.ca_certificate_type.has_value());
     ASSERT_EQ(delete_result.ca_certificate_type.value(), CaCertificateType::V2G);
 
@@ -776,7 +776,7 @@ TEST_F(EvseSecurityTests, get_installed_certificates_and_delete_secc_leaf) {
 
     // Do not allow the SECC delete since it's the ChargingStationCertificate
     auto delete_response = this->evse_security->delete_certificate(secc_leaf_data);
-    ASSERT_EQ(delete_response.result, DeleteCertificateResult::Failed);
+    ASSERT_EQ(delete_response.status, DeleteCertificateStatus::Failed);
 }
 
 TEST_F(EvseSecurityTests, leaf_cert_starts_in_future_accepted) {
