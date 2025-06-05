@@ -138,7 +138,7 @@ std::string delete_certificate_result_to_string(DeleteCertificateResult e) {
     case DeleteCertificateResult::NotFound:
         return "NotFound";
     default:
-        throw std::out_of_range("Could not convert DeleteCertificateStatus to string");
+        throw std::out_of_range("Could not convert DeleteCertificateResult to string");
     }
 };
 
