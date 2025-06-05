@@ -73,7 +73,7 @@ enum class InstallCertificateResult {
     Accepted,
 };
 
-enum class DeleteCertificateStatus {
+enum class DeleteCertificateResult {
     Accepted,
     Failed,
     NotFound,
@@ -165,8 +165,8 @@ struct GetInstalledCertificatesResult {
     std::vector<CertificateHashDataChain>
         certificate_hash_data_chain; ///< the hashed certificate data for each requested certificates
 };
-struct DeleteCertificateResult {
-    DeleteCertificateStatus status;                           ///< Indicates the status of the request
+struct DeleteResult {
+    DeleteCertificateResult result;                           ///< Indicates the status of the request
     std::optional<CaCertificateType> ca_certificate_type;     ///< Valid if we deleted a root
     std::optional<LeafCertificateType> leaf_certificate_type; ///< Valid if we deleted a leaf
 };
