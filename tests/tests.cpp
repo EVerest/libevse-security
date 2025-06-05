@@ -636,7 +636,8 @@ TEST_F(EvseSecurityTests, delete_root_ca_02) {
     const auto result = this->evse_security->delete_certificate(certificate_hash_data);
 
     ASSERT_EQ(result.result, DeleteCertificateResult::NotFound);
-    ASSERT_EQ(result.ca_certificate_type.value(), CaCertificateType::V2G);
+    ASSERT_FALSE(result.ca_certificate_type.has_value());
+    ASSERT_FALSE(result.leaf_certificate_type.has_value());
 }
 
 TEST_F(EvseSecurityTests, delete_sub_ca_1) {
@@ -661,7 +662,7 @@ TEST_F(EvseSecurityTests, delete_sub_ca_1) {
 
     const auto delete_result = this->evse_security->delete_certificate(subca1_hash_data);
     ASSERT_EQ(delete_result.result, DeleteCertificateResult::Accepted);
-    ASSERT_EQ(delete_result.leaf_certificate_type.value(), LeafCertificateType::V2G);
+    ASSERT_EQ(delete_result.ca_certificate_type.value(), CaCertificateType::V2G);
 
     std::vector<CertificateType> certificate_types;
     certificate_types.push_back(CertificateType::V2GRootCertificate);
@@ -705,7 +706,7 @@ TEST_F(EvseSecurityTests, delete_sub_ca_2) {
 
     const auto delete_result = this->evse_security->delete_certificate(subca2_hash_data);
     ASSERT_EQ(delete_result.result, DeleteCertificateResult::Accepted);
-    ASSERT_EQ(delete_result.leaf_certificate_type.value(), LeafCertificateType::V2G);
+    ASSERT_EQ(delete_result.ca_certificate_type.value(), CaCertificateType::V2G);
 
     std::vector<CertificateType> certificate_types;
     certificate_types.push_back(CertificateType::V2GRootCertificate);
