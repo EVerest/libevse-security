@@ -361,12 +361,13 @@ InstallCertificateResult EvseSecurity::install_ca_certificate(const std::string&
     }
 }
 
-DeleteCertificateResult EvseSecurity::delete_certificate(const CertificateHashData& certificate_hash_data) {
+DeleteResult EvseSecurity::delete_certificate(const CertificateHashData& certificate_hash_data) {
     std::lock_guard<std::mutex> guard(EvseSecurity::security_mutex);
 
     EVLOG_info << "Delete CA certificate: " << certificate_hash_data.serial_number;
 
-    auto response = DeleteCertificateResult::NotFound;
+    DeleteResult response;
+    response.result = DeleteCertificateResult::NotFound;
 
     bool found_certificate = false;
     bool failed_to_write = false;
@@ -379,6 +380,8 @@ DeleteCertificateResult EvseSecurity::delete_certificate(const CertificateHashDa
 
             if (ca_bundle.delete_certificate(certificate_hash_data, true)) {
                 found_certificate = true;
+                response.ca_certificate_type = certificate_type;
+
                 if (!ca_bundle.export_certificates()) {
                     failed_to_write = true;
                 }
@@ -397,11 +400,15 @@ DeleteCertificateResult EvseSecurity::delete_certificate(const CertificateHashDa
                         (directories.csms_leaf_cert_directory == directories.secc_leaf_cert_directory);
 
             CaCertificateType load;
+            LeafCertificateType leaf_type;
 
-            if (secc)
+            if (secc) {
                 load = CaCertificateType::V2G;
-            else if (csms)
+                leaf_type = LeafCertificateType::V2G;
+            } else if (csms) {
                 load = CaCertificateType::CSMS;
+                leaf_type = LeafCertificateType::CSMS;
+            }
 
             // Also load the roots since we need to build the hierarchy for correct certificate hashes
             X509CertificateBundle root_bundle(ca_bundle_path_map[load], EncodingFormat::PEM);
@@ -419,6 +426,7 @@ DeleteCertificateResult EvseSecurity::delete_certificate(const CertificateHashDa
 
                 if (leaf_bundle.delete_certificate(to_delete, true)) {
                     found_certificate = true;
+                    response.leaf_certificate_type = leaf_type;
 
                     if (csms) {
                         // Per M04.FR.06 we are not allowed to delete the CSMS (ChargingStationCertificate), we should
@@ -440,13 +448,17 @@ DeleteCertificateResult EvseSecurity::delete_certificate(const CertificateHashDa
     }
 
     if (!found_certificate) {
-        return DeleteCertificateResult::NotFound;
+        response.result = DeleteCertificateResult::NotFound;
+        return response;
     }
     if (failed_to_write) {
         // at least one certificate could not be deleted from the bundle
-        return DeleteCertificateResult::Failed;
+        response.result = DeleteCertificateResult::Failed;
+        return response;
     }
-    return DeleteCertificateResult::Accepted;
+
+    response.result = DeleteCertificateResult::Accepted;
+    return response;
 }
 
 InstallCertificateResult EvseSecurity::update_leaf_certificate(const std::string& certificate_chain,
