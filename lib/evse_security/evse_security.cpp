@@ -743,13 +743,22 @@ OCSPRequestDataList EvseSecurity::get_v2g_ocsp_request_data() {
 
     // TODO: we must not only use the current leaf certificate but we must get all the leafs (including future valid)
     // and request OCSP for all
-    const auto secc_key_pair = this->get_leaf_certificate_info_internal(LeafCertificateType::V2G, EncodingFormat::PEM);
+    CertificateQueryParams params;
+    params.certificate_type = LeafCertificateType::V2G;
+    params.encoding = EncodingFormat::PEM;
+    params.include_all_valid = true;
+    params.include_future_valid = true;
+    params.include_ocsp = false;
+    params.include_root = false;
 
-    if (secc_key_pair.status != GetCertificateInfoStatus::Accepted or !secc_key_pair.info.has_value()) {
+    GetCertificateFullInfoResult result = get_full_leaf_certificate_info_internal(params);
+
+    if (result.status != GetCertificateInfoStatus::Accepted or !result.info.size()) {
         EVLOG_error << "Could not get key pair, for v2g ocsp request!";
         return OCSPRequestDataList();
     }
 
+    // TODO:
     std::string chain{};
 
     if (secc_key_pair.info.value().certificate.has_value()) {
@@ -1192,7 +1201,7 @@ GetCertificateInfoResult EvseSecurity::get_leaf_certificate_info(LeafCertificate
 GetCertificateInfoResult EvseSecurity::get_leaf_certificate_info_internal(LeafCertificateType certificate_type,
                                                                           EncodingFormat encoding, bool include_ocsp) {
     GetCertificateFullInfoResult result =
-        get_full_leaf_certificate_info_internal({certificate_type, encoding, include_ocsp, false, false});
+        get_full_leaf_certificate_info_internal({certificate_type, encoding, include_ocsp, false, false, false});
     GetCertificateInfoResult internal_result;
 
     internal_result.status = result.status;
@@ -1256,6 +1265,14 @@ EvseSecurity::get_full_leaf_certificate_info_internal(const CertificateQueryPara
         leaf_certificates.for_each_chain_ordered(
             [&](const fs::path& file, const std::vector<X509Wrapper>& chain) {
                 // Search for the first valid where we can find a key
+                bool is_valid;
+
+                if (params.include_future_valid) {
+                    is_valid = chain.at(0).is_valid_in_future();
+                } else {
+                    is_valid = chain.at(0).is_valid();
+                }
+
                 if (not chain.empty() && chain.at(0).is_valid()) {
                     any_valid_certificate = true;
 
