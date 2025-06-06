@@ -758,22 +758,31 @@ OCSPRequestDataList EvseSecurity::get_v2g_ocsp_request_data() {
         return OCSPRequestDataList();
     }
 
-    // TODO:
-    std::string chain{};
+    OCSPRequestDataList full_oscp_list;
 
-    if (secc_key_pair.info.value().certificate.has_value()) {
-        filesystem_utils::read_from_file(secc_key_pair.info.value().certificate.value(), chain);
-    } else if (secc_key_pair.info.value().certificate_single.has_value()) {
-        filesystem_utils::read_from_file(secc_key_pair.info.value().certificate_single.value(), chain);
-    } else {
-        EVLOG_error << "Could not load v2g ocsp cache leaf chain!";
+    for (const auto secc_key_pair : result.info) {
+        std::string chain{};
+
+        if (secc_key_pair.certificate.has_value()) {
+            filesystem_utils::read_from_file(secc_key_pair.certificate.value(), chain);
+        } else if (secc_key_pair.certificate_single.has_value()) {
+            filesystem_utils::read_from_file(secc_key_pair.certificate_single.value(), chain);
+        } else {
+            EVLOG_error << "Could not load v2g ocsp cache leaf chain!";
+        }
+
+        if (!chain.empty()) {
+            OCSPRequestDataList ocsp_request = generate_ocsp_request_data_internal({CaCertificateType::V2G}, chain);
+
+            // Append all retrieved data
+            full_oscp_list.ocsp_request_data_list.insert(
+                full_oscp_list.ocsp_request_data_list.end(),
+                std::make_move_iterator(ocsp_request.ocsp_request_data_list.begin()),
+                std::make_move_iterator(ocsp_request.ocsp_request_data_list.end()));
+        }
     }
 
-    if (!chain.empty()) {
-        return generate_ocsp_request_data_internal({CaCertificateType::V2G}, chain);
-    }
-
-    return OCSPRequestDataList();
+    return full_oscp_list;
 }
 
 OCSPRequestDataList EvseSecurity::get_mo_ocsp_request_data(const std::string& certificate_chain) {
