@@ -750,6 +750,7 @@ OCSPRequestDataList EvseSecurity::get_v2g_ocsp_request_data() {
     params.include_future_valid = true;
     params.include_ocsp = false;
     params.include_root = false;
+    params.remove_duplicates = true;
 
     GetCertificateFullInfoResult result = get_full_leaf_certificate_info_internal(params);
 
@@ -2002,11 +2003,11 @@ void EvseSecurity::garbage_collect() {
                                             if (filesystem_utils::read_hash_from_file(hash_entry.path(), read_hash) &&
                                                 read_hash == ocsp_hash) {
 
-                                                auto oscp_data_path = hash_entry.path();
-                                                oscp_data_path.replace_extension(DER_EXTENSION);
+                                                auto ocsp_data_path = hash_entry.path();
+                                                ocsp_data_path.replace_extension(DER_EXTENSION);
 
                                                 invalid_certificate_files.emplace(hash_entry.path());
-                                                invalid_certificate_files.emplace(oscp_data_path);
+                                                invalid_certificate_files.emplace(ocsp_data_path);
                                             }
                                         }
                                     }

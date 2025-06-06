@@ -835,7 +835,7 @@ TEST_F(EvseSecurityTests, verify_full_filesystem_install_reject) {
     ASSERT_TRUE(result == InstallCertificateResult::CertificateStoreMaxLengthExceeded);
 }
 
-TEST_F(EvseSecurityTests, verify_oscp_request_mo_generate) {
+TEST_F(EvseSecurityTests, verify_ocsp_request_mo_generate) {
     // Read a leaf, should work since this SECC will be tested against both MO and V2G
     const auto secc_leaf = read_file_to_string("certs/client/cso/SECC_LEAF.pem");
     OCSPRequestDataList data = this->evse_security->get_mo_ocsp_request_data(secc_leaf);
@@ -871,7 +871,7 @@ TEST_F(EvseSecurityTests, verify_oscp_request_mo_generate) {
     ASSERT_EQ(data.ocsp_request_data_list[1].certificate_hash_data.value().debug_common_name, std::string("CPOSubCA1"));
 }
 
-TEST_F(EvseSecurityTests, verify_oscp_cache) {
+TEST_F(EvseSecurityTests, verify_ocsp_cache) {
     std::string ocsp_mock_response_data = "OCSP_MOCK_RESPONSE_DATA";
     std::string ocsp_mock_response_data_v2 = "OCSP_MOCK_RESPONSE_DATA_V2";
 
