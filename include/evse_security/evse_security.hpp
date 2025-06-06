@@ -318,9 +318,6 @@ private:
     /// @brief Retrieves information related to leaf certificates
     GetCertificateFullInfoResult get_full_leaf_certificate_info_internal(const CertificateQueryParams& params);
 
-    OCSPRequestDataList generate_ocsp_request_data_internal(const std::set<CaCertificateType>& possible_roots,
-                                                            const std::string& leaf_chain);
-
     GetCertificateInfoResult get_ca_certificate_info_internal(CaCertificateType certificate_type);
     std::optional<fs::path> retrieve_ocsp_cache_internal(const CertificateHashData& certificate_hash_data);
 
