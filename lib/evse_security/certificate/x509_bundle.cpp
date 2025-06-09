@@ -138,8 +138,8 @@ bool X509CertificateBundle::contains_certificate(const CertificateHashData& cert
     return hierarchy.contains_certificate_hash(certificate_hash);
 }
 
-X509Wrapper X509CertificateBundle::find_certificate(const CertificateHashData& certificate_hash,
-                                                    bool case_insensitive_comparison) {
+std::optional<X509Wrapper> X509CertificateBundle::find_certificate(const CertificateHashData& certificate_hash,
+                                                                   bool case_insensitive_comparison) {
     // Try an initial search for root certificates, else a hierarchy build will be required
     for (const auto& chain : certificates) {
         for (const auto& certif : chain.second) {
@@ -205,11 +205,9 @@ int X509CertificateBundle::delete_certificate(const X509Wrapper& certificate, bo
 int X509CertificateBundle::delete_certificate(const CertificateHashData& data, bool include_issued) {
     auto& hierarchy = get_certificate_hierarchy();
 
-    try {
-        // Try to find the certificate by correct hierarchy hash
-        X509Wrapper to_delete = hierarchy.find_certificate(data, true /* = Case insensitive search */);
-        return delete_certificate(to_delete, include_issued);
-    } catch (NoCertificateFound& e) {
+    std::optional<X509Wrapper> to_delete = hierarchy.find_certificate(data, true /* = Case insensitive search */);
+    if (to_delete.has_value()) {
+        return delete_certificate(to_delete.value(), include_issued);
     }
 
     return 0;

@@ -84,7 +84,7 @@ bool X509CertificateHierarchy::contains_certificate_hash(const CertificateHashDa
     return contains;
 }
 
-X509Wrapper X509CertificateHierarchy::find_certificate_root(const X509Wrapper& leaf) {
+std::optional<X509Wrapper> X509CertificateHierarchy::find_certificate_root(const X509Wrapper& leaf) {
     const X509Wrapper* root_ptr = nullptr;
 
     for (const auto& root : hierarchy) {
@@ -103,11 +103,11 @@ X509Wrapper X509CertificateHierarchy::find_certificate_root(const X509Wrapper& l
     if (root_ptr)
         return *root_ptr;
 
-    throw NoCertificateFound("Could not find a certificate root for leaf: " + leaf.get_common_name());
+    return std::nullopt;
 }
 
-X509Wrapper X509CertificateHierarchy::find_certificate(const CertificateHashData& hash,
-                                                       bool case_insensitive_comparison) {
+std::optional<X509Wrapper> X509CertificateHierarchy::find_certificate(const CertificateHashData& hash,
+                                                                      bool case_insensitive_comparison) {
     X509Wrapper* certificate = nullptr;
 
     for_each([&](X509Node& node) {
@@ -130,7 +130,7 @@ X509Wrapper X509CertificateHierarchy::find_certificate(const CertificateHashData
     if (certificate)
         return *certificate;
 
-    throw NoCertificateFound("Could not find a certificate for hash: " + hash.issuer_name_hash);
+    return std::nullopt;
 }
 
 std::vector<X509Wrapper> X509CertificateHierarchy::find_certificates_multi(const CertificateHashData& hash) {

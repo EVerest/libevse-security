@@ -130,7 +130,7 @@ std::optional<fs::path> X509Wrapper::get_file() const {
 
 void X509Wrapper::set_file(fs::path& path) {
     if (fs::is_directory(path))
-        throw std::logic_error("update_file must only be used for files, not directories!");
+        throw std::logic_error("X509 wrapper set_file must only be used for files, not directories!");
 
     file = path;
 }

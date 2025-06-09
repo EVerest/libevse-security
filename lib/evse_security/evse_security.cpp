@@ -93,9 +93,10 @@ static bool is_keyfile(const fs::path& file_path) {
     return false;
 }
 
-/// @brief Searches for the private key linked to the provided certificate
-static fs::path get_private_key_path_of_certificate(const X509Wrapper& certificate, const fs::path& key_path_directory,
-                                                    const std::optional<std::string> password) {
+/// @brief Searches for the private key linked to the provided certificate or nullopt if none was found
+static std::optional<fs::path> get_private_key_path_of_certificate(const X509Wrapper& certificate,
+                                                                   const fs::path& key_path_directory,
+                                                                   const std::optional<std::string> password) {
     // Before iterating the whole dir check by the filename first 'key_path'.key/.tkey
     if (certificate.get_file().has_value()) {
         // Check normal keyfile & tpm filename
@@ -122,32 +123,32 @@ static fs::path get_private_key_path_of_certificate(const X509Wrapper& certifica
     }
 
     for (const auto& entry : fs::recursive_directory_iterator(key_path_directory)) {
-        if (fs::is_regular_file(entry)) {
-            auto key_file_path = entry.path();
-            if (is_keyfile(key_file_path)) {
-                try {
-                    std::string private_key;
+        if (false == fs::is_regular_file(entry)) {
+            continue;
+        }
 
-                    if (filesystem_utils::read_from_file(key_file_path, private_key)) {
-                        if (KeyValidationResult::Valid ==
-                            CryptoSupplier::x509_check_private_key(certificate.get(), private_key, password)) {
-                            EVLOG_debug << "Key found for certificate at path: " << key_file_path;
-                            return key_file_path;
-                        }
+        auto key_file_path = entry.path();
+        if (is_keyfile(key_file_path)) {
+            try {
+                std::string private_key;
+
+                if (filesystem_utils::read_from_file(key_file_path, private_key)) {
+                    if (KeyValidationResult::Valid ==
+                        CryptoSupplier::x509_check_private_key(certificate.get(), private_key, password)) {
+                        EVLOG_debug << "Key found for certificate at path: " << key_file_path;
+                        return key_file_path;
                     }
-                } catch (const std::exception& e) {
-                    EVLOG_debug << "Could not load or verify private key at: " << key_file_path << ": " << e.what();
                 }
+            } catch (const std::exception& e) {
+                EVLOG_debug << "Could not load or verify private key at: " << key_file_path << ": " << e.what();
             }
         }
     }
 
-    std::string error = "Could not find private key for given certificate: ";
-    error += certificate.get_file().value_or("N/A");
-    error += " key path: ";
-    error += key_path_directory;
+    EVLOG_error << "Could not find private key for given certificate: " << certificate.get_file().value_or("N/A")
+                << " key path: " << key_path_directory;
 
-    throw NoPrivateKeyException(error);
+    return std::nullopt;
 }
 
 /// @brief Searches for the certificate linked to the provided key
@@ -220,6 +221,55 @@ static std::set<fs::path> get_certificate_path_of_key(const fs::path& key, const
     error += certificate_path_directory;
 
     throw NoCertificateValidException(error);
+}
+
+/// @brief Searches for the ocsp data and hash related to the specified certificate and hash
+/// @return True if the files were found, false otherwise
+static bool get_oscp_data_of_certificate(const X509Wrapper& certificate, const CertificateHashData& hash,
+                                         fs::path& out_path_hash, fs::path& out_path_data) {
+    if (certificate.get_source() != X509CertificateSource::FILE) {
+        return false;
+    }
+
+    const auto ocsp_path = certificate.get_file().value().parent_path() / "ocsp";
+
+    if (false == fs::exists(ocsp_path)) {
+        return false;
+    }
+
+    try {
+        // Iterate existing hashes
+        for (const auto& hash_entry : fs::directory_iterator(ocsp_path)) {
+            if (false == hash_entry.is_regular_file()) {
+                continue;
+            }
+
+            CertificateHashData read_hash;
+
+            if (filesystem_utils::read_hash_from_file(hash_entry.path(), read_hash) && read_hash == hash) {
+                EVLOG_debug << "OCSP certificate hash found for certificate: " << certificate.get_common_name();
+
+                // Get paths
+                fs::path ocsp_data_path = hash_entry.path();
+                ocsp_data_path.replace_extension(DER_EXTENSION);
+
+                if (false == fs::exists(ocsp_data_path)) {
+                    EVLOG_error << "OCSP certificate hash found at path:" << hash_entry.path()
+                                << " but no data named: " << ocsp_data_path << " present!";
+                    return false;
+                }
+
+                out_path_hash = hash_entry.path();
+                out_path_data = ocsp_data_path;
+
+                return true;
+            }
+        } // End for
+    } catch (const fs::filesystem_error& e) {
+        EVLOG_error << "Could not iterate over ocsp cache: " << e.what();
+    }
+
+    return false;
 }
 
 static OCSPRequestDataList
@@ -420,27 +470,27 @@ DeleteResult EvseSecurity::delete_certificate(const CertificateHashData& certifi
             EVLOG_debug << "Delete hierarchy:(" << leaf_certificate_path.string() << ")\n"
                         << hierarchy.to_debug_string();
 
-            try {
-                X509Wrapper to_delete =
-                    hierarchy.find_certificate(certificate_hash_data, true /* case-insensitive search */);
+            std::optional<X509Wrapper> to_delete =
+                hierarchy.find_certificate(certificate_hash_data, true /* case-insensitive search */);
 
-                if (leaf_bundle.delete_certificate(to_delete, true)) {
-                    found_certificate = true;
-                    response.leaf_certificate_type = leaf_type;
+            if (false == to_delete.has_value()) {
+                continue;
+            }
 
-                    if (csms) {
-                        // Per M04.FR.06 we are not allowed to delete the CSMS (ChargingStationCertificate), we should
-                        // return 'Failed'
-                        failed_to_write = true;
-                        EVLOG_error << "Error, not allowed to delete ChargingStationCertificate: "
-                                    << to_delete.get_common_name();
-                    } else if (!leaf_bundle.export_certificates()) {
-                        failed_to_write = true;
-                        EVLOG_error << "Error removing leaf certificate: " << certificate_hash_data.issuer_name_hash;
-                    }
+            if (leaf_bundle.delete_certificate(to_delete.value(), true)) {
+                found_certificate = true;
+                response.leaf_certificate_type = leaf_type;
+
+                if (csms) {
+                    // Per M04.FR.06 we are not allowed to delete the CSMS (ChargingStationCertificate), we should
+                    // return 'Failed'
+                    failed_to_write = true;
+                    EVLOG_error << "Error, not allowed to delete ChargingStationCertificate: "
+                                << to_delete.value().get_common_name();
+                } else if (!leaf_bundle.export_certificates()) {
+                    failed_to_write = true;
+                    EVLOG_error << "Error removing leaf certificate: " << certificate_hash_data.issuer_name_hash;
                 }
-            } catch (NoCertificateFound& e) {
-                // Ignore, case is handled later
             }
         } catch (const CertificateLoadException& e) {
             EVLOG_warning << "Could not load ca bundle from file: " << leaf_certificate_path;
@@ -503,15 +553,15 @@ InstallCertificateResult EvseSecurity::update_leaf_certificate(const std::string
         const auto& leaf_certificate = _certificate_chain[0];
 
         // Check if a private key belongs to the provided certificate
-        fs::path private_key_path;
+        std::optional<fs::path> private_key_path_opt =
+            get_private_key_path_of_certificate(leaf_certificate, key_path, this->private_key_password);
 
-        try {
-            private_key_path =
-                get_private_key_path_of_certificate(leaf_certificate, key_path, this->private_key_password);
-        } catch (const NoPrivateKeyException& e) {
+        if (false == private_key_path_opt.has_value()) {
             EVLOG_warning << "Provided certificate does not belong to any private key";
             return InstallCertificateResult::WriteError;
         }
+
+        const auto& private_key_path = private_key_path_opt.value();
 
         // Write certificate to file
         std::string extra_filename = filesystem_utils::get_random_file_name(PEM_EXTENSION.string());
@@ -529,8 +579,7 @@ InstallCertificateResult EvseSecurity::update_leaf_certificate(const std::string
                 managed_csr.erase(it);
             }
 
-            // Do not presume that we received back a chain certificate that requires writing
-            // there can be no intermediate certificates in between
+            // We presume that we might receive a leaf chain that also contains intermediate certificates
             if (_certificate_chain.size() > 1) {
                 // Attempt to write the chain to file
                 const auto chain_file_name = std::string("CPO_CERT_") +
@@ -940,6 +989,12 @@ void EvseSecurity::update_ocsp_cache(const CertificateHashData& certificate_hash
 
             for (auto& cert : certs) {
                 EVLOG_debug << "Writing OCSP Response to filesystem";
+                if (false == cert.get_file().has_value()) {
+                    EVLOG_error << "Could not find OCSP cache patch directory!";
+                    continue;
+                }
+
+                const auto ocsp_path = cert.get_file().value().parent_path() / "ocsp";
 
                 if (!cert.get_file().has_value()) {
                     EVLOG_error << "Could not find OCSP cache path directory!";
@@ -951,24 +1006,19 @@ void EvseSecurity::update_ocsp_cache(const CertificateHashData& certificate_hash
 
                 if (false == fs::exists(ocsp_path)) {
                     filesystem_utils::create_file_or_dir_if_nonexistent(ocsp_path);
-                } else {
-                    // Iterate existing hashes
-                    for (const auto& hash_entry : fs::directory_iterator(ocsp_path)) {
-                        if (hash_entry.is_regular_file()) {
-                            CertificateHashData read_hash;
+                }
 
-                            if (filesystem_utils::read_hash_from_file(hash_entry.path(), read_hash) &&
-                                read_hash == certificate_hash_data) {
-                                EVLOG_debug << "OCSP certificate hash already found, over-writing!";
+                fs::path out_path_hash;
+                fs::path out_path_data;
 
-                                // Over-write the data file and return
-                                fs::path ocsp_path = hash_entry.path();
-                                ocsp_path.replace_extension(DER_EXTENSION);
+                // If we already have OCSP data, update it
+                if (get_oscp_data_of_certificate(cert, certificate_hash_data, out_path_hash, out_path_data)) {
+                    EVLOG_debug << "OCSP certificate hash already found, over-writing!";
 
-                                // Discard previous content
-                                std::ofstream fs(ocsp_path.c_str(), std::ios::trunc);
-                                fs << ocsp_response;
-                                fs.close();
+                    // Discard previous content
+                    std::ofstream fs(out_path_data.c_str(), std::ios::trunc);
+                    fs << ocsp_response;
+                    fs.close();
 
                                 updated_hash = true;
                             }
@@ -979,25 +1029,27 @@ void EvseSecurity::update_ocsp_cache(const CertificateHashData& certificate_hash
                 if (!updated_hash) {
                     // Randomize filename, since multiple certificates can be stored in same bundle
                     const auto name = filesystem_utils::get_random_file_name("_ocsp");
+                // Randomize filename, since multiple certificates can be stored in same bundle
+                const auto name = cert.get_common_name() + "_" + filesystem_utils::get_random_file_name("_ocsp");
 
-                    const auto ocsp_file_path = (ocsp_path / name) += DER_EXTENSION;
-                    const auto hash_file_path = (ocsp_path / name) += CERT_HASH_EXTENSION;
+                const auto ocsp_file_path = (ocsp_path / name) += DER_EXTENSION;
+                const auto hash_file_path = (ocsp_path / name) += CERT_HASH_EXTENSION;
 
-                    // Write out OCSP data
-                    try {
-                        std::ofstream fs(ocsp_file_path.c_str());
-                        fs << ocsp_response;
-                        fs.close();
-                    } catch (const std::exception& e) {
-                        EVLOG_error << "Could not write OCSP certificate data!";
-                    }
+                // Write out OCSP data
+                try {
+                    std::ofstream fs(ocsp_file_path.c_str());
+                    fs << ocsp_response;
+                    fs.close();
+                } catch (const std::exception& e) {
+                    EVLOG_error << "Could not write OCSP certificate data!";
+                }
 
-                    if (false == filesystem_utils::write_hash_to_file(hash_file_path, certificate_hash_data)) {
-                        EVLOG_error << "Could not write OCSP certificate hash!";
-                    }
+                if (false == filesystem_utils::write_hash_to_file(hash_file_path, certificate_hash_data)) {
+                    EVLOG_error << "Could not write OCSP certificate hash!";
+                }
 
                     EVLOG_debug << "OCSP certificate hash not found, written at path: " << ocsp_file_path;
-                }
+                }                
             }
         } catch (const NoCertificateFound& e) {
             EVLOG_error << "Could not find any certificate for ocsp cache update: " << e.what();
@@ -1025,35 +1077,19 @@ std::optional<fs::path> EvseSecurity::retrieve_ocsp_cache_internal(const Certifi
         auto certificate_hierarchy =
             std::move(X509CertificateHierarchy::build_hierarchy(ca_bundle.split(), leaf_bundle.split()));
 
-        try {
-            // Find the certificate
-            X509Wrapper cert = certificate_hierarchy.find_certificate(certificate_hash_data);
+        // Find the certificate
+        std::optional<X509Wrapper> cert = certificate_hierarchy.find_certificate(certificate_hash_data);
 
-            EVLOG_debug << "Reading OCSP Response from filesystem";
+        if (false == cert.has_value()) {
+            EVLOG_error << "Could not find any certificate for ocsp cache retrieve!";
+            return std::nullopt;
+        }
 
-            if (cert.get_file().has_value()) {
-                const auto ocsp_path = cert.get_file().value().parent_path() / "ocsp";
+        EVLOG_debug << "Reading OCSP Response from filesystem";
 
-                // Search through the OCSP directory and see if we can find any related certificate hash data
-                for (const auto& ocsp_entry : fs::directory_iterator(ocsp_path)) {
-                    if (ocsp_entry.is_regular_file()) {
-                        CertificateHashData read_hash;
-
-                        if (filesystem_utils::read_hash_from_file(ocsp_entry.path(), read_hash) &&
-                            (read_hash == certificate_hash_data)) {
-                            fs::path replaced_ext = ocsp_entry.path();
-                            replaced_ext.replace_extension(DER_EXTENSION);
-
-                            // Return the data file's path
-                            return std::make_optional<fs::path>(replaced_ext);
-                        }
-                    }
-                }
-            }
-        } catch (const NoCertificateFound& e) {
-            EVLOG_error << "Could not find any certificate for ocsp cache retrieve: " << e.what();
-        } catch (const std::filesystem::filesystem_error& e) {
-            EVLOG_error << "Could not iterate over ocsp cache: " << e.what();
+        fs::path path_hash, path_data;
+        if (get_oscp_data_of_certificate(cert.value(), certificate_hash_data, path_hash, path_data)) {
+            return path_data;
         }
     } catch (const CertificateLoadException& e) {
         EVLOG_error << "Could not retrieve ocsp cache, certificate load failure: " << e.what();
@@ -1316,15 +1352,15 @@ EvseSecurity::get_full_leaf_certificate_info_internal(const CertificateQueryPara
                 if (is_valid) {
                     any_valid_certificate = true;
 
-                    try {
-                        // Search for the private key
-                        auto priv_key_path =
-                            get_private_key_path_of_certificate(chain.at(0), key_dir, this->private_key_password);
+                    // Search for the private key
+                    auto priv_key_path =
+                        get_private_key_path_of_certificate(chain.at(0), key_dir, this->private_key_password);
 
+                    if (priv_key_path.has_value()) {
                         // Found at least one valid key
                         any_valid_key = true;
 
-                        KeyPairInternal key_pair{chain.at(0), priv_key_path};
+                        KeyPairInternal key_pair{chain.at(0), priv_key_path.value()};
 
                         if (params.remove_duplicates) {
                             // Filter the already added certificates, since we can have a case
@@ -1352,7 +1388,6 @@ EvseSecurity::get_full_leaf_certificate_info_internal(const CertificateQueryPara
                             EVLOG_info << "Not requiring all valid leafs, returning";
                             return false;
                         }
-                    } catch (const NoPrivateKeyException& e) {
                     }
                 }
 
@@ -1478,13 +1513,13 @@ EvseSecurity::get_full_leaf_certificate_info_internal(const CertificateQueryPara
                 if (params.include_root) {
                     // Search for the root of any of the leafs
                     // present either in the chain or single
-                    try {
-                        X509Wrapper leafs_root_cert = hierarchy.find_certificate_root(
-                            leaf_fullchain != nullptr ? leaf_fullchain->at(0) : leaf_single->at(0));
+                    std::optional<X509Wrapper> leafs_root_cert = hierarchy.find_certificate_root(
+                        (leaf_fullchain != nullptr) ? leaf_fullchain->at(0) : leaf_single->at(0));
 
+                    if (leafs_root_cert.has_value()) {
                         // Append the root
-                        leafs_root = leafs_root_cert.get_export_string();
-                    } catch (const NoCertificateFound& e) {
+                        leafs_root = leafs_root_cert.value().get_export_string();
+                    } else {
                         EVLOG_warning << "Root required for ["
                                       << conversions::leaf_certificate_type_to_string(certificate_type)
                                       << "] leaf certificate, but no root could be found";
@@ -1890,6 +1925,7 @@ EvseSecurity::verify_certificate_internal(const std::string& certificate_chain,
         std::vector<X509Handle*> untrusted_subcas;
 
         if (_certificate_chain.size() > 1) {
+            // Iterate ignoring the received leaf (that is the first certificate)
             for (size_t i = 1; i < _certificate_chain.size(); i++) {
                 const auto& cert = _certificate_chain[i];
                 // Ignore the received certificate is somehow self-signed
@@ -2004,11 +2040,11 @@ void EvseSecurity::garbage_collect() {
                                 invalid_certificate_files.emplace(file);
 
                                 // Also attempt to add the key for deletion
-                                try {
-                                    fs::path key_file = get_private_key_path_of_certificate(chain[0], key_directory,
-                                                                                            this->private_key_password);
-                                    invalid_certificate_files.emplace(key_file);
-                                } catch (NoPrivateKeyException& e) {
+                                auto key_file = get_private_key_path_of_certificate(chain[0], key_directory,
+                                                                                    this->private_key_password);
+                                if (key_file.has_value()) {
+                                    // Found key, delete it too
+                                    invalid_certificate_files.emplace(key_file.value());
                                 }
 
                                 auto leaf_chain = chain;
@@ -2016,46 +2052,30 @@ void EvseSecurity::garbage_collect() {
                                     X509CertificateHierarchy::build_hierarchy(root_bundle.split(), leaf_chain));
 
                                 CertificateHashData ocsp_hash;
+                                fs::path path_ocsp_hash, patch_ocsp_data;
 
                                 if (hierarchy.get_certificate_hash(chain[0], ocsp_hash) &&
-                                    chain[0].get_file().has_value()) {
-                                    // Find OCSP cache with hash
-                                    const auto ocsp_path = chain[0].get_file().value().parent_path() / "ocsp";
+                                    get_oscp_data_of_certificate(chain[0], ocsp_hash, path_ocsp_hash,
+                                                                 patch_ocsp_data)) {
 
-                                    if (fs::exists(ocsp_path)) {
-                                        for (const auto& hash_entry : fs::directory_iterator(ocsp_path)) {
-                                            if (hash_entry.is_regular_file() == false) {
-                                                continue;
-                                            }
-                                            // Attempt hash read
-                                            CertificateHashData read_hash;
-
-                                            if (filesystem_utils::read_hash_from_file(hash_entry.path(), read_hash) &&
-                                                read_hash == ocsp_hash) {
-
-                                                auto ocsp_data_path = hash_entry.path();
-                                                ocsp_data_path.replace_extension(DER_EXTENSION);
-
-                                                invalid_certificate_files.emplace(hash_entry.path());
-                                                invalid_certificate_files.emplace(ocsp_data_path);
-                                            }
-                                        }
-                                    }
+                                    // OCSP cache found, delete the files
+                                    invalid_certificate_files.emplace(path_ocsp_hash);
+                                    invalid_certificate_files.emplace(patch_ocsp_data);
                                 }
                             }
                         } else {
                             // Add to protected certificate list
-                            try {
-                                fs::path key_file = get_private_key_path_of_certificate(chain[0], key_directory,
-                                                                                        this->private_key_password);
-                                protected_private_keys.emplace(key_file);
+                            auto key_file = get_private_key_path_of_certificate(chain[0], key_directory,
+                                                                                this->private_key_password);
+
+                            if (key_file.has_value()) {
+                                protected_private_keys.emplace(key_file.value());
 
                                 // Erase all protected keys from the managed CRSs
-                                auto it = managed_csr.find(key_file);
+                                auto it = managed_csr.find(key_file.value());
                                 if (it != managed_csr.end()) {
                                     managed_csr.erase(it);
                                 }
-                            } catch (NoPrivateKeyException& e) {
                             }
                         }
 

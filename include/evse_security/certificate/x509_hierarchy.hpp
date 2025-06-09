@@ -64,11 +64,12 @@ public:
     /// @brief returns true if we contain a certificate with the following hash
     bool contains_certificate_hash(const CertificateHashData& hash);
 
-    /// @brief Searches for the root of the provided leaf, throwing a NoCertificateFound if not found
-    X509Wrapper find_certificate_root(const X509Wrapper& leaf);
+    /// @brief Searches for the root of the provided leaf, returning an empty optional if none was found
+    std::optional<X509Wrapper> find_certificate_root(const X509Wrapper& leaf);
 
-    /// @brief Searches for the provided hash, throwing a NoCertificateFound if not found
-    X509Wrapper find_certificate(const CertificateHashData& hash, bool case_insensitive_comparison = false);
+    /// @brief Searches for the provided hash, returning an empty optional if none was found
+    std::optional<X509Wrapper> find_certificate(const CertificateHashData& hash,
+                                                bool case_insensitive_comparison = false);
 
     /// @brief Searches for all the certificates with the provided hash, throwing a NoCertificateFound
     // if none were found. Can be useful when we have SUB-CAs in multiple bundles
