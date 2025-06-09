@@ -131,19 +131,19 @@ public:
     void add_certificate_unique(X509Wrapper&& certificate);
 
     /// @brief Updates an already existing certificate if it is found
-    bool update_certificate(X509Wrapper&& certificate);
+    bool update_certificate(X509Wrapper&& certificate);    
 
     /// @brief Deletes all instances of the provided certificate. Only in memory, use @ref export_certificates
     /// to filesystem export
     /// @param include_issued If true the child certificates will also be deleted, if any are found
-    /// @return count of certificates deleted
-    int delete_certificate(const X509Wrapper& certificate, bool include_issued);
+    /// @return the certificates that have been removed from memory
+    std::vector<X509Wrapper> delete_certificate(const X509Wrapper& certificate, bool include_issued);
 
     /// @brief Deletes all certificates with the  provided certificate hash. Only in memory,
     /// use @ref export_certificates to filesystem export
     /// @param include_issued If true the child certificates will also be deleted, if any are found
-    /// @return count of certificates deleted
-    int delete_certificate(const CertificateHashData& data, bool include_issued);
+    /// @return the certificates that have been removed from memory
+    std::vector<X509Wrapper> delete_certificate(const CertificateHashData& data, bool include_issued);
 
     /// @brief Deletes all certificates. Only in memory, use @ref export_certificates to filesystem export
     void delete_all_certificates();

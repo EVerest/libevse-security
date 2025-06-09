@@ -213,6 +213,8 @@ int X509CertificateBundle::delete_certificate(const CertificateHashData& data, b
     return 0;
 }
 
+
+
 void X509CertificateBundle::delete_all_certificates() {
     certificates.clear();
 }

@@ -227,7 +227,7 @@ static std::set<fs::path> get_certificate_path_of_key(const fs::path& key, const
 /// @return True if the files were found, false otherwise
 static bool get_oscp_data_of_certificate(const X509Wrapper& certificate, const CertificateHashData& hash,
                                          fs::path& out_path_hash, fs::path& out_path_data) {
-    if (certificate.get_source() != X509CertificateSource::FILE) {
+    if (false == certificate.get_file().has_value()) {
         return false;
     }
 
@@ -414,7 +414,7 @@ InstallCertificateResult EvseSecurity::install_ca_certificate(const std::string&
 DeleteResult EvseSecurity::delete_certificate(const CertificateHashData& certificate_hash_data) {
     std::lock_guard<std::mutex> guard(EvseSecurity::security_mutex);
 
-    EVLOG_info << "Delete CA certificate: " << certificate_hash_data.serial_number;
+    EVLOG_info << "Deleteing certificate: " << certificate_hash_data.serial_number;
 
     DeleteResult response;
     response.result = DeleteCertificateResult::NotFound;
@@ -422,78 +422,119 @@ DeleteResult EvseSecurity::delete_certificate(const CertificateHashData& certifi
     bool found_certificate = false;
     bool failed_to_write = false;
 
-    // TODO (ioan): load all the bundles since if it's the V2G root in that case we might have to delete
-    // whole hierarchies
+    std::vector<X509Wrapper> deleted_roots;
+
+    // After we delete the roots, we collect them and 
     for (auto const& [certificate_type, ca_bundle_path] : ca_bundle_path_map) {
         try {
             X509CertificateBundle ca_bundle(ca_bundle_path, EncodingFormat::PEM);
-
-            if (ca_bundle.delete_certificate(certificate_hash_data, true)) {
+            auto deleted = ca_bundle.delete_certificate(certificate_hash_data, true);
+            
+            if (false == deleted.empty()) {
                 found_certificate = true;
                 response.ca_certificate_type = certificate_type;
 
                 if (!ca_bundle.export_certificates()) {
                     failed_to_write = true;
+                } else {
+                    // Append to deleted roots
+                    deleted_roots.insert(deleted_roots.end(),
+                        std::make_move_iterator(deleted.begin()),
+                        std::make_move_iterator(deleted.end()));
                 }
             }
-
         } catch (const CertificateLoadException& e) {
             EVLOG_warning << "Could not load ca bundle from file: " << ca_bundle_path;
         }
     }
 
-    for (const auto& leaf_certificate_path :
-         {directories.secc_leaf_cert_directory, directories.csms_leaf_cert_directory}) {
-        try {
-            bool secc = (leaf_certificate_path == directories.secc_leaf_cert_directory);
-            bool csms = (leaf_certificate_path == directories.csms_leaf_cert_directory) ||
-                        (directories.csms_leaf_cert_directory == directories.secc_leaf_cert_directory);
+    // We failed to write out the delete operation, early return
+    if(failed_to_write) {
+        EVLOG_error << "Could not delete CA root certificate!";
+        response.result = DeleteCertificateResult::Failed;
+        return response;
+    }
 
-            CaCertificateType load;
-            LeafCertificateType leaf_type;
+    if(false == deleted_roots.empty()) {
+        // If we deleted any roots, collect the intermediated/leafs that might be issued by it and delete those too
 
-            if (secc) {
-                load = CaCertificateType::V2G;
-                leaf_type = LeafCertificateType::V2G;
-            } else if (csms) {
-                load = CaCertificateType::CSMS;
-                leaf_type = LeafCertificateType::CSMS;
-            }
+    } else {
+        // If we did not delete any roots, attempt to delete the leaf certificates
+        for (const auto& leaf_certificate_path :
+             {directories.secc_leaf_cert_directory, directories.csms_leaf_cert_directory}) {
+            try {
+                bool secc = (leaf_certificate_path == directories.secc_leaf_cert_directory);
+                bool csms = (leaf_certificate_path == directories.csms_leaf_cert_directory) ||
+                            (directories.csms_leaf_cert_directory == directories.secc_leaf_cert_directory);
 
-            // Also load the roots since we need to build the hierarchy for correct certificate hashes
-            X509CertificateBundle root_bundle(ca_bundle_path_map[load], EncodingFormat::PEM);
-            X509CertificateBundle leaf_bundle(leaf_certificate_path, EncodingFormat::PEM);
+                CaCertificateType load;
+                LeafCertificateType leaf_type;
 
-            X509CertificateHierarchy hierarchy =
-                std::move(X509CertificateHierarchy::build_hierarchy(root_bundle.split(), leaf_bundle.split()));
-
-            EVLOG_debug << "Delete hierarchy:(" << leaf_certificate_path.string() << ")\n"
-                        << hierarchy.to_debug_string();
-
-            std::optional<X509Wrapper> to_delete =
-                hierarchy.find_certificate(certificate_hash_data, true /* case-insensitive search */);
-
-            if (false == to_delete.has_value()) {
-                continue;
-            }
-
-            if (leaf_bundle.delete_certificate(to_delete.value(), true)) {
-                found_certificate = true;
-                response.leaf_certificate_type = leaf_type;
-
-                if (csms) {
-                    // Per M04.FR.06 we are not allowed to delete the CSMS (ChargingStationCertificate), we should
-                    // return 'Failed'
-                    failed_to_write = true;
-                    EVLOG_error << "Error, not allowed to delete ChargingStationCertificate: "
-                                << to_delete.value().get_common_name();
-                } else if (!leaf_bundle.export_certificates()) {
-                    failed_to_write = true;
-                    EVLOG_error << "Error removing leaf certificate: " << certificate_hash_data.issuer_name_hash;
+                if (secc) {
+                    load = CaCertificateType::V2G;
+                    leaf_type = LeafCertificateType::V2G;
+                } else if (csms) {
+                    load = CaCertificateType::CSMS;
+                    leaf_type = LeafCertificateType::CSMS;
                 }
+
+                // Also load the roots since we need to build the hierarchy for correct certificate hashes
+                X509CertificateBundle root_bundle(ca_bundle_path_map[load], EncodingFormat::PEM);
+                X509CertificateBundle leaf_bundle(leaf_certificate_path, EncodingFormat::PEM);
+
+                X509CertificateHierarchy hierarchy =
+                    std::move(X509CertificateHierarchy::build_hierarchy(root_bundle.split(), leaf_bundle.split()));
+
+                EVLOG_debug << "Delete hierarchy:(" << leaf_certificate_path.string() << ")\n"
+                            << hierarchy.to_debug_string();
+
+                std::optional<X509Wrapper> to_delete =
+                    hierarchy.find_certificate(certificate_hash_data, true /* case-insensitive search */);
+
+                if (false == to_delete.has_value()) {
+                    continue;
+                }
+                
+                // TODO: collect keys of deleted certificates and OCSP data
+                if (leaf_bundle.delete_certificate(to_delete.value(), true)) {
+                    auto key_path = get_private_key_path_of_certificate(deleted, key_path_dir, password);
+                    
+                    if(key_path.has_value()) {
+                        EVLOG_info << "Deleted key of leaf certificate: " << deleted.get_common_name();
+                        filesystem_utils::delete_file(key_path.value());
+                    }
+
+                    if(get_oscp_data_of_certificate(deleted, deleted_hash, path_ocsp_hash, path_ocsp_data)) {
+                        EVLOG_info << "Deleted ocsp data of certificate: " << deleted.get_common_name();
+                        filesystem_utils::delete_file(path_ocsp_hash);
+                        filesystem_utils::delete_file(path_ocsp_data);
+                    }
+
+                    // If the file bundle had a deleted leaf, delete it whole since there's no point in holding partial hierarchies
+                    // Not applicable to directories, since the directories can hold intermediates and we will not delete the whole
+                    // file!
+                    if(leaf_bundle.get_source() == X509CertificateSource::FILE) {
+                        // Delete the whole file
+                        filesystem_utils::delete_file(leaf_bundle.get_path());
+                    }
+
+                    found_certificate = true;
+                    response.leaf_certificate_type = leaf_type;
+
+                    if (csms) {
+                        // Per M04.FR.06 we are not allowed to delete the CSMS (ChargingStationCertificate), we should
+                        // return 'Failed'
+                        failed_to_write = true;
+                        EVLOG_error << "Error, not allowed to delete ChargingStationCertificate: "
+                                    << to_delete.value().get_common_name();
+                    } else if (!leaf_bundle.export_certificates()) {
+                        failed_to_write = true;
+                        EVLOG_error << "Error removing leaf certificate: " << certificate_hash_data.issuer_name_hash;
+                    }
+                }
+            } catch (const CertificateLoadException& e) {
+                EVLOG_warning << "Could not load ca bundle from file: " << leaf_certificate_path;
             }
-        } catch (const CertificateLoadException& e) {
-            EVLOG_warning << "Could not load ca bundle from file: " << leaf_certificate_path;
         }
     }
 
@@ -2125,7 +2166,7 @@ void EvseSecurity::garbage_collect() {
 
                 try {
                     // Check if we have found any matching certificate
-                    get_certificate_path_of_key(key_file_path, keys_dir, this->private_key_password);
+                    auto key_path = get_certificate_path_of_key(key_file_path, keys_dir, this->private_key_password);
                 } catch (const NoCertificateValidException& e) {
                     // If we did not found, add to the potential delete list
                     EVLOG_debug << "Could not find matching certificate for key: " << key_file_path
