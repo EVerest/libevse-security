@@ -28,10 +28,10 @@ struct NodeState {
 struct X509Node {
     NodeState state;
 
-    X509Wrapper certificate;
-    CertificateHashData hash;
+    X509Wrapper certificate;  ///< Certificate that we hold
+    CertificateHashData hash; ///< Precomputed certificate hash
 
-    X509Wrapper issuer;
+    X509Wrapper issuer; ///< Issuer of this certificate, can be == with certificate if we are a root
     std::vector<X509Node> children;
 };
 
@@ -56,6 +56,11 @@ public:
     ///
     /// @param top Certificate that issued the descendants
     std::vector<X509Wrapper> collect_descendants(const X509Wrapper& top);
+
+    /// @brief Collects all the top certificates of the provided leaf, in the
+    /// order from the leaf towards the top (LEAF->SUBCA2->SUBCA1)
+    /// @param leaf Leaf certificate for which we collect the top certificates
+    std::vector<X509Wrapper> collect_top(const X509Wrapper& leaf);
 
     /// @brief Obtains the hash data of the certificate, finding its issuer if needed
     /// @return True if a hash could be found, false otherwise
@@ -140,6 +145,9 @@ public:
     }
 
 private:
+    std::optional<std::tuple<std::reference_wrapper<const X509Node>, int>>
+    find_certificate_root_node(const X509Wrapper& leaf);
+
     /// @brief Inserts the certificate in the hierarchy. If it is not a root
     /// and a parent is not found, it will be inserted as a temporary orphan
     void insert(X509Wrapper&& certificate);

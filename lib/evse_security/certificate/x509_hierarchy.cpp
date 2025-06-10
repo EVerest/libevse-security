@@ -39,6 +39,31 @@ std::vector<X509Wrapper> X509CertificateHierarchy::collect_descendants(const X50
     return descendants;
 }
 
+std::vector<X509Wrapper> X509CertificateHierarchy::collect_top(const X509Wrapper& leaf) {
+    auto root_node = find_certificate_root_node(leaf);
+
+    if (root_node.has_value()) {
+        std::vector<X509Wrapper> top_nodes;
+        auto tuple = root_node.value();
+
+        const X509Node& root = std::get<0>(tuple);
+        int found_depth = std::get<1>(tuple);
+
+        // Iterate all the descendants of the root until we find the leaf level
+        for_each_descendant(
+            [&](const X509Node& node, int depth) {
+                if (depth < found_depth)
+                    // Collect all owned
+                    top_nodes.push_back(node.certificate);
+            },
+            root, 1);
+
+        return top_nodes;
+    }
+
+    return {};
+}
+
 bool X509CertificateHierarchy::get_certificate_hash(const X509Wrapper& certificate, CertificateHashData& out_hash) {
     if (certificate.is_selfsigned()) {
         out_hash = certificate.get_certificate_hash_data();
@@ -85,7 +110,19 @@ bool X509CertificateHierarchy::contains_certificate_hash(const CertificateHashDa
 }
 
 std::optional<X509Wrapper> X509CertificateHierarchy::find_certificate_root(const X509Wrapper& leaf) {
-    const X509Wrapper* root_ptr = nullptr;
+    auto root = find_certificate_root_node(leaf);
+
+    if (root.has_value()) {
+        return std::get<0>(root.value()).get().certificate;
+    }
+
+    return std::nullopt;
+}
+
+std::optional<std::tuple<std::reference_wrapper<const X509Node>, int>>
+X509CertificateHierarchy::find_certificate_root_node(const X509Wrapper& leaf) {
+    const X509Node* root_ptr = nullptr;
+    int found_depth;
 
     for (const auto& root : hierarchy) {
         if (root.state.is_selfsigned) {
@@ -93,7 +130,8 @@ std::optional<X509Wrapper> X509CertificateHierarchy::find_certificate_root(const
                 [&](const X509Node& node, int depth) {
                     // If we found our matching certificate, we also found the root
                     if (node.certificate == leaf) {
-                        root_ptr = &root.certificate;
+                        root_ptr = &root;
+                        found_depth = depth;
                     }
                 },
                 root, 1);
@@ -101,7 +139,7 @@ std::optional<X509Wrapper> X509CertificateHierarchy::find_certificate_root(const
     }
 
     if (root_ptr)
-        return *root_ptr;
+        return std::make_tuple(*root_ptr, found_depth);
 
     return std::nullopt;
 }

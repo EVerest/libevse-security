@@ -260,7 +260,7 @@ TEST_F(EvseSecurityTests, verify_bundle_management) {
 
     CertificateHashData hash;
     ASSERT_TRUE(bundle.get_certificate_hierarchy().get_certificate_hash(intermediate_cert, hash));
-    bundle.delete_certificate(hash, true);
+    bundle.delete_certificate(hash, true, false);
 
     // Sync deleted
     bundle.sync_to_certificate_store();
