@@ -746,8 +746,6 @@ int EvseSecurity::get_count_of_installed_certificates(const std::vector<Certific
 OCSPRequestDataList EvseSecurity::get_v2g_ocsp_request_data() {
     std::lock_guard<std::mutex> guard(EvseSecurity::security_mutex);
 
-    // TODO: we must not only use the current leaf certificate but we must get all the leafs (including future valid)
-    // and request OCSP for all
     CertificateQueryParams params;
     params.certificate_type = LeafCertificateType::V2G;
     params.encoding = EncodingFormat::PEM;
