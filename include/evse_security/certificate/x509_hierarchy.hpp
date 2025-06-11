@@ -145,8 +145,7 @@ public:
     }
 
 private:
-    std::optional<std::tuple<std::reference_wrapper<const X509Node>, int>>
-    find_certificate_root_node(const X509Wrapper& leaf);
+    std::optional<std::pair<const X509Node*, int>> find_certificate_root_node(const X509Wrapper& leaf);
 
     /// @brief Inserts the certificate in the hierarchy. If it is not a root
     /// and a parent is not found, it will be inserted as a temporary orphan

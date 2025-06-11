@@ -46,7 +46,7 @@ std::vector<X509Wrapper> X509CertificateHierarchy::collect_top(const X509Wrapper
         std::vector<X509Wrapper> top_nodes;
         auto tuple = root_node.value();
 
-        const X509Node& root = std::get<0>(tuple);
+        const X509Node* root = std::get<0>(tuple);
         int found_depth = std::get<1>(tuple);
 
         // Iterate all the descendants of the root until we find the leaf level
@@ -56,7 +56,7 @@ std::vector<X509Wrapper> X509CertificateHierarchy::collect_top(const X509Wrapper
                     // Collect all owned
                     top_nodes.push_back(node.certificate);
             },
-            root, 1);
+            *root, 1);
 
         return top_nodes;
     }
@@ -113,13 +113,14 @@ std::optional<X509Wrapper> X509CertificateHierarchy::find_certificate_root(const
     auto root = find_certificate_root_node(leaf);
 
     if (root.has_value()) {
-        return std::get<0>(root.value()).get().certificate;
+        auto root_ptr = std::get<0>(root.value());
+        return root_ptr->certificate;
     }
 
     return std::nullopt;
 }
 
-std::optional<std::tuple<std::reference_wrapper<const X509Node>, int>>
+std::optional<std::pair<const X509Node*, int>>
 X509CertificateHierarchy::find_certificate_root_node(const X509Wrapper& leaf) {
     const X509Node* root_ptr = nullptr;
     int found_depth;
@@ -139,7 +140,7 @@ X509CertificateHierarchy::find_certificate_root_node(const X509Wrapper& leaf) {
     }
 
     if (root_ptr)
-        return std::make_tuple(*root_ptr, found_depth);
+        return std::make_pair(root_ptr, found_depth);
 
     return std::nullopt;
 }

@@ -421,6 +421,7 @@ DeleteResult EvseSecurity::delete_certificate(const CertificateHashData& certifi
 
     bool found_certificate = false;
     bool failed_to_write = false;
+    bool deleted_root_certificate = false;
 
     std::vector<X509Wrapper> deleted_roots;
 
@@ -440,6 +441,7 @@ DeleteResult EvseSecurity::delete_certificate(const CertificateHashData& certifi
                     // Append to deleted roots
                     deleted_roots.insert(deleted_roots.end(), std::make_move_iterator(deleted.begin()),
                                          std::make_move_iterator(deleted.end()));
+                    deleted_root_certificate = true;
                 }
             }
         } catch (const CertificateLoadException& e) {
@@ -448,10 +450,19 @@ DeleteResult EvseSecurity::delete_certificate(const CertificateHashData& certifi
     }
 
     // We failed to write out the delete operation, early return
-    if (failed_to_write) {
-        EVLOG_error << "Could not delete CA root certificate!";
-        response.result = DeleteCertificateResult::Failed;
-        return response;
+    if (deleted_root_certificate) {
+        if (failed_to_write) {
+            EVLOG_error << "Could not delete CA root certificate!";
+            response.result = DeleteCertificateResult::Failed;
+            return response;
+        } else {
+            // TODO(ioan): we have an early return here since we do not delete the
+            // intermediates/leafs that are issued by this root. Remove this code
+            // to also delete the leafs that are issued by this root
+            EVLOG_info << "Deleted CA root certificate successfully!";
+            response.result = DeleteCertificateResult::Accepted;
+            return response;
+        }
     }
 
     // Collect all the leaf chains
@@ -535,10 +546,14 @@ DeleteResult EvseSecurity::delete_certificate(const CertificateHashData& certifi
 
                 if (csms) {
                     // Per M04.FR.06 we are not allowed to delete the CSMS (ChargingStationCertificate), we
-                    // should return 'Failed'
-                    failed_to_write = true;
-                    EVLOG_error << "Error, not allowed to delete ChargingStationCertificate: "
-                                << deleted_leaf.get_common_name();
+                    // should return 'Failed' if we try to delete one via DeleteCertificateRequest
+                    if (deleted_root_certificate) {
+                        EVLOG_error << "Root ChargingStationCertificate was deleted, however the leaf will be kept";
+                    } else {
+                        failed_to_write = true;
+                        EVLOG_error << "Error, not allowed to delete ChargingStationCertificate: "
+                                    << deleted_leaf.get_common_name();
+                    }
                 } else {
                     // Delete the whole chain file for leafs only once since in the deletes we might have
                     // two or more certificates (subca1->subca2->leaf) that point to the same bundle file
