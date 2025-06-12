@@ -504,9 +504,16 @@ DeleteResult EvseSecurity::delete_certificate(const CertificateHashData& certifi
         }
 
         // If we deleted roots then those are the base, else load the root bundle that is intact
-        auto base_roots = std::move(
-            deleted_roots.empty() ? X509CertificateBundle(ca_bundle_path_map[root_load], EncodingFormat::PEM).split()
-                                  : deleted_roots);
+        std::vector<X509Wrapper> base_roots;
+
+        try {
+            base_roots =
+                std::move(deleted_roots.empty()
+                              ? X509CertificateBundle(ca_bundle_path_map[root_load], EncodingFormat::PEM).split()
+                              : deleted_roots);
+        } catch (const CertificateLoadException& e) {
+            EVLOG_warning << "Could not load base roots: " << ca_bundle_path_map[root_load];
+        }
 
         X509CertificateHierarchy hierarchy =
             std::move(X509CertificateHierarchy::build_hierarchy(base_roots, leaf_bundle.split()));
@@ -724,7 +731,7 @@ EvseSecurity::get_installed_certificates(const std::vector<CertificateType>& cer
             // Iterate the hierarchy and add all the certificates to their respective locations
             for (auto& root : hierarchy.get_hierarchy()) {
                 // Ignore non self-signed
-                if(false == root.state.is_selfsigned) {
+                if (false == root.state.is_selfsigned) {
                     continue;
                 }
 
@@ -737,7 +744,7 @@ EvseSecurity::get_installed_certificates(const std::vector<CertificateType>& cer
                 // Add all owned children/certificates in order
                 X509CertificateHierarchy::for_each_descendant(
                     [&certificate_hash_data_chain](const X509Node& child, int depth) {
-                        if(child.hash.has_value()) {
+                        if (child.hash.has_value()) {
                             certificate_hash_data_chain.child_certificate_hash_data.push_back(child.hash.value());
                         }
                     },
@@ -808,11 +815,12 @@ EvseSecurity::get_installed_certificates(const std::vector<CertificateType>& cer
 
                         // For each root's descendant, excluding the root
                         X509CertificateHierarchy::for_each_descendant(
-                            [&](const X509Node& child, int depth) { 
-                                if(child.hash.has_value()) {
-                                    hierarchy_hash_data.push_back(child.hash.value()); 
+                            [&](const X509Node& child, int depth) {
+                                if (child.hash.has_value()) {
+                                    hierarchy_hash_data.push_back(child.hash.value());
                                 }
-                            }, root);
+                            },
+                            root);
 
                         // Now the hierarchy_hash_data contains SubCA1->SubCA2->SECCLeaf,
                         // reverse order iteration to conform to the required leaf-first order

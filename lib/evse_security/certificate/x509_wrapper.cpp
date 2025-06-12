@@ -90,10 +90,7 @@ void X509Wrapper::update_validity() {
 }
 
 bool X509Wrapper::is_child(const X509Wrapper& parent) const {
-    // A certif can't be it's own parent, use is_selfsigned if that is intended
-    // Switched from (this == &parent) to (*this == parent) since we might have
-    // duplicates in the hierarchy and a root can be counted twice and we want to
-    // make sure we're using the == operator
+    // A certif can't be it's own parent, use is_selfsigned if that is intended (operator ==)
     if (*this == parent)
         return false;
 

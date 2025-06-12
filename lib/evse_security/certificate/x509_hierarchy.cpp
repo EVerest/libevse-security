@@ -98,8 +98,8 @@ bool X509CertificateHierarchy::contains_certificate_hash(const CertificateHashDa
                                                          bool case_insensitive_comparison) {
     bool contains = false;
 
-    for_each([&](const X509Node& node) {        
-        if(node.hash.has_value()) {        
+    for_each([&](const X509Node& node) {
+        if (node.hash.has_value()) {
             bool matches = false;
 
             if (case_insensitive_comparison) {
@@ -161,7 +161,7 @@ std::optional<X509Wrapper> X509CertificateHierarchy::find_certificate(const Cert
     X509Wrapper* certificate = nullptr;
 
     for_each([&](X509Node& node) {
-        if(node.hash.has_value()) {
+        if (node.hash.has_value()) {
             bool matches = false;
 
             if (case_insensitive_comparison) {
@@ -223,7 +223,7 @@ std::string X509CertificateHierarchy::to_debug_string() {
     return str.str();
 }
 
-void X509CertificateHierarchy::insert(X509Wrapper&& inserted_certificate) {    
+void X509CertificateHierarchy::insert(X509Wrapper&& inserted_certificate) {
     if (false == inserted_certificate.is_selfsigned()) {
         // If this certif has any link to any of the existing certificates
         bool hierarchy_found = false;
@@ -283,11 +283,8 @@ void X509CertificateHierarchy::insert(X509Wrapper&& inserted_certificate) {
         }
     } else {
         // If it is self-signed insert it in the roots, with the state set as a self-signed and a properly computed hash
-        hierarchy.push_back({{1, 0},
-                             inserted_certificate,
-                             inserted_certificate.get_certificate_hash_data(),
-                             inserted_certificate,
-                             {}});
+        hierarchy.push_back(
+            {{1, 0}, inserted_certificate, inserted_certificate.get_certificate_hash_data(), inserted_certificate, {}});
 
         // Attempt a partial prune, by searching through all the contained temporary orphan certificates
         // and trying to add them to the newly inserted root certificate, if that is possible
@@ -309,7 +306,7 @@ void X509CertificateHierarchy::insert(X509Wrapper&& inserted_certificate) {
                     auto& new_root = hierarchy.back();
 
                     // Hash is properly computed now
-                    node.hash = node.certificate.get_certificate_hash_data(new_root.certificate);                    
+                    node.hash = node.certificate.get_certificate_hash_data(new_root.certificate);
                     node.state.is_orphan = 0;                        // Not an orphan any more
                     node.issuer = X509Wrapper(inserted_certificate); // Set the new valid issuer
 
@@ -343,7 +340,7 @@ void X509CertificateHierarchy::prune() {
 
         for_each([&](X509Node& top) {
             if (orphan.certificate.is_child(top.certificate)) {
-                orphan.hash = orphan.certificate.get_certificate_hash_data(top.certificate);                
+                orphan.hash = orphan.certificate.get_certificate_hash_data(top.certificate);
                 orphan.state.is_orphan = 0;                   // Not an orphan any more
                 orphan.issuer = X509Wrapper(top.certificate); // Set the new valid issuer
 
@@ -356,7 +353,7 @@ void X509CertificateHierarchy::prune() {
 
         if (false == found_issuer) {
             // Mark as permanent orphan
-            orphan.state.is_orphan = 1; // Permanent orphan            
+            orphan.state.is_orphan = 1; // Permanent orphan
         } else {
             // Erase from hierarchy list and decrement iterator
             hierarchy.erase(std::begin(hierarchy) + i);

@@ -21,14 +21,15 @@ public:
 
 struct NodeState {
     std::uint32_t is_selfsigned : 1;
-    std::uint32_t is_orphan : 1; // 0 means temporary orphan, 1 is permanent orphan, no relevance if it is self-signed    
+    std::uint32_t is_orphan : 1; // 0 means temporary orphan, 1 is permanent orphan, no relevance if it is self-signed
 };
 
 struct X509Node {
     NodeState state;
 
-    X509Wrapper certificate;  ///< Certificate that we hold
-    std::optional<CertificateHashData> hash; ///< Precomputed certificate hash, in case of an orphan certificate it might not be set
+    X509Wrapper certificate; ///< Certificate that we hold
+    std::optional<CertificateHashData>
+        hash; ///< Precomputed certificate hash, in case of an orphan certificate it might not be set
 
     X509Wrapper issuer; ///< Issuer of this certificate, can be == with certificate if we are a root
     std::vector<X509Node> children;

@@ -187,6 +187,34 @@ protected:
     }
 };
 
+class EvseSecurityTestsCSMS : public ::testing::Test {
+protected:
+    std::unique_ptr<EvseSecurity> evse_security;
+
+    void SetUp() override {
+        fs::remove_all("csms_certs_temp");
+        fs::create_directory("csms_certs_temp");
+        fs::copy("csms_certs", "csms_certs_temp", fs::copy_options::recursive);
+
+        FilePaths file_paths;
+        file_paths.v2g_ca_bundle = fs::path("csms_certs_temp/ca/V2G_ROOT_CA.pem");
+        file_paths.csms_ca_bundle = fs::path("certs/ca/v2g/V2G_CA_BUNDLE.pem");
+        file_paths.mf_ca_bundle = fs::path("certs/ca/v2g/V2G_CA_BUNDLE.pem");
+        file_paths.mo_ca_bundle = fs::path("certs/ca/mo/MO_CA_BUNDLE.pem");
+
+        file_paths.directories.csms_leaf_cert_directory = fs::path("certs/client/csms/");
+        file_paths.directories.csms_leaf_key_directory = fs::path("certs/client/csms/");
+        file_paths.directories.secc_leaf_cert_directory = fs::path("csms_certs_temp/client/");
+        file_paths.directories.secc_leaf_key_directory = fs::path("csms_certs_temp/client/");
+
+        this->evse_security = std::make_unique<EvseSecurity>(file_paths, "123456");
+    }
+
+    void TearDown() override {
+        fs::remove_all("csms_certs_temp");
+    }
+};
+
 TEST_F(EvseSecurityTests, verify_basics) {
     const char* bundle_path = "certs/ca/v2g/V2G_CA_BUNDLE.pem";
 
@@ -580,6 +608,71 @@ TEST_F(EvseSecurityTests, install_root_ca_05) {
 
     const auto result = this->evse_security->install_ca_certificate(expired_cert, CaCertificateType::CSMS);
     ASSERT_EQ(result, InstallCertificateResult::Expired);
+}
+
+TEST_F(EvseSecurityTestsCSMS, delete_csms_provided_certs) {
+    auto path = fs::path("csms_certs_temp/client/");
+
+    // Filesystem tests
+    ASSERT_TRUE(fs::exists("csms_certs_temp/client/SECC_LEAF_A.pem"));
+    ASSERT_TRUE(fs::exists("csms_certs_temp/client/SECC_LEAF_A.key"));
+    ASSERT_TRUE(fs::exists("csms_certs_temp/client/SECC_LEAF_B.pem"));
+    ASSERT_TRUE(fs::exists("csms_certs_temp/client/SECC_LEAF_B.key"));
+    ASSERT_TRUE(fs::exists("csms_certs_temp/client/CPO_CERT_SECC_LEAF_CHAIN_A.pem"));
+    ASSERT_TRUE(fs::exists("csms_certs_temp/client/CPO_CERT_SECC_LEAF_CHAIN_B.pem"));
+    ASSERT_TRUE(fs::exists("csms_certs_temp/client/ocsp/SECC_LEAF_ocsp.der"));
+    ASSERT_TRUE(fs::exists("csms_certs_temp/client/ocsp/SECC_LEAF_ocsp.hash"));
+
+    auto cached_secc_leaf1 = read_file_to_string("csms_certs_temp/client/SECC_LEAF_A.pem");
+    auto cached_secc_leaf2 = read_file_to_string("csms_certs_temp/client/SECC_LEAF_A.key");
+    auto cached_secc_chain = read_file_to_string("csms_certs_temp/client/CPO_CERT_SECC_LEAF_CHAIN_A.pem");
+
+    // SECC_LEAF_B
+    CertificateHashData certificate_hash_data;
+    certificate_hash_data.hash_algorithm = HashAlgorithm::SHA256;
+    certificate_hash_data.issuer_name_hash = "82addb4b47026c702b9ed9d482c6e3570bbae9c49b963ec18b0a3523dfb47fe3";
+    certificate_hash_data.issuer_key_hash = "e9d2a6d245233edbf5a8319b99087313e16307ca29b388373d951b50e93090aa";
+    certificate_hash_data.serial_number = "4ed698d63c724c6a61a0ccc4ff80b383192dfd7a";
+
+    // Code hash tests
+    try {
+        X509CertificateBundle leaf_bundle(path, EncodingFormat::PEM);
+        auto& hierarchy = leaf_bundle.get_certificate_hierarchy();
+        std::cout << hierarchy.to_debug_string();
+
+        ASSERT_TRUE(hierarchy.contains_certificate_hash(certificate_hash_data, true));
+    } catch (const CertificateLoadException& e) {
+        FAIL();
+    }
+
+    // Delete
+    DeleteResult result = this->evse_security->delete_certificate(certificate_hash_data);
+    ASSERT_EQ(result.result, DeleteCertificateResult::Accepted);
+    ASSERT_TRUE(result.leaf_certificate_type.has_value());
+    ASSERT_EQ(result.leaf_certificate_type.value(), LeafCertificateType::V2G);
+
+    try {
+        X509CertificateBundle leaf_bundle(path, EncodingFormat::PEM);
+        auto& hierarchy = leaf_bundle.get_certificate_hierarchy();
+        std::cout << hierarchy.to_debug_string();
+
+        ASSERT_FALSE(hierarchy.contains_certificate_hash(certificate_hash_data, true));
+    } catch (const CertificateLoadException& e) {
+        FAIL();
+    }
+
+    ASSERT_TRUE(fs::exists("csms_certs_temp/client/SECC_LEAF_A.pem"));
+    ASSERT_TRUE(fs::exists("csms_certs_temp/client/SECC_LEAF_A.key"));
+    ASSERT_TRUE(fs::exists("csms_certs_temp/client/CPO_CERT_SECC_LEAF_CHAIN_A.pem"));
+    ASSERT_FALSE(fs::exists("csms_certs_temp/client/SECC_LEAF_B.pem"));
+    ASSERT_FALSE(fs::exists("csms_certs_temp/client/SECC_LEAF_B.key"));
+    ASSERT_FALSE(fs::exists("csms_certs_temp/client/CPO_CERT_SECC_LEAF_CHAIN_B.pem"));
+    ASSERT_FALSE(fs::exists("csms_certs_temp/client/ocsp/SECC_LEAF_ocsp.der"));
+    ASSERT_FALSE(fs::exists("csms_certs_temp/client/ocsp/SECC_LEAF_ocsp.hash"));
+
+    ASSERT_EQ(cached_secc_leaf1, read_file_to_string("csms_certs_temp/client/SECC_LEAF_A.pem"));
+    ASSERT_EQ(cached_secc_leaf2, read_file_to_string("csms_certs_temp/client/SECC_LEAF_A.key"));
+    ASSERT_EQ(cached_secc_chain, read_file_to_string("csms_certs_temp/client/CPO_CERT_SECC_LEAF_CHAIN_A.pem"));
 }
 
 TEST_F(EvseSecurityTests, delete_root_ca_01) {
