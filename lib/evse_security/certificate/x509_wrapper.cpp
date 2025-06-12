@@ -91,7 +91,10 @@ void X509Wrapper::update_validity() {
 
 bool X509Wrapper::is_child(const X509Wrapper& parent) const {
     // A certif can't be it's own parent, use is_selfsigned if that is intended
-    if (this == &parent)
+    // Switched from (this == &parent) to (*this == parent) since we might have
+    // duplicates in the hierarchy and a root can be counted twice and we want to
+    // make sure we're using the == operator
+    if (*this == parent)
         return false;
 
     return CryptoSupplier::x509_is_child(get(), parent.get());

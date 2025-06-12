@@ -21,15 +21,14 @@ public:
 
 struct NodeState {
     std::uint32_t is_selfsigned : 1;
-    std::uint32_t is_orphan : 1; // 0 means temporary orphan, 1 is permanent orphan, no relevance if it is self-signed
-    std::uint32_t is_hash_computed : 1; // if the hash was correctly computed or if a placeholder hash is set
+    std::uint32_t is_orphan : 1; // 0 means temporary orphan, 1 is permanent orphan, no relevance if it is self-signed    
 };
 
 struct X509Node {
     NodeState state;
 
     X509Wrapper certificate;  ///< Certificate that we hold
-    CertificateHashData hash; ///< Precomputed certificate hash
+    std::optional<CertificateHashData> hash; ///< Precomputed certificate hash, in case of an orphan certificate it might not be set
 
     X509Wrapper issuer; ///< Issuer of this certificate, can be == with certificate if we are a root
     std::vector<X509Node> children;
@@ -67,7 +66,7 @@ public:
     bool get_certificate_hash(const X509Wrapper& certificate, CertificateHashData& out_hash);
 
     /// @brief returns true if we contain a certificate with the following hash
-    bool contains_certificate_hash(const CertificateHashData& hash);
+    bool contains_certificate_hash(const CertificateHashData& hash, bool contains_certificate_hash);
 
     /// @brief Searches for the root of the provided leaf, returning an empty optional if none was found
     std::optional<X509Wrapper> find_certificate_root(const X509Wrapper& leaf);

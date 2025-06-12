@@ -111,7 +111,8 @@ static std::optional<fs::path> get_private_key_path_of_certificate(const X509Wra
                     if (filesystem_utils::read_from_file(potential_keyfile, private_key)) {
                         if (KeyValidationResult::Valid ==
                             CryptoSupplier::x509_check_private_key(certificate.get(), private_key, password)) {
-                            EVLOG_debug << "Key found for certificate at path: " << potential_keyfile;
+                            EVLOG_debug << "Key found for certificate (" << certificate.get_common_name()
+                                        << ") at path: " << potential_keyfile;
                             return potential_keyfile;
                         }
                     }
@@ -135,7 +136,8 @@ static std::optional<fs::path> get_private_key_path_of_certificate(const X509Wra
                 if (filesystem_utils::read_from_file(key_file_path, private_key)) {
                     if (KeyValidationResult::Valid ==
                         CryptoSupplier::x509_check_private_key(certificate.get(), private_key, password)) {
-                        EVLOG_debug << "Key found for certificate at path: " << key_file_path;
+                        EVLOG_debug << "Key found for certificate (" << certificate.get_common_name()
+                                    << ") at path: " << key_file_path;
                         return key_file_path;
                     }
                 }
@@ -145,7 +147,8 @@ static std::optional<fs::path> get_private_key_path_of_certificate(const X509Wra
         }
     }
 
-    EVLOG_error << "Could not find private key for given certificate: " << certificate.get_file().value_or("N/A")
+    EVLOG_error << "Could not find private key for given certificate: " << certificate.get_file().value_or("N/A") << "("
+                << certificate.get_common_name() << ")"
                 << " key path: " << key_path_directory;
 
     return std::nullopt;
@@ -491,55 +494,44 @@ DeleteResult EvseSecurity::delete_certificate(const CertificateHashData& certifi
         // The leaf bundle contains many chain/single certificates in separate files
         X509CertificateBundle leaf_bundle(leaf_certificate_path, EncodingFormat::PEM);
 
+        CaCertificateType root_load;
+        if (secc) {
+            root_load = CaCertificateType::V2G;
+        } else if (csms) {
+            root_load = CaCertificateType::CSMS;
+        } else {
+            throw std::runtime_error("Leaf root type load invalid, should never happen!");
+        }
+
+        // If we deleted roots then those are the base, else load the root bundle that is intact
+        auto base_roots = std::move(
+            deleted_roots.empty() ? X509CertificateBundle(ca_bundle_path_map[root_load], EncodingFormat::PEM).split()
+                                  : deleted_roots);
+
+        X509CertificateHierarchy hierarchy =
+            std::move(X509CertificateHierarchy::build_hierarchy(base_roots, leaf_bundle.split()));
+
+        // Collect all the leafs that we have to delete
+        auto leafs_to_delete = hierarchy.find_certificates_multi(certificate_hash_data);
+
         leaf_bundle.for_each_chain([&](const fs::path& path, const std::vector<X509Wrapper>& chain) {
-            std::vector<X509Wrapper> leafs_to_delete;
+            // If any chain element is contained in the leafs to delete, then delete the whole chain
+            bool delete_whole_chain = false;
 
-            // Build the hierarchy for each individual chain
-            try {
-                if (deleted_roots.empty()) {
-                    CaCertificateType root_load;
-
-                    if (secc) {
-                        root_load = CaCertificateType::V2G;
-                    } else if (csms) {
-                        root_load = CaCertificateType::CSMS;
-                    }
-
-                    // Also load the roots since we need to build the hierarchy for correct certificate hashes
-                    X509CertificateBundle root_bundle(ca_bundle_path_map[root_load], EncodingFormat::PEM);
-                    X509CertificateHierarchy hierarchy =
-                        std::move(X509CertificateHierarchy::build_hierarchy(root_bundle.split(), leaf_bundle.split()));
-
-                    // Search for hash, if we find it delete the leaf
-                    std::optional<X509Wrapper> to_delete =
-                        hierarchy.find_certificate(certificate_hash_data, true /* case-insensitive search */);
-
-                    if (to_delete.has_value()) {
-                        leafs_to_delete.push_back(to_delete.value());
-                    }
-                } else {
-                    X509CertificateHierarchy hierarchy =
-                        std::move(X509CertificateHierarchy::build_hierarchy(deleted_roots, leaf_bundle.split()));
-
-                    for (const auto& root : deleted_roots) {
-                        if (false == root.is_selfsigned()) {
-                            continue;
-                        }
-
-                        // Collect all possible descendants of this root, which we will delete
-                        std::vector<X509Wrapper> descendants = hierarchy.collect_descendants(root);
-
-                        // Insert all that should be deleted
-                        leafs_to_delete.insert(leafs_to_delete.end(), std::make_move_iterator(descendants.begin()),
-                                               std::make_move_iterator(descendants.end()));
-                    }
+            for (const auto& deleted_leaf : chain) {
+                if (std::find(leafs_to_delete.begin(), leafs_to_delete.end(), deleted_leaf) != leafs_to_delete.end()) {
+                    delete_whole_chain = true;
+                    break;
                 }
-            } catch (const CertificateLoadException& e) {
-                EVLOG_warning << "Could not load ca bundle from file: " << leaf_certificate_path;
+            }
+
+            // We do not delete anything, move to next chain
+            if (false == delete_whole_chain) {
+                return true;
             }
 
             bool deleted_full_file = false;
-            for (const auto& deleted_leaf : leafs_to_delete) {
+            for (const auto& deleted_leaf : chain) {
                 // Update the response
                 found_certificate = true;
                 response.leaf_certificate_type = leaf_certificate_type;
@@ -731,16 +723,23 @@ EvseSecurity::get_installed_certificates(const std::vector<CertificateType>& cer
 
             // Iterate the hierarchy and add all the certificates to their respective locations
             for (auto& root : hierarchy.get_hierarchy()) {
+                // Ignore non self-signed
+                if(false == root.state.is_selfsigned) {
+                    continue;
+                }
+
                 CertificateHashDataChain certificate_hash_data_chain;
 
                 certificate_hash_data_chain.certificate_type =
                     get_certificate_type(ca_certificate_type); // We always know type
-                certificate_hash_data_chain.certificate_hash_data = root.hash;
+                certificate_hash_data_chain.certificate_hash_data = root.hash.value();
 
                 // Add all owned children/certificates in order
                 X509CertificateHierarchy::for_each_descendant(
                     [&certificate_hash_data_chain](const X509Node& child, int depth) {
-                        certificate_hash_data_chain.child_certificate_hash_data.push_back(child.hash);
+                        if(child.hash.has_value()) {
+                            certificate_hash_data_chain.child_certificate_hash_data.push_back(child.hash.value());
+                        }
                     },
                     root);
 
@@ -809,7 +808,11 @@ EvseSecurity::get_installed_certificates(const std::vector<CertificateType>& cer
 
                         // For each root's descendant, excluding the root
                         X509CertificateHierarchy::for_each_descendant(
-                            [&](const X509Node& child, int depth) { hierarchy_hash_data.push_back(child.hash); }, root);
+                            [&](const X509Node& child, int depth) { 
+                                if(child.hash.has_value()) {
+                                    hierarchy_hash_data.push_back(child.hash.value()); 
+                                }
+                            }, root);
 
                         // Now the hierarchy_hash_data contains SubCA1->SubCA2->SECCLeaf,
                         // reverse order iteration to conform to the required leaf-first order
@@ -1113,7 +1116,7 @@ void EvseSecurity::update_ocsp_cache(const CertificateHashData& certificate_hash
 
                 if (!updated_hash) {
                     // Randomize filename, since multiple certificates can be stored in same bundle
-                    const auto name = cert.get_common_name() + "_" + filesystem_utils::get_random_file_name("_ocsp");
+                    const auto name = filesystem_utils::get_random_file_name("_ocsp");
 
                     const auto ocsp_file_path = (ocsp_path / name) += DER_EXTENSION;
                     const auto hash_file_path = (ocsp_path / name) += CERT_HASH_EXTENSION;
@@ -2298,7 +2301,7 @@ void EvseSecurity::garbage_collect() {
 
                         if (filesystem_utils::read_hash_from_file(ocsp_entry.path(), read_hash)) {
                             // If we can't find the has, it means it was deleted somehow, add to delete list
-                            if (hierarchy.contains_certificate_hash(read_hash) == false) {
+                            if (hierarchy.contains_certificate_hash(read_hash, true) == false) {
                                 auto oscp_data_path = ocsp_entry.path();
                                 oscp_data_path.replace_extension(DER_EXTENSION);
 

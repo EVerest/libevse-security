@@ -135,7 +135,7 @@ bool X509CertificateBundle::contains_certificate(const CertificateHashData& cert
 
     // Nothing found, build the hierarchy and search by the issued hash
     X509CertificateHierarchy& hierarchy = get_certificate_hierarchy();
-    return hierarchy.contains_certificate_hash(certificate_hash);
+    return hierarchy.contains_certificate_hash(certificate_hash, true);
 }
 
 std::optional<X509Wrapper> X509CertificateBundle::find_certificate(const CertificateHashData& certificate_hash,
