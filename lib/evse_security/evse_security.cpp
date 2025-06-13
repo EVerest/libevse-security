@@ -542,14 +542,6 @@ DeleteResult EvseSecurity::delete_certificate(const CertificateHashData& certifi
                 // Update the response
                 found_certificate = true;
                 response.leaf_certificate_type = leaf_certificate_type;
-                std::optional<CertificateHashData> deleted_leaf_hash;
-
-                // Get hash of deleted certificate, can be different in case it's an intermediate,
-                // since we need to search for the OCSP cache that requires the hash
-                CertificateHashData hash;
-                if (false == hierarchy.get_certificate_hash(deleted_leaf, hash)) {
-                    deleted_leaf_hash = std::move(hash);
-                }
 
                 if (csms) {
                     // Per M04.FR.06 we are not allowed to delete the CSMS (ChargingStationCertificate), we
@@ -584,14 +576,14 @@ DeleteResult EvseSecurity::delete_certificate(const CertificateHashData& certifi
                             filesystem_utils::delete_file(key_path.value());
                         }
 
-                        if (deleted_leaf_hash.has_value()) {
-                            fs::path path_ocsp_hash, path_ocsp_data;
-                            if (get_oscp_data_of_certificate(deleted_leaf, deleted_leaf_hash.value(), path_ocsp_hash,
-                                                             path_ocsp_data)) {
-                                EVLOG_info << "Deleted ocsp data of certificate: " << deleted_leaf.get_common_name();
-                                filesystem_utils::delete_file(path_ocsp_hash);
-                                filesystem_utils::delete_file(path_ocsp_data);
-                            }
+                        // NOTE: Deletes the OCSP only of the leaf since the intermediates being used by
+                        // multiple chains can still require their OCSP data
+                        fs::path path_ocsp_hash, path_ocsp_data;
+                        if (get_oscp_data_of_certificate(deleted_leaf, certificate_hash_data, path_ocsp_hash,
+                                                         path_ocsp_data)) {
+                            EVLOG_info << "Deleted ocsp data of certificate: " << deleted_leaf.get_common_name();
+                            filesystem_utils::delete_file(path_ocsp_hash);
+                            filesystem_utils::delete_file(path_ocsp_data);
                         }
                     }
                 }
