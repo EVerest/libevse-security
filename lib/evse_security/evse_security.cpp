@@ -2124,13 +2124,10 @@ void EvseSecurity::garbage_collect() {
                         // By default delete all empty
                         if (chain.size() <= 0) {
                             invalid_certificate_files.emplace(file);
+                            return true;
                         }
 
                         if (++skipped > DEFAULT_MINIMUM_CERTIFICATE_ENTRIES) {
-                            if (chain.empty()) {
-                                return true;
-                            }
-
                             // If the chain contains the first expired (leafs are the first)
                             if (chain[0].is_expired()) {
                                 invalid_certificate_files.emplace(file);
