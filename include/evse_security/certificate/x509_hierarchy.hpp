@@ -67,7 +67,7 @@ public:
     bool get_certificate_hash(const X509Wrapper& certificate, CertificateHashData& out_hash);
 
     /// @brief returns true if we contain a certificate with the following hash
-    bool contains_certificate_hash(const CertificateHashData& hash, bool contains_certificate_hash);
+    bool contains_certificate_hash(const CertificateHashData& hash, bool case_insensitive_comparison);
 
     /// @brief Searches for the root of the provided leaf, returning an empty optional if none was found
     std::optional<X509Wrapper> find_certificate_root(const X509Wrapper& leaf);
