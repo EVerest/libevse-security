@@ -240,10 +240,6 @@ void X509CertificateHierarchy::insert(X509Wrapper&& inserted_certificate) {
                         "Newly added certificate can't be parent of a self-signed certificate!");
                 }
 
-                if (top.hash.has_value()) {
-                    throw InvalidStateException("Existing non-root top certificate can't have a valid hash!");
-                }
-
                 // If the top certificate is a descendant of the certificate we're adding
 
                 // Cache top node
@@ -298,8 +294,9 @@ void X509CertificateHierarchy::insert(X509Wrapper&& inserted_certificate) {
             // and we are not self-signed then it means that we are an orphan
             if (state.is_selfsigned == 0) {
                 // Some sanity checks
-                if (node.hash.has_value())
+                if (node.hash.has_value()) {
                     throw InvalidStateException("Orphan certificate can't have a proper hash!");
+                }
 
                 // If it is a child of the new root certificate insert it to it's list and break
                 if (node.certificate.is_child(inserted_certificate)) {
