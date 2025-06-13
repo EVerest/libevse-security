@@ -51,8 +51,9 @@ X509CertificateBundle::X509CertificateBundle(const fs::path& path, const Encodin
     if (fs::is_directory(path)) {
         source = X509CertificateSource::DIRECTORY;
 
-        // Iterate directory
-        for (const auto& entry : fs::recursive_directory_iterator(path)) {
+        // Iterate directory, not recursively since we might have the ocsp sub-directory
+        // that contains the .der OCSP data that we don't have to use
+        for (const auto& entry : fs::directory_iterator(path)) {
             if (is_certificate_file(entry)) {
                 std::string certificate{};
                 if (filesystem_utils::read_from_file(entry.path(), certificate)) {
