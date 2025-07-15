@@ -25,6 +25,7 @@ public:
 public:
     static std::string x509_to_string(X509Handle* handle);
     static std::string x509_get_responder_url(X509Handle* handle);
+    static CertificateKeyUsageFlagsType x509_get_key_usage_flags(X509Handle* handle);
     static std::string x509_get_key_hash(X509Handle* handle);
     static std::string x509_get_serial_number(X509Handle* handle);
     static std::string x509_get_issuer_name_hash(X509Handle* handle);

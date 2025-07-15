@@ -3,6 +3,7 @@
 #pragma once
 
 #include <memory>
+#include <set>
 #include <stdexcept>
 #include <string>
 
@@ -100,6 +101,11 @@ public:
     /// @brief Gets OCSP responder URL of certificate if present, else returns an empty string
     /// @return
     std::string get_responder_url() const;
+
+    /// @brief Gets the key usages that were attached to this
+    /// certificate (including extended), or an empty set
+    /// @return
+    std::set<CertificateKeyUsageFlags> get_key_usage() const;
 
     /// @brief Gets the export string representation for this certificate
     /// @return
