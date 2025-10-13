@@ -42,7 +42,7 @@ public:
     bool is_selfsigned() const;
 
     /// @brief Gets x509 raw handle
-    inline X509Handle* get() const {
+    X509Handle* get() const {
         return x509.get();
     }
 
