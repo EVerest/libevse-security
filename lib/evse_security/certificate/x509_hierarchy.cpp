@@ -24,7 +24,7 @@ std::vector<X509Wrapper> X509CertificateHierarchy::collect_descendants(const X50
         // If we found the certificate
         if (node.certificate == top) {
             // Collect all descendants
-            if (node.children.size()) {
+            if (!node.children.empty()) {
                 for_each_descendant(
                     [&](const X509Node& descendant, int /*depth*/) { descendants.push_back(descendant.certificate); },
                     node);
@@ -369,7 +369,7 @@ void X509CertificateHierarchy::prune() {
 X509CertificateHierarchy X509CertificateHierarchy::build_hierarchy(std::vector<X509Wrapper>& certificates) {
     X509CertificateHierarchy ordered;
 
-    while (certificates.size() != 0u) {
+    while (!certificates.empty()) {
         ordered.insert(std::move(certificates.back()));
         certificates.pop_back();
     }

@@ -820,7 +820,7 @@ EvseSecurity::get_installed_certificates(const std::vector<CertificateType>& cer
 
                         // Now the hierarchy_hash_data contains SubCA1->SubCA2->SECCLeaf,
                         // reverse order iteration to conform to the required leaf-first order
-                        if (hierarchy_hash_data.size() != 0u) {
+                        if (!hierarchy_hash_data.empty()) {
                             bool first_leaf = true;
 
                             // Reverse iteration
@@ -908,7 +908,7 @@ OCSPRequestDataList EvseSecurity::get_v2g_ocsp_request_data() {
 
     const GetCertificateFullInfoResult result = get_full_leaf_certificate_info_internal(params);
 
-    if (result.status != GetCertificateInfoStatus::Accepted or (result.info.size() == 0u)) {
+    if (result.status != GetCertificateInfoStatus::Accepted or (result.info.empty())) {
         EVLOG_error << "Could not get key pair, for v2g ocsp request!";
         return OCSPRequestDataList();
     }
@@ -1005,7 +1005,7 @@ generate_ocsp_request_data_internal(const std::map<CaCertificateType, fs::path>&
             // Collect the chain, from root->subca1->subca2->leaf
             std::vector<X509Wrapper> descendants = hierarchy.collect_descendants(root.certificate);
 
-            if (descendants.size() > 0) {
+            if (!descendants.empty()) {
                 // We must make sure that the full received 'leaf_chain' is present in the descendants
                 bool missing_link = false;
 
@@ -2119,7 +2119,7 @@ void EvseSecurity::garbage_collect() {
                     [this, &invalid_certificate_files, &skipped, &key_directory, &protected_private_keys,
                      &root_bundle](const fs::path& file, const std::vector<X509Wrapper>& chain) {
                         // By default delete all empty
-                        if (chain.size() <= 0) {
+                        if (chain.empty()) {
                             invalid_certificate_files.emplace(file);
                             return true;
                         }
@@ -2175,7 +2175,7 @@ void EvseSecurity::garbage_collect() {
                     [](const std::vector<X509Wrapper>& a, const std::vector<X509Wrapper>& b) {
                         // Order from newest to oldest (newest DEFAULT_MINIMUM_CERTIFICATE_ENTRIES) are kept
                         // even if they are expired
-                        if (a.size() && b.size()) {
+                        if (!a.empty() && !b.empty()) {
                             return a.at(0).get_valid_to() > b.at(0).get_valid_to();
                         }
                         return false;
