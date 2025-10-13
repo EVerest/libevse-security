@@ -327,7 +327,7 @@ EvseSecurity::EvseSecurity(const FilePaths& file_paths, const std::optional<std:
     // Check that the leafs directory is not related to the bundle directory because
     // on garbage collect that can delete relevant CA certificates instead of leaf ones
     for (const auto& leaf_dir : dirs) {
-        for (auto const& [certificate_type, ca_bundle_path] : ca_bundle_path_map) {
+        for (const auto& [certificate_type, ca_bundle_path] : ca_bundle_path_map) {
             if (ca_bundle_path == leaf_dir) {
                 throw std::runtime_error(leaf_dir.string() +
                                          " leaf directory can not overlap CA directory: " + ca_bundle_path.string());
@@ -429,7 +429,7 @@ DeleteResult EvseSecurity::delete_certificate(const CertificateHashData& certifi
     std::vector<X509Wrapper> deleted_roots;
 
     // After we delete the roots, we collect them and use them in building the hierarchy to delete the leafs too
-    for (auto const& [certificate_type, ca_bundle_path] : ca_bundle_path_map) {
+    for (const auto& [certificate_type, ca_bundle_path] : ca_bundle_path_map) {
         try {
             X509CertificateBundle ca_bundle(ca_bundle_path, EncodingFormat::PEM);
             auto deleted = ca_bundle.delete_certificate(certificate_hash_data, true, false);
@@ -591,7 +591,7 @@ DeleteResult EvseSecurity::delete_certificate(const CertificateHashData& certifi
 
             return true;
         }); // End for each chain
-    }       // End for each leaf directory
+    } // End for each leaf directory
 
     if (!found_certificate) {
         response.result = DeleteCertificateResult::NotFound;
@@ -2107,7 +2107,7 @@ void EvseSecurity::garbage_collect() {
     std::set<fs::path> protected_private_keys;
 
     // Order by latest valid, and keep newest with a safety limit
-    for (auto const& [cert_dir, key_dir, ca_type] : leaf_paths) {
+    for (const auto& [cert_dir, key_dir, ca_type] : leaf_paths) {
         // Root bundle required for hash of OCSP cache
         try {
             X509CertificateBundle root_bundle(ca_bundle_path_map[ca_type], EncodingFormat::PEM);
@@ -2202,7 +2202,7 @@ void EvseSecurity::garbage_collect() {
     // at a further invocation after the GC timer will elapse a few times. This behavior
     // was added so that if we have a reset and the CSMS sends us a CSR response while we were
     // down it should still be processed when we boot up and NOT delete the CSRs
-    for (auto const& [cert_dir, keys_dir, ca_type] : leaf_paths) {
+    for (const auto& [cert_dir, keys_dir, ca_type] : leaf_paths) {
         fs::path cert_path = cert_dir;
         fs::path key_path = keys_dir;
 
@@ -2337,7 +2337,7 @@ bool EvseSecurity::is_filesystem_full() {
     std::set<fs::path> unique_paths;
 
     // Collect all bundles
-    for (auto const& [certificate_type, ca_bundle_path] : ca_bundle_path_map) {
+    for (const auto& [certificate_type, ca_bundle_path] : ca_bundle_path_map) {
         if (fs::is_regular_file(ca_bundle_path)) {
             unique_paths.emplace(ca_bundle_path);
         } else if (fs::is_directory(ca_bundle_path)) {
@@ -2357,7 +2357,7 @@ bool EvseSecurity::is_filesystem_full() {
     key_pairs.push_back(directories.secc_leaf_cert_directory);
     key_pairs.push_back(directories.secc_leaf_key_directory);
 
-    for (auto const& directory : key_pairs) {
+    for (const auto& directory : key_pairs) {
         if (fs::is_regular_file(directory)) {
             unique_paths.emplace(directory);
         } else if (fs::is_directory(directory)) {

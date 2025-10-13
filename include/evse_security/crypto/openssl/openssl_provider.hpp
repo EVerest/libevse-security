@@ -156,7 +156,7 @@ public:
     }
 
     /// @brief return the TLS OSSL library context
-    inline operator struct ossl_lib_ctx_st *() {
+    inline operator struct ossl_lib_ctx_st*() {
         return s_tls_libctx_p;
     }
 
