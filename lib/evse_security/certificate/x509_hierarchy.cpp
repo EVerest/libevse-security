@@ -26,7 +26,7 @@ std::vector<X509Wrapper> X509CertificateHierarchy::collect_descendants(const X50
             // Collect all descendants
             if (node.children.size()) {
                 for_each_descendant(
-                    [&](const X509Node& descendant, int depth) { descendants.push_back(descendant.certificate); },
+                    [&](const X509Node& descendant, int /*depth*/) { descendants.push_back(descendant.certificate); },
                     node);
             }
 

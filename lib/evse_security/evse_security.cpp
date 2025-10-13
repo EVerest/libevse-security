@@ -738,7 +738,7 @@ EvseSecurity::get_installed_certificates(const std::vector<CertificateType>& cer
 
                 // Add all owned children/certificates in order
                 X509CertificateHierarchy::for_each_descendant(
-                    [&certificate_hash_data_chain](const X509Node& child, int depth) {
+                    [&certificate_hash_data_chain](const X509Node& child, int /*depth*/) {
                         if (child.hash.has_value()) {
                             certificate_hash_data_chain.child_certificate_hash_data.push_back(child.hash.value());
                         }
@@ -810,7 +810,7 @@ EvseSecurity::get_installed_certificates(const std::vector<CertificateType>& cer
 
                         // For each root's descendant, excluding the root
                         X509CertificateHierarchy::for_each_descendant(
-                            [&](const X509Node& child, int depth) {
+                            [&](const X509Node& child, int /*depth*/) {
                                 if (child.hash.has_value()) {
                                     hierarchy_hash_data.push_back(child.hash.value());
                                 }
@@ -1429,7 +1429,7 @@ EvseSecurity::get_full_leaf_certificate_info_internal(const CertificateQueryPara
 
         // Iterate all certificates from newest to the oldest
         leaf_certificates.for_each_chain_ordered(
-            [&](const fs::path& file, const std::vector<X509Wrapper>& chain) {
+            [&](const fs::path& /*file*/, const std::vector<X509Wrapper>& chain) {
                 bool is_valid = false;
 
                 if (not chain.empty()) {
@@ -1522,7 +1522,7 @@ EvseSecurity::get_full_leaf_certificate_info_internal(const CertificateQueryPara
             // We are searching for both the full leaf bundle, containing the leaf and the cso1/2 and the single
             // leaf without the cso1/2
             leaf_directory.for_each_chain(
-                [&](const std::filesystem::path& path, const std::vector<X509Wrapper>& chain) {
+                [&](const std::filesystem::path& /*path*/, const std::vector<X509Wrapper>& chain) {
                     // If we contain the latest valid, we found our generated bundle
                     const bool leaf_found = (std::find(chain.begin(), chain.end(), certificate) != chain.end());
 

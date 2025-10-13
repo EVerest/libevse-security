@@ -271,7 +271,7 @@ bool OpenSSLProvider::set_mode(OSSL_LIB_CTX*, mode_t) {
     return false;
 }
 
-const char* OpenSSLProvider::propquery(mode_t mode) const {
+const char* OpenSSLProvider::propquery(mode_t /*mode*/) const {
     return nullptr;
 }
 

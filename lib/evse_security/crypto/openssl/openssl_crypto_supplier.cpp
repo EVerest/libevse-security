@@ -219,7 +219,7 @@ static bool s_generate_key(const KeyGenerationInfo& key_info, KeyHandle_ptr& out
     return bResult;
 }
 
-bool OpenSSLSupplier::generate_key(const KeyGenerationInfo& key_info, KeyHandle_ptr& out_key) {
+bool OpenSSLSupplier::generate_key(const KeyGenerationInfo& key_info, KeyHandle_ptr& /*out_key*/) {
     KeyHandle_ptr gen_key;
     EVP_PKEY_CTX_ptr ctx;
     bool bResult = true;
