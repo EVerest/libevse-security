@@ -26,7 +26,7 @@
 namespace evse_security {
 
 static X509* get(X509Handle* handle) {
-    if (X509HandleOpenSSL* ssl_handle = dynamic_cast<X509HandleOpenSSL*>(handle)) {
+    if (auto* ssl_handle = dynamic_cast<X509HandleOpenSSL*>(handle)) {
         return ssl_handle->get();
     }
 
@@ -34,7 +34,7 @@ static X509* get(X509Handle* handle) {
 }
 
 static EVP_PKEY* get(KeyHandle* handle) {
-    if (KeyHandleOpenSSL* ssl_handle = dynamic_cast<KeyHandleOpenSSL*>(handle)) {
+    if (auto* ssl_handle = dynamic_cast<KeyHandleOpenSSL*>(handle)) {
         return ssl_handle->get();
     }
 
@@ -831,7 +831,7 @@ template <typename T> static bool base64_decode(const std::string& base64_string
         return false;
     }
 
-    const unsigned char* encoded_str = reinterpret_cast<const unsigned char*>(base64_string.data());
+    const auto* encoded_str = reinterpret_cast<const unsigned char*>(base64_string.data());
     const int base64_length = base64_string.size();
 
     std::uint8_t decoded_out[base64_length];
