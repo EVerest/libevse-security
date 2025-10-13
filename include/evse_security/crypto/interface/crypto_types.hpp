@@ -73,8 +73,7 @@ public:
 };
 
 struct CryptoHandle {
-    virtual ~CryptoHandle() {
-    }
+    virtual ~CryptoHandle() = default;
 };
 
 /// @brief Handle abstraction to crypto lib X509 certificate

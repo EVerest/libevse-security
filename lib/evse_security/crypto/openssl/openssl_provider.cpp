@@ -255,11 +255,9 @@ OSSL_PROVIDER* OpenSSLProvider::s_tls_prov_default_p = nullptr;
 OSSL_PROVIDER* OpenSSLProvider::s_tls_prov_custom_p = nullptr;
 OSSL_LIB_CTX* OpenSSLProvider::s_tls_libctx_p = nullptr;
 
-OpenSSLProvider::OpenSSLProvider() {
-}
+OpenSSLProvider::OpenSSLProvider() = default;
 
-OpenSSLProvider::~OpenSSLProvider() {
-}
+OpenSSLProvider::~OpenSSLProvider() = default;
 
 bool OpenSSLProvider::load(OSSL_PROVIDER*&, OSSL_PROVIDER*&, OSSL_LIB_CTX*, mode_t) {
     return false;

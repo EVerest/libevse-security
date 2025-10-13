@@ -347,8 +347,7 @@ EvseSecurity::EvseSecurity(const FilePaths& file_paths, const std::optional<std:
     garbage_collect_timer.interval([this]() { this->garbage_collect(); }, this->garbage_collect_time);
 }
 
-EvseSecurity::~EvseSecurity() {
-}
+EvseSecurity::~EvseSecurity() = default;
 
 InstallCertificateResult EvseSecurity::install_ca_certificate(const std::string& certificate,
                                                               CaCertificateType certificate_type) {
