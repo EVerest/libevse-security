@@ -129,9 +129,9 @@ bool X509CertificateBundle::contains_certificate(const X509Wrapper& certificate)
 bool X509CertificateBundle::contains_certificate(const CertificateHashData& certificate_hash) {
     // Try an initial search for root certificates, else a hierarchy build will be required
     for (const auto& chain : certificates) {
-        bool found = std::find_if(std::begin(chain.second), std::end(chain.second), [&](const X509Wrapper& cert) {
-                         return cert.is_selfsigned() && cert == certificate_hash;
-                     }) != std::end(chain.second);
+        const bool found = std::find_if(std::begin(chain.second), std::end(chain.second), [&](const X509Wrapper& cert) {
+                               return cert.is_selfsigned() && cert == certificate_hash;
+                           }) != std::end(chain.second);
 
         if (found) {
             return true;
@@ -152,7 +152,7 @@ std::optional<X509Wrapper> X509CertificateBundle::find_certificate(const Certifi
                 bool matches = false;
 
                 if (case_insensitive_comparison) {
-                    CertificateHashData certif_hash = certif.get_certificate_hash_data();
+                    const CertificateHashData certif_hash = certif.get_certificate_hash_data();
                     matches = certif_hash.case_insensitive_comparison(certificate_hash);
                 } else {
                     matches = (certif == certificate_hash);
@@ -201,7 +201,7 @@ std::vector<X509Wrapper> X509CertificateBundle::delete_certificate(const X509Wra
 
         certifs.erase(std::remove_if(certifs.begin(), certifs.end(),
                                      [&](const auto& certif) {
-                                         bool found =
+                                         const bool found =
                                              std::find(to_delete.begin(), to_delete.end(), certif) != to_delete.end();
 
                                          if (found) {
@@ -240,7 +240,7 @@ void X509CertificateBundle::delete_all_certificates() {
 void X509CertificateBundle::add_certificate(X509Wrapper&& certificate) {
     if (source == X509CertificateSource::DIRECTORY) {
         // If it is in directory mode only allow sub-directories of that directory
-        std::filesystem::path certif_path = certificate.get_file().value_or(std::filesystem::path());
+        const std::filesystem::path certif_path = certificate.get_file().value_or(std::filesystem::path());
 
         if (filesystem_utils::is_subdirectory(path, certif_path)) {
             certificates[certif_path].push_back(std::move(certificate));

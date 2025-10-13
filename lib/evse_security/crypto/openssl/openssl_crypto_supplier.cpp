@@ -66,14 +66,14 @@ const char* OpenSSLSupplier::get_supplier_name() {
 }
 
 bool OpenSSLSupplier::supports_tpm_key_creation() {
-    OpenSSLProvider provider;
+    const OpenSSLProvider provider;
     return provider.supports_provider_tpm();
 }
 
 static bool export_key_internal(const KeyGenerationInfo& key_info, const EVP_PKEY_ptr& evp_key) {
     // write private key to file
     if (key_info.private_key_file.has_value()) {
-        BIO_ptr key_bio(BIO_new_file(key_info.private_key_file.value().c_str(), "w"));
+        const BIO_ptr key_bio(BIO_new_file(key_info.private_key_file.value().c_str(), "w"));
 
         if (!key_bio) {
             EVLOG_error << "Failed to create private key file!";
@@ -95,7 +95,7 @@ static bool export_key_internal(const KeyGenerationInfo& key_info, const EVP_PKE
     }
 
     if (key_info.public_key_file.has_value()) {
-        BIO_ptr key_bio(BIO_new_file(key_info.public_key_file.value().c_str(), "w"));
+        const BIO_ptr key_bio(BIO_new_file(key_info.public_key_file.value().c_str(), "w"));
 
         if (!key_bio) {
             EVLOG_error << "Failed to create private key file!";
@@ -211,6 +211,7 @@ static bool s_generate_key(const KeyGenerationInfo& key_info, KeyHandle_ptr& out
         EVLOG_info << "Key export";
         // Export keys too
         bResult = export_key_internal(key_info, evp_key);
+        // NOLINTNEXTLINE(misc-const-correctness): would be problematic in the following make_unique statement
         EVP_PKEY* raw_key_handle = evp_key.release();
         out_key = std::make_unique<KeyHandleOpenSSL>(raw_key_handle);
     }
@@ -234,7 +235,7 @@ bool OpenSSLSupplier::generate_key(const KeyGenerationInfo& key_info, KeyHandle_
 std::vector<X509Handle_ptr> OpenSSLSupplier::load_certificates(const std::string& data, const EncodingFormat encoding) {
     std::vector<X509Handle_ptr> certificates;
 
-    BIO_ptr bio(BIO_new_mem_buf(data.data(), static_cast<int>(data.size())));
+    const BIO_ptr bio(BIO_new_mem_buf(data.data(), static_cast<int>(data.size())));
 
     if (!bio) {
         throw CertificateLoadException("Failed to create BIO from data");
@@ -259,6 +260,7 @@ std::vector<X509Handle_ptr> OpenSSLSupplier::load_certificates(const std::string
             throw CertificateLoadException("Certificate (PEM) parsing error");
         }
     } else if (encoding == EncodingFormat::DER) {
+        // NOLINTNEXTLINE(misc-const-correctness): would be problematic in the following make_unique statement
         X509* x509 = d2i_X509_bio(bio.get(), nullptr);
 
         if (x509) {
@@ -274,13 +276,14 @@ std::vector<X509Handle_ptr> OpenSSLSupplier::load_certificates(const std::string
 }
 
 std::string OpenSSLSupplier::x509_to_string(X509Handle* handle) {
+    // NOLINTNEXTLINE(misc-const-correctness): would be problematic in the following PEM_write_bio_X509 statement
     if (X509* x509 = get(handle)) {
-        BIO_ptr bio_write(BIO_new(BIO_s_mem()));
+        const BIO_ptr bio_write(BIO_new(BIO_s_mem()));
 
-        int rc = PEM_write_bio_X509(bio_write.get(), x509);
+        const int rc = PEM_write_bio_X509(bio_write.get(), x509);
 
         if (rc == 1) {
-            BUF_MEM* mem = NULL;
+            const BUF_MEM* mem = NULL;
             BIO_get_mem_ptr(bio_write.get(), &mem);
 
             return std::string(mem->data, mem->length);
@@ -291,22 +294,22 @@ std::string OpenSSLSupplier::x509_to_string(X509Handle* handle) {
 }
 
 std::string OpenSSLSupplier::x509_get_common_name(X509Handle* handle) {
-    X509* x509 = get(handle);
+    const X509* x509 = get(handle);
 
     if (x509 == nullptr) {
         return {};
     }
 
-    X509_NAME* subject = X509_get_subject_name(x509);
-    int nid = OBJ_txt2nid("CN");
-    int index = X509_NAME_get_index_by_NID(subject, nid, -1);
+    const X509_NAME* subject = X509_get_subject_name(x509);
+    const int nid = OBJ_txt2nid("CN");
+    const int index = X509_NAME_get_index_by_NID(subject, nid, -1);
 
     if (index == -1) {
         return {};
     }
 
-    X509_NAME_ENTRY* entry = X509_NAME_get_entry(subject, index);
-    ASN1_STRING* ca_asn1 = X509_NAME_ENTRY_get_data(entry);
+    const X509_NAME_ENTRY* entry = X509_NAME_get_entry(subject, index);
+    const ASN1_STRING* ca_asn1 = X509_NAME_ENTRY_get_data(entry);
 
     if (ca_asn1 == nullptr) {
         return {};
@@ -318,14 +321,14 @@ std::string OpenSSLSupplier::x509_get_common_name(X509Handle* handle) {
 }
 
 std::string OpenSSLSupplier::x509_get_issuer_name_hash(X509Handle* handle) {
-    X509* x509 = get(handle);
+    const X509* x509 = get(handle);
 
     if (x509 == nullptr) {
         return {};
     }
 
     unsigned char md[SHA256_DIGEST_LENGTH];
-    X509_NAME* name = X509_get_issuer_name(x509);
+    const X509_NAME* name = X509_get_issuer_name(x509);
     X509_NAME_digest(name, EVP_sha256(), md, NULL);
 
     std::stringstream ss;
@@ -342,7 +345,7 @@ std::string OpenSSLSupplier::x509_get_serial_number(X509Handle* handle) {
         return {};
     }
 
-    ASN1_INTEGER* serial_asn1 = X509_get_serialNumber(x509);
+    const ASN1_INTEGER* serial_asn1 = X509_get_serialNumber(x509);
     if (serial_asn1 == nullptr) {
         ERR_print_errors_fp(stderr);
         return {};
@@ -375,7 +378,7 @@ std::string OpenSSLSupplier::x509_get_serial_number(X509Handle* handle) {
 }
 
 std::string OpenSSLSupplier::x509_get_key_hash(X509Handle* handle) {
-    X509* x509 = get(handle);
+    const X509* x509 = get(handle);
 
     if (x509 == nullptr) {
         return {};
@@ -412,15 +415,15 @@ std::string OpenSSLSupplier::x509_get_responder_url(X509Handle* handle) {
 }
 
 bool OpenSSLSupplier::x509_get_validity(X509Handle* handle, std::int64_t& out_valid_in, std::int64_t& out_valid_to) {
-    X509* x509 = get(handle);
+    const X509* x509 = get(handle);
 
     if (x509 == nullptr) {
         return false;
     }
 
     // For valid_in and valid_to
-    ASN1_TIME* notBefore = X509_get_notBefore(x509);
-    ASN1_TIME* notAfter = X509_get_notAfter(x509);
+    const ASN1_TIME* notBefore = X509_get_notBefore(x509);
+    const ASN1_TIME* notAfter = X509_get_notAfter(x509);
 
     int day, sec;
     ASN1_TIME_diff(&day, &sec, nullptr, notBefore);
@@ -446,10 +449,10 @@ bool OpenSSLSupplier::x509_is_child(X509Handle* child, X509Handle* parent) {
         return false;
     }
 
-    X509_STORE_ptr store(X509_STORE_new());
+    const X509_STORE_ptr store(X509_STORE_new());
     X509_STORE_add_cert(store.get(), x509_parent);
 
-    X509_STORE_CTX_ptr ctx(X509_STORE_CTX_new());
+    const X509_STORE_CTX_ptr ctx(X509_STORE_CTX_new());
     X509_STORE_CTX_init(ctx.get(), store.get(), x509_child, NULL);
 
     // If the parent is not a self-signed certificate, assume we have a partial chain
@@ -461,7 +464,7 @@ bool OpenSSLSupplier::x509_is_child(X509Handle* child, X509Handle* parent) {
     }
 
     if (X509_verify_cert(ctx.get()) != 1) {
-        int ec = X509_STORE_CTX_get_error(ctx.get());
+        const int ec = X509_STORE_CTX_get_error(ctx.get());
         const char* error = X509_verify_cert_error_string(ec);
 
         EVLOG_debug << "Certificate issued by error: " << ((error != nullptr) ? error : "UNKNOWN");
@@ -493,8 +496,8 @@ CertificateValidationResult OpenSSLSupplier::x509_verify_certificate_chain(
     X509Handle* target, const std::vector<X509Handle*>& parents, const std::vector<X509Handle*>& untrusted_subcas,
     bool allow_future_certificates, const std::optional<fs::path> dir_path, const std::optional<fs::path> file_path) {
 
-    X509_STORE_ptr store_ptr(X509_STORE_new());
-    X509_STORE_CTX_ptr store_ctx_ptr(X509_STORE_CTX_new());
+    const X509_STORE_ptr store_ptr(X509_STORE_new());
+    const X509_STORE_CTX_ptr store_ctx_ptr(X509_STORE_CTX_new());
 
     for (size_t i = 0; i < parents.size(); i++) {
         X509_STORE_add_cert(store_ptr.get(), get(parents[i]));
@@ -522,7 +525,7 @@ CertificateValidationResult OpenSSLSupplier::x509_verify_certificate_chain(
     // Build potentially untrusted intermediary (subca) certificates
     if (false == untrusted_subcas.empty()) {
         untrusted = X509_STACK_UNSAFE_ptr(sk_X509_new_null());
-        int flags = X509_ADD_FLAG_NO_DUP | X509_ADD_FLAG_NO_SS;
+        const int flags = X509_ADD_FLAG_NO_DUP | X509_ADD_FLAG_NO_SS;
 
         for (auto& untrusted_cert : untrusted_subcas) {
             if (1 != X509_add_cert(untrusted.get(), get(untrusted_cert), flags)) {
@@ -552,7 +555,7 @@ CertificateValidationResult OpenSSLSupplier::x509_verify_certificate_chain(
     // verifies the certificate chain based on ctx
     // verifies the certificate has not expired and is already valid
     if (X509_verify_cert(store_ctx_ptr.get()) != 1) {
-        int ec = X509_STORE_CTX_get_error(store_ctx_ptr.get());
+        const int ec = X509_STORE_CTX_get_error(store_ctx_ptr.get());
         return to_certificate_error(ec);
     }
 
@@ -561,22 +564,23 @@ CertificateValidationResult OpenSSLSupplier::x509_verify_certificate_chain(
 
 KeyValidationResult OpenSSLSupplier::x509_check_private_key(X509Handle* handle, std::string private_key,
                                                             std::optional<std::string> password) {
-    X509* x509 = get(handle);
+    const X509* x509 = get(handle);
 
     if (x509 == nullptr) {
         return KeyValidationResult::Unknown;
     }
 
     {
-        OpenSSLProvider provider; // ensure providers are loaded
-                                  // minimise holding the mutex
+        const OpenSSLProvider provider; // ensure providers are loaded
+                                        // minimise holding the mutex
     }
 
-    BIO_ptr bio(BIO_new_mem_buf(private_key.c_str(), -1));
+    const BIO_ptr bio(BIO_new_mem_buf(private_key.c_str(), -1));
     // Passing password string since if NULL is provided, the password CB will be called
-    EVP_PKEY_ptr evp_pkey(PEM_read_bio_PrivateKey(bio.get(), nullptr, nullptr, (void*)password.value_or("").c_str()));
+    const EVP_PKEY_ptr evp_pkey(
+        PEM_read_bio_PrivateKey(bio.get(), nullptr, nullptr, (void*)password.value_or("").c_str()));
 
-    bool bResult = true;
+    const bool bResult = true;
     if (!evp_pkey) {
         EVLOG_warning << "Invalid evp_pkey: " << private_key << " error: " << ERR_error_string(ERR_get_error(), NULL)
                       << " Password configured correctly?";
@@ -599,8 +603,8 @@ KeyValidationResult OpenSSLSupplier::x509_check_private_key(X509Handle* handle, 
 bool OpenSSLSupplier::x509_verify_signature(X509Handle* handle, const std::vector<std::uint8_t>& signature,
                                             const std::vector<std::uint8_t>& data) {
     {
-        OpenSSLProvider provider; // ensure providers are loaded
-                                  // minimise holding the mutex
+        const OpenSSLProvider provider; // ensure providers are loaded
+                                        // minimise holding the mutex
     }
 
     // extract public key
@@ -610,7 +614,7 @@ bool OpenSSLSupplier::x509_verify_signature(X509Handle* handle, const std::vecto
         return false;
     }
 
-    EVP_PKEY_ptr public_key_ptr(X509_get_pubkey(x509));
+    const EVP_PKEY_ptr public_key_ptr(X509_get_pubkey(x509));
 
     if (!public_key_ptr.get()) {
         EVLOG_error << "Error during X509_get_pubkey";
@@ -618,7 +622,7 @@ bool OpenSSLSupplier::x509_verify_signature(X509Handle* handle, const std::vecto
     }
 
     // verify file signature
-    EVP_PKEY_CTX_ptr public_key_context_ptr(EVP_PKEY_CTX_new(public_key_ptr.get(), nullptr));
+    const EVP_PKEY_CTX_ptr public_key_context_ptr(EVP_PKEY_CTX_new(public_key_ptr.get(), nullptr));
 
     if (!public_key_context_ptr.get()) {
         EVLOG_error << "Error setting up public key context";
@@ -635,8 +639,9 @@ bool OpenSSLSupplier::x509_verify_signature(X509Handle* handle, const std::vecto
         return false;
     };
 
-    int result = EVP_PKEY_verify(public_key_context_ptr.get(), reinterpret_cast<const unsigned char*>(signature.data()),
-                                 signature.size(), reinterpret_cast<const unsigned char*>(data.data()), data.size());
+    const int result =
+        EVP_PKEY_verify(public_key_context_ptr.get(), reinterpret_cast<const unsigned char*>(signature.data()),
+                        signature.size(), reinterpret_cast<const unsigned char*>(data.data()), data.size());
 
     EVP_cleanup();
 
@@ -662,7 +667,7 @@ CertificateSignRequestResult OpenSSLSupplier::x509_generate_csr(const Certificat
     EVP_PKEY* key = get(gen_key.get());
 
     // X509 CSR request
-    X509_REQ_ptr x509_req_ptr(X509_REQ_new());
+    const X509_REQ_ptr x509_req_ptr(X509_REQ_new());
 
     if (nullptr == x509_req_ptr.get()) {
         EVLOG_error << "Failed to create CSR request!";
@@ -672,7 +677,7 @@ CertificateSignRequestResult OpenSSLSupplier::x509_generate_csr(const Certificat
     }
 
     // set version of x509 req
-    int n_version = csr_info.n_version;
+    const int n_version = csr_info.n_version;
 
     if (false == X509_REQ_set_version(x509_req_ptr.get(), n_version)) {
         EVLOG_error << "Failed to set csr version!";
@@ -717,7 +722,8 @@ CertificateSignRequestResult OpenSSLSupplier::x509_generate_csr(const Certificat
     X509_EXTENSION* ext_san = nullptr;
     if (!names.empty()) {
         auto comma_fold = [](std::string a, const std::string& b) { return std::move(a) + ',' + b; };
-        std::string value = std::accumulate(std::next(names.begin()), names.end(), std::string(names[0]), comma_fold);
+        const std::string value =
+            std::accumulate(std::next(names.begin()), names.end(), std::string(names[0]), comma_fold);
         ext_san = X509V3_EXT_conf_nid(NULL, NULL, NID_subject_alt_name, value.c_str());
         sk_X509_EXTENSION_push(extensions, ext_san);
     }
@@ -736,7 +742,7 @@ CertificateSignRequestResult OpenSSLSupplier::x509_generate_csr(const Certificat
     }
 
     // sign the certificate with the private key
-    bool x509_signed = X509_REQ_sign(x509_req_ptr.get(), key, EVP_sha256());
+    const bool x509_signed = X509_REQ_sign(x509_req_ptr.get(), key, EVP_sha256());
 
     if (x509_signed == false) {
         EVLOG_error << "Failed to sign csr with error!";
@@ -746,10 +752,10 @@ CertificateSignRequestResult OpenSSLSupplier::x509_generate_csr(const Certificat
     }
 
     // write csr
-    BIO_ptr bio(BIO_new(BIO_s_mem()));
+    const BIO_ptr bio(BIO_new(BIO_s_mem()));
     PEM_write_bio_X509_REQ(bio.get(), x509_req_ptr.get());
 
-    BUF_MEM* mem_csr = NULL;
+    const BUF_MEM* mem_csr = NULL;
     BIO_get_mem_ptr(bio.get(), &mem_csr);
 
     out_csr = std::string(mem_csr->data, mem_csr->length);
@@ -776,7 +782,7 @@ bool OpenSSLSupplier::digest_file_sha256(const fs::path& path, std::vector<std::
     std::uint8_t sha256_out[EVP_MAX_MD_SIZE];
 
     // calculate sha256 of file
-    bool processed_file = filesystem_utils::process_file(
+    const bool processed_file = filesystem_utils::process_file(
         path, BUFSIZ, [&](const std::uint8_t* bytes, std::size_t read, bool last_chunk) -> bool {
             if (read > 0) {
                 if (EVP_DigestUpdate(md_context_ptr.get(), bytes, read) == 0) {
@@ -810,7 +816,7 @@ bool OpenSSLSupplier::digest_file_sha256(const fs::path& path, std::vector<std::
 }
 
 template <typename T> static bool base64_decode(const std::string& base64_string, T& out_decoded) {
-    EVP_ENCODE_CTX_ptr base64_decode_context_ptr(EVP_ENCODE_CTX_new());
+    const EVP_ENCODE_CTX_ptr base64_decode_context_ptr(EVP_ENCODE_CTX_new());
     if (!base64_decode_context_ptr.get()) {
         EVLOG_error << "Error during EVP_ENCODE_CTX_new";
         return false;
@@ -823,7 +829,7 @@ template <typename T> static bool base64_decode(const std::string& base64_string
     }
 
     const unsigned char* encoded_str = reinterpret_cast<const unsigned char*>(base64_string.data());
-    int base64_length = base64_string.size();
+    const int base64_length = base64_string.size();
 
     std::uint8_t decoded_out[base64_length];
 
@@ -848,7 +854,7 @@ template <typename T> static bool base64_decode(const std::string& base64_string
 }
 
 static bool base64_encode(const unsigned char* bytes_str, int bytes_size, std::string& out_encoded) {
-    EVP_ENCODE_CTX_ptr base64_encode_context_ptr(EVP_ENCODE_CTX_new());
+    const EVP_ENCODE_CTX_ptr base64_encode_context_ptr(EVP_ENCODE_CTX_new());
     if (!base64_encode_context_ptr.get()) {
         EVLOG_error << "Error during EVP_ENCODE_CTX_new";
         return false;
@@ -863,7 +869,7 @@ static bool base64_encode(const unsigned char* bytes_str, int bytes_size, std::s
         return false;
     }
 
-    int base64_length = ((bytes_size / 3) * 4) + 2;
+    const int base64_length = ((bytes_size / 3) * 4) + 2;
     // If it causes issues, replace with 'alloca' on different platform
     char base64_out[base64_length + 66]; // + 66 bytes for final block
     int full_len = 0;

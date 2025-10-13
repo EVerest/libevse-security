@@ -67,7 +67,7 @@ static void add_entry(int type, unsigned int hash, const char* filename, const u
                       unsigned short old_id) {
     struct bucket_info* bi;
     struct entry_info *ei, *found = NULL;
-    unsigned int ndx = (type + hash) % countof(hash_table);
+    const unsigned int ndx = (type + hash) % countof(hash_table);
 
     for (bi = hash_table[ndx]; bi; bi = bi->next) {
         if (bi->type == type && bi->hash == hash) {
@@ -129,9 +129,9 @@ static void add_entry(int type, unsigned int hash, const char* filename, const u
 }
 
 static int handle_symlink(const char* filename, const char* fullpath) {
-    static signed char xdigit[] = {0,  1,  2,  3,  4,  5,  6,  7,  8,  9,  -1, -1, -1, -1, -1, -1, -1, 10, 11,
-                                   12, 13, 14, 15, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
-                                   -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, 10, 11, 12, 13, 14, 15};
+    static const signed char xdigit[] = {0,  1,  2,  3,  4,  5,  6,  7,  8,  9,  -1, -1, -1, -1, -1, -1, -1, 10, 11,
+                                         12, 13, 14, 15, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
+                                         -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, 10, 11, 12, 13, 14, 15};
     char linktarget[NAME_MAX], *endptr;
     unsigned int hash = 0;
     unsigned char ch;
@@ -179,8 +179,9 @@ static int handle_certificate(const char* filename, const char* fullpath) {
     BIO* b;
     const char* ext;
     unsigned char digest[EVP_MAX_MD_SIZE];
-    X509_NAME* name = NULL;
-    int i, type, ret = -1;
+    const X509_NAME* name = NULL;
+    int i, type;
+    const int ret = -1;
 
     ext = strrchr(filename, '.');
     if (ext == NULL) {

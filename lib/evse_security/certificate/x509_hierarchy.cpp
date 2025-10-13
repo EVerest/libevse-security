@@ -334,7 +334,7 @@ void X509CertificateHierarchy::prune() {
         // Possible orphan
         auto& orphan = hierarchy[i];
 
-        bool is_orphan = (orphan.state.is_selfsigned) == 0 && (orphan.state.is_orphan == 0);
+        const bool is_orphan = (orphan.state.is_selfsigned) == 0 && (orphan.state.is_orphan == 0);
         if (is_orphan == false) {
             continue;
         }

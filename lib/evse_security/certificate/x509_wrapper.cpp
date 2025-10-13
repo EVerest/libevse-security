@@ -19,7 +19,7 @@ X509Wrapper::X509Wrapper(const fs::path& file, const EncodingFormat encoding) {
     }
 
     fsstd::ifstream read(file, std::ios::binary);
-    std::string certificate((std::istreambuf_iterator<char>(read)), std::istreambuf_iterator<char>());
+    const std::string certificate((std::istreambuf_iterator<char>(read)), std::istreambuf_iterator<char>());
 
     auto loaded = CryptoSupplier::load_certificates(certificate, encoding);
     if (loaded.size() != 1) {

@@ -100,7 +100,7 @@ private:
     /// @param val - whether to set or reset the flag
     /// @return true when the flag was changed
     static bool update(flags_t f, bool val) {
-        bool result = (val != is_set(f));
+        const bool result = (val != is_set(f));
         if (val) {
             set(f);
         } else {
