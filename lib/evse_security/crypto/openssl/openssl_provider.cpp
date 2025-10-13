@@ -16,9 +16,9 @@
 #else
 // dummy structures for non-OpenSSL 3
 struct ossl_provider_st {};
-typedef struct ossl_provider_st OSSL_PROVIDER;
+using OSSL_PROVIDER = struct ossl_provider_st;
 struct ossl_lib_ctx_st;
-typedef struct ossl_lib_ctx_st OSSL_LIB_CTX;
+using OSSL_LIB_CTX = struct ossl_lib_ctx_st;
 #endif
 
 namespace evse_security {

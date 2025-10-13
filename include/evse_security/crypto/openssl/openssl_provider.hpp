@@ -62,7 +62,7 @@ public:
     };
 
 private:
-    typedef std::uint8_t flags_underlying_t;
+    using flags_underlying_t = std::uint8_t;
     enum class flags_t : flags_underlying_t {
         initialised,
         custom_provider_available,
