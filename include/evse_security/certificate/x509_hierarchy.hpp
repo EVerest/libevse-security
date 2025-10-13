@@ -97,7 +97,7 @@ public:
             }
 
             for (auto& child : root.children) {
-                queue.push(child);
+                queue.emplace(child);
             }
         }
 
@@ -115,7 +115,7 @@ public:
             }
 
             for (auto& child : top.children) {
-                queue.push(child);
+                queue.emplace(child);
             }
         }
     }

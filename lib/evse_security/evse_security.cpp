@@ -2091,10 +2091,10 @@ void EvseSecurity::garbage_collect() {
 
     std::vector<std::tuple<fs::path, fs::path, CaCertificateType>> leaf_paths;
 
-    leaf_paths.push_back(std::make_tuple(this->directories.csms_leaf_cert_directory,
-                                         this->directories.csms_leaf_key_directory, CaCertificateType::CSMS));
-    leaf_paths.push_back(std::make_tuple(this->directories.secc_leaf_cert_directory,
-                                         this->directories.secc_leaf_key_directory, CaCertificateType::V2G));
+    leaf_paths.emplace_back(this->directories.csms_leaf_cert_directory, this->directories.csms_leaf_key_directory,
+                            CaCertificateType::CSMS);
+    leaf_paths.emplace_back(this->directories.secc_leaf_cert_directory, this->directories.secc_leaf_key_directory,
+                            CaCertificateType::V2G);
 
     // Delete certificates first, give the option to cleanup the dangling keys afterwards
     std::set<fs::path> invalid_certificate_files;
