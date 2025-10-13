@@ -42,8 +42,7 @@ X509CertificateBundle::X509CertificateBundle(const std::string& certificate, con
 }
 
 X509CertificateBundle::X509CertificateBundle(const fs::path& path, const EncodingFormat encoding) :
-    hierarchy_invalidated(true) {
-    this->path = path;
+    hierarchy_invalidated(true), path(path) {
 
     // Attempt creation
     filesystem_utils::create_file_or_dir_if_nonexistent(path);

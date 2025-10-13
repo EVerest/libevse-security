@@ -287,7 +287,11 @@ EvseSecurity::EvseSecurity(const FilePaths& file_paths, const std::optional<std:
                            const std::optional<std::uintmax_t>& max_fs_certificate_store_entries,
                            const std::optional<std::chrono::seconds>& csr_expiry,
                            const std::optional<std::chrono::seconds>& garbage_collect_time) :
-    private_key_password(private_key_password) {
+    private_key_password(private_key_password),
+    directories(file_paths.directories),
+    links(file_paths.links),
+    max_fs_usage_bytes(max_fs_usage_bytes.value_or(DEFAULT_MAX_FILESYSTEM_SIZE)),
+    max_fs_certificate_store_entries(max_fs_certificate_store_entries.value_or(DEFAULT_MAX_CERTIFICATE_ENTRIES)) {
     static_assert(sizeof(std::uint8_t) == 1, "uint8_t not equal to 1 byte!");
 
     const std::vector<fs::path> dirs = {
@@ -335,11 +339,6 @@ EvseSecurity::EvseSecurity(const FilePaths& file_paths, const std::optional<std:
         }
     }
 
-    this->directories = file_paths.directories;
-    this->links = file_paths.links;
-
-    this->max_fs_usage_bytes = max_fs_usage_bytes.value_or(DEFAULT_MAX_FILESYSTEM_SIZE);
-    this->max_fs_certificate_store_entries = max_fs_certificate_store_entries.value_or(DEFAULT_MAX_CERTIFICATE_ENTRIES);
     this->csr_expiry = csr_expiry.value_or(DEFAULT_CSR_EXPIRY);
     this->garbage_collect_time = garbage_collect_time.value_or(DEFAULT_GARBAGE_COLLECT_TIME);
 
