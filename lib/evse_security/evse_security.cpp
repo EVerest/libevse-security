@@ -572,7 +572,8 @@ DeleteResult EvseSecurity::delete_certificate(const CertificateHashData& certifi
 
                         // NOTE: Deletes the OCSP only of the leaf since the intermediates being used by
                         // multiple chains can still require their OCSP data
-                        fs::path path_ocsp_hash, path_ocsp_data;
+                        fs::path path_ocsp_hash;
+                        fs::path path_ocsp_data;
                         if (get_oscp_data_of_certificate(deleted_leaf, certificate_hash_data, path_ocsp_hash,
                                                          path_ocsp_data)) {
                             EVLOG_info << "Deleted ocsp data of certificate: " << deleted_leaf.get_common_name();
@@ -1177,7 +1178,8 @@ std::optional<fs::path> EvseSecurity::retrieve_ocsp_cache_internal(const Certifi
 
         EVLOG_debug << "Reading OCSP Response from filesystem";
 
-        fs::path path_hash, path_data;
+        fs::path path_hash;
+        fs::path path_data;
         if (get_oscp_data_of_certificate(cert.value(), certificate_hash_data, path_hash, path_data)) {
             return path_data;
         }
@@ -2140,7 +2142,8 @@ void EvseSecurity::garbage_collect() {
                                     X509CertificateHierarchy::build_hierarchy(root_bundle.split(), leaf_chain));
 
                                 CertificateHashData ocsp_hash;
-                                fs::path path_ocsp_hash, patch_ocsp_data;
+                                fs::path path_ocsp_hash;
+                                fs::path patch_ocsp_data;
 
                                 if (hierarchy.get_certificate_hash(chain[0], ocsp_hash) &&
                                     get_oscp_data_of_certificate(chain[0], ocsp_hash, path_ocsp_hash,

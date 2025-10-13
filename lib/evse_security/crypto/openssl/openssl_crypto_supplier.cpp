@@ -425,7 +425,8 @@ bool OpenSSLSupplier::x509_get_validity(X509Handle* handle, std::int64_t& out_va
     const ASN1_TIME* notBefore = X509_get_notBefore(x509);
     const ASN1_TIME* notAfter = X509_get_notAfter(x509);
 
-    int day, sec;
+    int day;
+    int sec;
     ASN1_TIME_diff(&day, &sec, nullptr, notBefore);
     out_valid_in =
         std::chrono::duration_cast<std::chrono::seconds>(days_to_seconds(day)).count() + sec; // Convert days to seconds
@@ -542,7 +543,8 @@ CertificateValidationResult OpenSSLSupplier::x509_verify_certificate_chain(
 
     if (allow_future_certificates) {
         // Manually check if cert is expired
-        int day, sec;
+        int day;
+        int sec;
         ASN1_TIME_diff(&day, &sec, nullptr, X509_get_notAfter(get(target)));
         if (day < 0 || sec < 0) {
             // certificate is expired

@@ -66,7 +66,8 @@ static int bit_isset(unsigned char* set, unsigned bit) {
 static void add_entry(int type, unsigned int hash, const char* filename, const unsigned char* digest, int need_symlink,
                       unsigned short old_id) {
     struct bucket_info* bi;
-    struct entry_info *ei, *found = NULL;
+    struct entry_info* ei;
+    struct entry_info* found = NULL;
     const unsigned int ndx = (type + hash) % countof(hash_table);
 
     for (bi = hash_table[ndx]; bi != nullptr; bi = bi->next) {
@@ -132,10 +133,13 @@ static int handle_symlink(const char* filename, const char* fullpath) {
     static const signed char xdigit[] = {0,  1,  2,  3,  4,  5,  6,  7,  8,  9,  -1, -1, -1, -1, -1, -1, -1, 10, 11,
                                          12, 13, 14, 15, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
                                          -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, 10, 11, 12, 13, 14, 15};
-    char linktarget[NAME_MAX], *endptr;
+    char linktarget[NAME_MAX];
+    char* endptr;
     unsigned int hash = 0;
     unsigned char ch;
-    int i, type, id;
+    int i;
+    int type;
+    int id;
     ssize_t n;
 
     for (i = 0; i < 8; i++) {
@@ -180,7 +184,8 @@ static int handle_certificate(const char* filename, const char* fullpath) {
     const char* ext;
     unsigned char digest[EVP_MAX_MD_SIZE];
     const X509_NAME* name = NULL;
-    int i, type;
+    int i;
+    int type;
     const int ret = -1;
 
     ext = strrchr(filename, '.');
@@ -230,12 +235,18 @@ static int handle_certificate(const char* filename, const char* fullpath) {
 }
 
 static int hash_dir(const char* dirname) {
-    struct bucket_info *bi, *nextbi;
-    struct entry_info *ei, *nextei;
+    struct bucket_info* bi;
+    struct bucket_info* nextbi;
+    struct entry_info* ei;
+    struct entry_info* nextei;
     struct dirent* de;
     struct stat st;
     unsigned char idmask[MAX_COLLISIONS / 8];
-    int i, n, nextid, buflen, ret = -1;
+    int i;
+    int n;
+    int nextid;
+    int buflen;
+    int ret = -1;
     const char* pathsep;
     char* buf;
     DIR* d;
