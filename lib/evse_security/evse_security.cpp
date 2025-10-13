@@ -2008,7 +2008,7 @@ EvseSecurity::verify_certificate_internal(const std::string& certificate_chain,
         }
 
         // The leaf is to be verified
-        const auto leaf_certificate = _certificate_chain.at(0);
+        const auto& leaf_certificate = _certificate_chain.at(0);
 
         // Retrieve the hierarchy in order to check if the chain contains a root certificate
         const X509CertificateHierarchy& hierarchy = certificate.get_certificate_hierarchy();
@@ -2136,7 +2136,7 @@ void EvseSecurity::garbage_collect() {
                                     invalid_certificate_files.emplace(key_file.value());
                                 }
 
-                                auto leaf_chain = chain;
+                                const auto& leaf_chain = chain;
                                 X509CertificateHierarchy hierarchy = std::move(
                                     X509CertificateHierarchy::build_hierarchy(root_bundle.split(), leaf_chain));
 
