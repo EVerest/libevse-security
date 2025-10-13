@@ -149,7 +149,7 @@ struct CertificateHashData {
         return true;
     }
 
-    bool is_valid() {
+    bool is_valid() const {
         return (false == issuer_name_hash.empty()) && (false == issuer_key_hash.empty()) &&
                (false == serial_number.empty());
     }
