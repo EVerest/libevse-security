@@ -140,9 +140,8 @@ void X509Wrapper::set_file(fs::path& path) {
 X509CertificateSource X509Wrapper::get_source() const {
     if (file.has_value()) {
         return X509CertificateSource::FILE;
-    } else {
-        return X509CertificateSource::STRING;
     }
+    return X509CertificateSource::STRING;
 }
 
 std::string X509Wrapper::get_common_name() const {
@@ -160,10 +159,8 @@ std::string X509Wrapper::get_serial_number() const {
 std::string X509Wrapper::get_issuer_key_hash() const {
     if (is_selfsigned()) {
         return get_key_hash();
-    } else {
-        // See 'OCPP 2.0.1 Spec: 2.6. CertificateHashDataType'
-        throw std::logic_error("get_issuer_key_hash must only be used on self-signed certs");
-    }
+    } // See 'OCPP 2.0.1 Spec: 2.6. CertificateHashDataType'
+    throw std::logic_error("get_issuer_key_hash must only be used on self-signed certs");
 }
 
 std::string X509Wrapper::get_key_hash() const {

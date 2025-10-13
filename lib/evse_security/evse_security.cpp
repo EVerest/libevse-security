@@ -392,21 +392,18 @@ InstallCertificateResult EvseSecurity::install_ca_certificate(const std::string&
 
             if (existing_certs.export_certificates()) {
                 return InstallCertificateResult::Accepted;
-            } else {
-                return InstallCertificateResult::WriteError;
             }
-        } else {
-            // Else, simply update it
-            if (existing_certs.update_certificate(std::move(new_cert))) {
-                if (existing_certs.export_certificates()) {
-                    return InstallCertificateResult::Accepted;
-                } else {
-                    return InstallCertificateResult::WriteError;
-                }
-            } else {
-                return InstallCertificateResult::WriteError;
+            return InstallCertificateResult::WriteError;
+
+        } // Else, simply update it
+        if (existing_certs.update_certificate(std::move(new_cert))) {
+            if (existing_certs.export_certificates()) {
+                return InstallCertificateResult::Accepted;
             }
+            return InstallCertificateResult::WriteError;
         }
+        return InstallCertificateResult::WriteError;
+
     } catch (const CertificateLoadException& e) {
         EVLOG_error << "Certificate load error: " << e.what();
         return InstallCertificateResult::InvalidFormat;
@@ -457,14 +454,12 @@ DeleteResult EvseSecurity::delete_certificate(const CertificateHashData& certifi
             EVLOG_error << "Could not delete CA root certificate!";
             response.result = DeleteCertificateResult::Failed;
             return response;
-        } else {
-            // TODO(ioan): we have an early return here since we do not delete the
-            // intermediates/leafs that are issued by this root. Remove this code
-            // to also delete the leafs that are issued by this root
-            EVLOG_info << "Deleted CA root certificate successfully!";
-            response.result = DeleteCertificateResult::Accepted;
-            return response;
-        }
+        } // TODO(ioan): we have an early return here since we do not delete the
+        // intermediates/leafs that are issued by this root. Remove this code
+        // to also delete the leafs that are issued by this root
+        EVLOG_info << "Deleted CA root certificate successfully!";
+        response.result = DeleteCertificateResult::Accepted;
+        return response;
     }
 
     // Collect all the leaf chains
@@ -695,9 +690,8 @@ InstallCertificateResult EvseSecurity::update_leaf_certificate(const std::string
             // @see 'get_private_key_path_of_certificate' and 'get_certificate_path_of_key'
 
             return InstallCertificateResult::Accepted;
-        } else {
-            return InstallCertificateResult::WriteError;
         }
+        return InstallCertificateResult::WriteError;
 
     } catch (const CertificateLoadException& e) {
         EVLOG_warning << "Could not load update leaf certificate because of invalid format";
@@ -1494,9 +1488,8 @@ EvseSecurity::get_full_leaf_certificate_info_internal(const CertificateQueryPara
                 // Order from newest to oldest
                 if (not a.empty() && not b.empty()) {
                     return a.at(0).get_valid_to() > b.at(0).get_valid_to();
-                } else {
-                    return false;
                 }
+                return false;
             });
 
         if (!any_valid_certificate) {
@@ -1903,10 +1896,10 @@ bool EvseSecurity::verify_file_signature(const fs::path& path, const std::string
         if (CryptoSupplier::x509_verify_signature(x509_signing_cerificate.get(), signature_decoded, sha256_digest)) {
             EVLOG_debug << "Signature successful verification";
             return true;
-        } else {
-            EVLOG_error << "Failure to verify signature";
-            return false;
         }
+        EVLOG_error << "Failure to verify signature";
+        return false;
+
     } catch (const CertificateLoadException& e) {
         EVLOG_error << "Could not parse signing certificate: " << e.what();
         return false;
@@ -2181,9 +2174,8 @@ void EvseSecurity::garbage_collect() {
                         // even if they are expired
                         if (a.size() && b.size()) {
                             return a.at(0).get_valid_to() > b.at(0).get_valid_to();
-                        } else {
-                            return false;
                         }
+                        return false;
                     });
             }
         } catch (const CertificateLoadException& e) {

@@ -648,10 +648,9 @@ bool OpenSSLSupplier::x509_verify_signature(X509Handle* handle, const std::vecto
     if (result != 1) {
         EVLOG_error << "Failure to verify: " << result;
         return false;
-    } else {
-        EVLOG_debug << "Successful verification";
-        return true;
     }
+    EVLOG_debug << "Successful verification";
+    return true;
 }
 
 CertificateSignRequestResult OpenSSLSupplier::x509_generate_csr(const CertificateSigningRequestInfo& csr_info,

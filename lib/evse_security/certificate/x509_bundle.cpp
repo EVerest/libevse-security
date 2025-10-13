@@ -307,7 +307,8 @@ bool X509CertificateBundle::export_certificates() {
         }
 
         return exported_all;
-    } else if (source == X509CertificateSource::FILE) {
+    }
+    if (source == X509CertificateSource::FILE) {
         // write to a separate file to minimise corruption and data loss; then rename
         namespace fs = std::filesystem;
         bool result{false};
@@ -375,7 +376,8 @@ bool X509CertificateBundle::sync_to_certificate_store() {
         }
 
         return success;
-    } else if (source == X509CertificateSource::FILE) {
+    }
+    if (source == X509CertificateSource::FILE) {
         // Delete source file if we're empty
         if (certificates.empty()) {
             return filesystem_utils::delete_file(path);

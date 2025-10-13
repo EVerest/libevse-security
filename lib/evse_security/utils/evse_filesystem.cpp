@@ -58,7 +58,8 @@ bool create_file_if_nonexistent(const fs::path& file_path) {
         if (!fs::exists(file_path)) {
             const std::ofstream file(file_path);
             return true;
-        } else if (fs::is_directory(file_path)) {
+        }
+        if (fs::is_directory(file_path)) {
             EVLOG_error << "Attempting to create file over existing directory: " << file_path;
             return false;
         }
@@ -82,11 +83,9 @@ bool create_file_or_dir_if_nonexistent(const fs::path& path) {
                 std::ofstream new_file(path.c_str());
                 new_file.close();
                 return true;
-            } else {
-                // Else create a directory
-                fs::create_directories(path);
-                return true;
-            }
+            } // Else create a directory
+            fs::create_directories(path);
+            return true;
         }
     } catch (const std::exception& e) {
         EVLOG_error << "Error while creating dir/file: " << e.what();
