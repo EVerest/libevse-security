@@ -82,10 +82,10 @@ static bool export_key_internal(const KeyGenerationInfo& key_info, const EVP_PKE
 
         int success;
         if (key_info.private_key_pass.has_value()) {
-            success = PEM_write_bio_PrivateKey(key_bio.get(), evp_key.get(), EVP_aes_128_cbc(), NULL, 0, NULL,
+            success = PEM_write_bio_PrivateKey(key_bio.get(), evp_key.get(), EVP_aes_128_cbc(), nullptr, 0, nullptr,
                                                (void*)key_info.private_key_pass.value().c_str());
         } else {
-            success = PEM_write_bio_PrivateKey(key_bio.get(), evp_key.get(), NULL, NULL, 0, NULL, NULL);
+            success = PEM_write_bio_PrivateKey(key_bio.get(), evp_key.get(), nullptr, nullptr, 0, nullptr, nullptr);
         }
 
         if (0 == success) {
@@ -283,7 +283,7 @@ std::string OpenSSLSupplier::x509_to_string(X509Handle* handle) {
         const int rc = PEM_write_bio_X509(bio_write.get(), x509);
 
         if (rc == 1) {
-            const BUF_MEM* mem = NULL;
+            const BUF_MEM* mem = nullptr;
             BIO_get_mem_ptr(bio_write.get(), &mem);
 
             return std::string(mem->data, mem->length);
@@ -329,7 +329,7 @@ std::string OpenSSLSupplier::x509_get_issuer_name_hash(X509Handle* handle) {
 
     unsigned char md[SHA256_DIGEST_LENGTH];
     const X509_NAME* name = X509_get_issuer_name(x509);
-    X509_NAME_digest(name, EVP_sha256(), md, NULL);
+    X509_NAME_digest(name, EVP_sha256(), md, nullptr);
 
     std::stringstream ss;
     for (int i = 0; i < SHA256_DIGEST_LENGTH; i++) {
@@ -351,7 +351,7 @@ std::string OpenSSLSupplier::x509_get_serial_number(X509Handle* handle) {
         return {};
     }
 
-    BIGNUM* bn_serial = ASN1_INTEGER_to_BN(serial_asn1, NULL);
+    BIGNUM* bn_serial = ASN1_INTEGER_to_BN(serial_asn1, nullptr);
 
     if (bn_serial == nullptr) {
         ERR_print_errors_fp(stderr);
@@ -385,7 +385,7 @@ std::string OpenSSLSupplier::x509_get_key_hash(X509Handle* handle) {
     }
 
     unsigned char tmphash[SHA256_DIGEST_LENGTH];
-    X509_pubkey_digest(x509, EVP_sha256(), tmphash, NULL);
+    X509_pubkey_digest(x509, EVP_sha256(), tmphash, nullptr);
     std::stringstream ss;
     for (int i = 0; i < SHA256_DIGEST_LENGTH; i++) {
         ss << std::setw(2) << std::setfill('0') << std::hex << (int)tmphash[i];
@@ -454,7 +454,7 @@ bool OpenSSLSupplier::x509_is_child(X509Handle* child, X509Handle* parent) {
     X509_STORE_add_cert(store.get(), x509_parent);
 
     const X509_STORE_CTX_ptr ctx(X509_STORE_CTX_new());
-    X509_STORE_CTX_init(ctx.get(), store.get(), x509_child, NULL);
+    X509_STORE_CTX_init(ctx.get(), store.get(), x509_child, nullptr);
 
     // If the parent is not a self-signed certificate, assume we have a partial chain
     if (x509_is_selfsigned(parent) == false) {
@@ -584,7 +584,7 @@ KeyValidationResult OpenSSLSupplier::x509_check_private_key(X509Handle* handle, 
 
     const bool bResult = true;
     if (!evp_pkey) {
-        EVLOG_warning << "Invalid evp_pkey: " << private_key << " error: " << ERR_error_string(ERR_get_error(), NULL)
+        EVLOG_warning << "Invalid evp_pkey: " << private_key << " error: " << ERR_error_string(ERR_get_error(), nullptr)
                       << " Password configured correctly?";
         ERR_print_errors_fp(stderr);
 
@@ -707,8 +707,10 @@ CertificateSignRequestResult OpenSSLSupplier::x509_generate_csr(const Certificat
     X509_NAME_add_entry_by_txt(x509Name, "DC", MBSTRING_ASC, reinterpret_cast<const unsigned char*>("CPO"), -1, -1, 0);
 
     STACK_OF(X509_EXTENSION)* extensions = sk_X509_EXTENSION_new_null();
-    X509_EXTENSION* ext_key_usage = X509V3_EXT_conf_nid(NULL, NULL, NID_key_usage, "digitalSignature, keyAgreement");
-    X509_EXTENSION* ext_basic_constraints = X509V3_EXT_conf_nid(NULL, NULL, NID_basic_constraints, "critical,CA:false");
+    X509_EXTENSION* ext_key_usage =
+        X509V3_EXT_conf_nid(nullptr, nullptr, NID_key_usage, "digitalSignature, keyAgreement");
+    X509_EXTENSION* ext_basic_constraints =
+        X509V3_EXT_conf_nid(nullptr, nullptr, NID_basic_constraints, "critical,CA:false");
     sk_X509_EXTENSION_push(extensions, ext_key_usage);
     sk_X509_EXTENSION_push(extensions, ext_basic_constraints);
 
@@ -725,7 +727,7 @@ CertificateSignRequestResult OpenSSLSupplier::x509_generate_csr(const Certificat
         auto comma_fold = [](std::string a, const std::string& b) { return std::move(a) + ',' + b; };
         const std::string value =
             std::accumulate(std::next(names.begin()), names.end(), std::string(names[0]), comma_fold);
-        ext_san = X509V3_EXT_conf_nid(NULL, NULL, NID_subject_alt_name, value.c_str());
+        ext_san = X509V3_EXT_conf_nid(nullptr, nullptr, NID_subject_alt_name, value.c_str());
         sk_X509_EXTENSION_push(extensions, ext_san);
     }
 
@@ -756,7 +758,7 @@ CertificateSignRequestResult OpenSSLSupplier::x509_generate_csr(const Certificat
     const BIO_ptr bio(BIO_new(BIO_s_mem()));
     PEM_write_bio_X509_REQ(bio.get(), x509_req_ptr.get());
 
-    const BUF_MEM* mem_csr = NULL;
+    const BUF_MEM* mem_csr = nullptr;
     BIO_get_mem_ptr(bio.get(), &mem_csr);
 
     out_csr = std::string(mem_csr->data, mem_csr->length);

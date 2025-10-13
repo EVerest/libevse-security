@@ -67,7 +67,7 @@ static void add_entry(int type, unsigned int hash, const char* filename, const u
                       unsigned short old_id) {
     struct bucket_info* bi;
     struct entry_info* ei;
-    struct entry_info* found = NULL;
+    struct entry_info* found = nullptr;
     const unsigned int ndx = (type + hash) % countof(hash_table);
 
     for (bi = hash_table[ndx]; bi != nullptr; bi = bi->next) {
@@ -173,7 +173,7 @@ static int handle_symlink(const char* filename, const char* fullpath) {
 
     EVLOG_debug << "Found existing symlink " << std::string(filename) << " for " << hash << " (" << type
                 << "), certname " << std::string(linktarget, strlen(linktarget));
-    add_entry(type, hash, linktarget, NULL, 0, id);
+    add_entry(type, hash, linktarget, nullptr, 0, id);
     return 0;
 }
 
@@ -183,13 +183,13 @@ static int handle_certificate(const char* filename, const char* fullpath) {
     BIO* b;
     const char* ext;
     unsigned char digest[EVP_MAX_MD_SIZE];
-    const X509_NAME* name = NULL;
+    const X509_NAME* name = nullptr;
     int i;
     int type;
     const int ret = -1;
 
     ext = strrchr(filename, '.');
-    if (ext == NULL) {
+    if (ext == nullptr) {
         return 0;
     }
     for (i = 0; i < countof(file_extensions); i++) {
@@ -205,7 +205,7 @@ static int handle_certificate(const char* filename, const char* fullpath) {
     if (b == nullptr) {
         return -1;
     }
-    inf = PEM_X509_INFO_read_bio(b, NULL, NULL, NULL);
+    inf = PEM_X509_INFO_read_bio(b, nullptr, nullptr, nullptr);
     BIO_free(b);
     if (inf == nullptr) {
         return -1;
@@ -216,11 +216,11 @@ static int handle_certificate(const char* filename, const char* fullpath) {
         if (x->x509 != nullptr) {
             type = TYPE_CERT;
             name = X509_get_subject_name(x->x509);
-            X509_digest(x->x509, evpmd, digest, NULL);
+            X509_digest(x->x509, evpmd, digest, nullptr);
         } else if (x->crl != nullptr) {
             type = TYPE_CRL;
             name = X509_CRL_get_issuer(x->crl);
-            X509_CRL_digest(x->crl, evpmd, digest, NULL);
+            X509_CRL_digest(x->crl, evpmd, digest, nullptr);
         }
         if (name != nullptr) {
             add_entry(type, X509_NAME_hash(name), filename, digest, 1, ~0);
@@ -263,7 +263,7 @@ static int hash_dir(const char* dirname) {
     pathsep = ((buflen != 0) && dirname[buflen - 1] == '/') ? "" : "/";
     buflen += NAME_MAX + 2;
     buf = (char*)(malloc(buflen));
-    if (buf == NULL) {
+    if (buf == nullptr) {
         goto err;
     }
 
@@ -273,7 +273,7 @@ static int hash_dir(const char* dirname) {
         goto err;
     }
 
-    while ((de = readdir(d)) != NULL) {
+    while ((de = readdir(d)) != nullptr) {
         if (snprintf(buf, buflen, "%s%s%s", dirname, pathsep, de->d_name) >= buflen) {
             continue;
         }
@@ -339,7 +339,7 @@ static int hash_dir(const char* dirname) {
             }
             free(bi);
         }
-        hash_table[i] = NULL;
+        hash_table[i] = nullptr;
     }
 
     ret = 0;
