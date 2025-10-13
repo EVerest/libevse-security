@@ -80,7 +80,6 @@ public:
     // if none were found. Can be useful when we have SUB-CAs in multiple bundles
     std::vector<X509Wrapper> find_certificates_multi(const CertificateHashData& hash);
 
-public:
     std::string to_debug_string();
 
     /// @brief Breadth-first iteration through all the hierarchy of
@@ -111,7 +110,6 @@ public:
         }
     }
 
-public:
     /// @brief Depth-first descendant iteration
     template <typename function> static void for_each_descendant(function func, const X509Node& node, int depth = 0) {
         if (node.children.empty())
@@ -126,7 +124,6 @@ public:
         }
     }
 
-public:
     /// @brief Builds a proper certificate hierarchy from the provided certificates. The
     /// hierarchy can be incomplete, in case orphan certificates are present in the list
     static X509CertificateHierarchy build_hierarchy(std::vector<X509Wrapper>& certificates);
@@ -156,7 +153,6 @@ private:
     /// were not successfully parented as permanently orphan
     void prune();
 
-private:
     std::vector<X509Node> hierarchy;
 };
 

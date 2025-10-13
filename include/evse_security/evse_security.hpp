@@ -330,7 +330,6 @@ private:
     /// @brief Determines if the total filesize of certificates is > than the max_filesystem_usage bytes
     bool is_filesystem_full();
 
-private:
     static std::mutex security_mutex;
 
     // why not reusing the FilePaths here directly (storage duplication)
@@ -357,7 +356,6 @@ private:
     // is there only one password for all private keys?
     std::optional<std::string> private_key_password; // used to decrypt encrypted private keys
 
-private:
 // Define here all tests that require internal function usage
 #ifdef BUILD_TESTING_EVSE_SECURITY
     FRIEND_TEST(EvseSecurityTests, verify_directory_bundles);

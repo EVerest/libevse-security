@@ -42,7 +42,6 @@ public:
     X509CertificateBundle(X509CertificateBundle&& other) = default;
     X509CertificateBundle(const X509CertificateBundle& other) = delete;
 
-public:
     /// @brief Gets if this certificate bundle comes from a single certificate bundle file
     /// @return
     bool is_using_bundle_file() const {
@@ -109,7 +108,6 @@ public:
         }
     }
 
-public:
     /// @brief Splits the certificate (chain) into single certificates
     /// @return vector containing single certificates
     std::vector<X509Wrapper> split();
@@ -170,7 +168,6 @@ public:
     /// storage and deleting the certificates that are not contained in this bundle
     bool sync_to_certificate_store();
 
-public:
     /// @brief returns the latest valid certificate within this bundle
     X509Wrapper get_latest_valid_certificate();
 
@@ -178,10 +175,8 @@ public:
     /// Invalidated on any add/delete operation
     X509CertificateHierarchy& get_certificate_hierarchy();
 
-public:
     X509CertificateBundle& operator=(X509CertificateBundle&& other) = default;
 
-public:
     /// @brief Returns the latest valid certif that we might contain
     static X509Wrapper get_latest_valid_certificate(const std::vector<X509Wrapper>& certificates);
 
@@ -198,7 +193,6 @@ private:
     /// @brief operation to be executed after each add/delete to this bundle
     void invalidate_hierarchy();
 
-private:
     // Structure of the bundle - maps files to the certificates stored in them
     // For certificates coming from a string, uses a default empty path
     std::map<fs::path, std::vector<X509Wrapper>> certificates;
