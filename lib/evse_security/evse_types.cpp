@@ -94,12 +94,13 @@ std::string hash_algorithm_to_string(HashAlgorithm e) {
 };
 
 HashAlgorithm string_to_hash_algorithm(const std::string& s) {
-    if (s == "SHA256")
+    if (s == "SHA256") {
         return HashAlgorithm::SHA256;
-    else if (s == "SHA384")
+    } else if (s == "SHA384") {
         return HashAlgorithm::SHA384;
-    else if (s == "SHA512")
+    } else if (s == "SHA512") {
         return HashAlgorithm::SHA512;
+    }
 
     throw std::out_of_range("Could not convert string to HashAlgorithm");
 }

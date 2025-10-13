@@ -73,8 +73,9 @@ X509Wrapper::~X509Wrapper() {
 }
 
 bool X509Wrapper::operator==(const X509Wrapper& other) const {
-    if (this == &other)
+    if (this == &other) {
         return true;
+    }
 
     return CryptoSupplier::x509_is_equal(get(), other.get());
 }
@@ -91,8 +92,9 @@ void X509Wrapper::update_validity() {
 
 bool X509Wrapper::is_child(const X509Wrapper& parent) const {
     // A certif can't be it's own parent, use is_selfsigned if that is intended (operator ==)
-    if (*this == parent)
+    if (*this == parent) {
         return false;
+    }
 
     return CryptoSupplier::x509_is_child(get(), parent.get());
 }
@@ -129,8 +131,9 @@ std::optional<fs::path> X509Wrapper::get_file() const {
 }
 
 void X509Wrapper::set_file(fs::path& path) {
-    if (fs::is_directory(path))
+    if (fs::is_directory(path)) {
         throw std::logic_error("X509 wrapper set_file must only be used for files, not directories!");
+    }
 
     file = path;
 }

@@ -1543,8 +1543,9 @@ EvseSecurity::get_full_leaf_certificate_info_internal(const CertificateQueryPara
                     }
 
                     // Found both, break
-                    if (leaf_fullchain != nullptr && leaf_single != nullptr)
+                    if (leaf_fullchain != nullptr && leaf_single != nullptr) {
                         return false;
+                    }
 
                     return true;
                 });
@@ -2191,10 +2192,11 @@ void EvseSecurity::garbage_collect() {
     } // End leaf for iteration
 
     for (const auto& expired_certificate_file : invalid_certificate_files) {
-        if (filesystem_utils::delete_file(expired_certificate_file))
+        if (filesystem_utils::delete_file(expired_certificate_file)) {
             EVLOG_info << "Deleted expired certificate file: " << expired_certificate_file;
-        else
+        } else {
             EVLOG_warning << "Error deleting expired certificate file: " << expired_certificate_file;
+        }
     }
 
     // In case of a reset, the managed CSRs can be lost. In that case add them back to the list
@@ -2269,10 +2271,11 @@ void EvseSecurity::garbage_collect() {
 
             CaCertificateType load;
 
-            if (secc)
+            if (secc) {
                 load = CaCertificateType::V2G;
-            else if (csms)
+            } else if (csms) {
                 load = CaCertificateType::CSMS;
+            }
 
             // Also load the roots since we need to build the hierarchy for correct certificate hashes
             X509CertificateBundle root_bundle(ca_bundle_path_map[load], EncodingFormat::PEM);
@@ -2326,10 +2329,11 @@ void EvseSecurity::garbage_collect() {
     }
 
     for (const auto& invalid_ocsp : invalid_ocsp_files) {
-        if (filesystem_utils::delete_file(invalid_ocsp))
+        if (filesystem_utils::delete_file(invalid_ocsp)) {
             EVLOG_info << "Deleted invalid ocsp file: " << invalid_ocsp;
-        else
+        } else {
             EVLOG_warning << "Error deleting invalid ocsp file: " << invalid_ocsp;
+        }
     }
 }
 

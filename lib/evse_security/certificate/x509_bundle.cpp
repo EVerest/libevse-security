@@ -78,8 +78,9 @@ std::vector<X509Wrapper> X509CertificateBundle::split() {
 
     // Append all chains
     for (const auto& chains : certificates) {
-        for (const auto& cert : chains.second)
+        for (const auto& cert : chains.second) {
             full_certificates.push_back(cert);
+        }
     }
 
     return full_certificates;
@@ -104,10 +105,11 @@ void X509CertificateBundle::add_certificates(const std::string& data, const Enco
     auto& list = certificates[path.value_or(std::filesystem::path())];
 
     for (auto& x509 : loaded) {
-        if (path.has_value())
+        if (path.has_value()) {
             list.emplace_back(std::move(x509), path.value());
-        else
+        } else {
             list.emplace_back(std::move(x509));
+        }
     }
 }
 
@@ -115,8 +117,9 @@ bool X509CertificateBundle::contains_certificate(const X509Wrapper& certificate)
     // Search through all the chains
     for (const auto& chain : certificates) {
         for (const auto& certif : chain.second) {
-            if (certif == certificate)
+            if (certif == certificate) {
                 return true;
+            }
         }
     }
 
@@ -130,8 +133,9 @@ bool X509CertificateBundle::contains_certificate(const CertificateHashData& cert
                          return cert.is_selfsigned() && cert == certificate_hash;
                      }) != std::end(chain.second);
 
-        if (found)
+        if (found) {
             return true;
+        }
     }
 
     // Nothing found, build the hierarchy and search by the issued hash
@@ -292,8 +296,9 @@ bool X509CertificateBundle::export_certificates() {
         // Write updated certificates
         for (auto& chains : certificates) {
             // Ignore empty chains (the file was deleted)
-            if (chains.second.empty())
+            if (chains.second.empty()) {
                 continue;
+            }
 
             // Each chain is a single file
             if (!filesystem_utils::write_to_file(chains.first, to_export_string(chains.first), std::ios::trunc)) {
@@ -339,8 +344,9 @@ bool X509CertificateBundle::sync_to_certificate_store() {
         for (const auto& fs_chain : fs_certificates.certificates) {
             if (certificates.find(fs_chain.first) == certificates.end()) {
                 // fs certif chain not existing in our certificate list, delete
-                if (!filesystem_utils::delete_file(fs_chain.first))
+                if (!filesystem_utils::delete_file(fs_chain.first)) {
                     success = false;
+                }
             }
         }
 
@@ -348,21 +354,24 @@ bool X509CertificateBundle::sync_to_certificate_store() {
         for (const auto& chain : certificates) {
             if (chain.second.empty()) {
                 // If it's an empty chain, delete
-                if (!filesystem_utils::delete_file(chain.first))
+                if (!filesystem_utils::delete_file(chain.first)) {
                     success = false;
+                }
             } else if (fs_certificates.certificates.find(chain.first) == fs_certificates.certificates.end()) {
                 // Certif not existing in fs certificates write it out
-                if (!filesystem_utils::write_to_file(chain.first, to_export_string(chain.first), std::ios::trunc))
+                if (!filesystem_utils::write_to_file(chain.first, to_export_string(chain.first), std::ios::trunc)) {
                     success = false;
+                }
             }
         }
 
         // After fs deletion erase all empty files from our certificate list, so that we don't write them out
         for (auto first = certificates.begin(); first != certificates.end();) {
-            if (first->second.empty())
+            if (first->second.empty()) {
                 first = certificates.erase(first);
-            else
+            } else {
                 ++first;
+            }
         }
 
         return success;
@@ -415,8 +424,9 @@ std::string X509CertificateBundle::to_export_string(const std::filesystem::path&
 
     auto found = certificates.find(chain);
     if (found != certificates.end()) {
-        for (auto& certificate : found->second)
+        for (auto& certificate : found->second) {
             export_string += certificate.get_export_string();
+        }
     }
 
     return export_string;

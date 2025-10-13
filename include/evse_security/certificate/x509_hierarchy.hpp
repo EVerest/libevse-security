@@ -88,8 +88,13 @@ public:
         std::queue<std::reference_wrapper<X509Node>> queue;
         for (auto& root : hierarchy) {
             // Process roots
-            if (!func(root))
-                return;
+            if (!func(root)) {
+                {
+                    {
+                        return;
+                    }
+                }
+            }
 
             for (auto& child : root.children) {
                 queue.push(child);
@@ -101,8 +106,13 @@ public:
             queue.pop();
 
             // Process node
-            if (!func(top))
-                return;
+            if (!func(top)) {
+                {
+                    {
+                        return;
+                    }
+                }
+            }
 
             for (auto& child : top.children) {
                 queue.push(child);
@@ -112,8 +122,13 @@ public:
 
     /// @brief Depth-first descendant iteration
     template <typename function> static void for_each_descendant(function func, const X509Node& node, int depth = 0) {
-        if (node.children.empty())
-            return;
+        if (node.children.empty()) {
+            {
+                {
+                    return;
+                }
+            }
+        }
 
         for (const auto& child : node.children) {
             func(child, depth);

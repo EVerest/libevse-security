@@ -293,8 +293,9 @@ std::string OpenSSLSupplier::x509_to_string(X509Handle* handle) {
 std::string OpenSSLSupplier::x509_get_common_name(X509Handle* handle) {
     X509* x509 = get(handle);
 
-    if (x509 == nullptr)
+    if (x509 == nullptr) {
         return {};
+    }
 
     X509_NAME* subject = X509_get_subject_name(x509);
     int nid = OBJ_txt2nid("CN");
@@ -319,8 +320,9 @@ std::string OpenSSLSupplier::x509_get_common_name(X509Handle* handle) {
 std::string OpenSSLSupplier::x509_get_issuer_name_hash(X509Handle* handle) {
     X509* x509 = get(handle);
 
-    if (x509 == nullptr)
+    if (x509 == nullptr) {
         return {};
+    }
 
     unsigned char md[SHA256_DIGEST_LENGTH];
     X509_NAME* name = X509_get_issuer_name(x509);
@@ -336,8 +338,9 @@ std::string OpenSSLSupplier::x509_get_issuer_name_hash(X509Handle* handle) {
 std::string OpenSSLSupplier::x509_get_serial_number(X509Handle* handle) {
     X509* x509 = get(handle);
 
-    if (x509 == nullptr)
+    if (x509 == nullptr) {
         return {};
+    }
 
     ASN1_INTEGER* serial_asn1 = X509_get_serialNumber(x509);
     if (serial_asn1 == nullptr) {
@@ -374,8 +377,9 @@ std::string OpenSSLSupplier::x509_get_serial_number(X509Handle* handle) {
 std::string OpenSSLSupplier::x509_get_key_hash(X509Handle* handle) {
     X509* x509 = get(handle);
 
-    if (x509 == nullptr)
+    if (x509 == nullptr) {
         return {};
+    }
 
     unsigned char tmphash[SHA256_DIGEST_LENGTH];
     X509_pubkey_digest(x509, EVP_sha256(), tmphash, NULL);
@@ -390,8 +394,9 @@ std::string OpenSSLSupplier::x509_get_key_hash(X509Handle* handle) {
 std::string OpenSSLSupplier::x509_get_responder_url(X509Handle* handle) {
     X509* x509 = get(handle);
 
-    if (x509 == nullptr)
+    if (x509 == nullptr) {
         return {};
+    }
 
     const auto ocsp = X509_get1_ocsp(x509);
     std::string responder_url;
@@ -430,14 +435,16 @@ bool OpenSSLSupplier::x509_get_validity(X509Handle* handle, std::int64_t& out_va
 
 bool OpenSSLSupplier::x509_is_child(X509Handle* child, X509Handle* parent) {
     // A certif can't be it's own parent, use is_selfsigned if that is intended
-    if (child == parent)
+    if (child == parent) {
         return false;
+    }
 
     X509* x509_parent = get(parent);
     X509* x509_child = get(child);
 
-    if (x509_parent == nullptr || x509_child == nullptr)
+    if (x509_parent == nullptr || x509_child == nullptr) {
         return false;
+    }
 
     X509_STORE_ptr store(X509_STORE_new());
     X509_STORE_add_cert(store.get(), x509_parent);
@@ -467,8 +474,9 @@ bool OpenSSLSupplier::x509_is_child(X509Handle* child, X509Handle* parent) {
 bool OpenSSLSupplier::x509_is_selfsigned(X509Handle* handle) {
     X509* x509 = get(handle);
 
-    if (x509 == nullptr)
+    if (x509 == nullptr) {
         return false;
+    }
 
     return (X509_self_signed(x509, 0) == 1);
 }
@@ -598,8 +606,9 @@ bool OpenSSLSupplier::x509_verify_signature(X509Handle* handle, const std::vecto
     // extract public key
     X509* x509 = get(handle);
 
-    if (x509 == nullptr)
+    if (x509 == nullptr) {
         return false;
+    }
 
     EVP_PKEY_ptr public_key_ptr(X509_get_pubkey(x509));
 

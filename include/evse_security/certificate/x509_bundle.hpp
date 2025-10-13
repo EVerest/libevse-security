@@ -81,8 +81,11 @@ public:
     /// while the provided function returns true
     template <typename function> void for_each_chain(function func) {
         for (const auto& chain : certificates) {
-            if (!func(chain.first, chain.second))
-                break;
+            if (!func(chain.first, chain.second)) {
+                {
+                    break;
+                }
+            }
         }
     }
 
@@ -103,8 +106,11 @@ public:
                   [&order](Chain& a, Chain& b) { return order(*a.certificates, *b.certificates); });
 
         for (const auto& chain : ordered) {
-            if (!func(*chain.path, *chain.certificates))
-                break;
+            if (!func(*chain.path, *chain.certificates)) {
+                {
+                    break;
+                }
+            }
         }
     }
 

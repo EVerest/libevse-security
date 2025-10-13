@@ -52,9 +52,10 @@ std::vector<X509Wrapper> X509CertificateHierarchy::collect_top(const X509Wrapper
         // Iterate all the descendants of the root until we find the leaf level
         for_each_descendant(
             [&](const X509Node& node, int depth) {
-                if (depth < found_depth)
+                if (depth < found_depth) {
                     // Collect all owned
                     top_nodes.push_back(node.certificate);
+                }
             },
             *root, 1);
 
@@ -150,8 +151,9 @@ X509CertificateHierarchy::find_certificate_root_node(const X509Wrapper& leaf) {
         }
     }
 
-    if (root_ptr)
+    if (root_ptr) {
         return std::make_pair(root_ptr, found_depth);
+    }
 
     return std::nullopt;
 }
@@ -179,8 +181,9 @@ std::optional<X509Wrapper> X509CertificateHierarchy::find_certificate(const Cert
         return true;
     });
 
-    if (certificate)
+    if (certificate) {
         return *certificate;
+    }
 
     return std::nullopt;
 }
@@ -203,17 +206,19 @@ std::string X509CertificateHierarchy::to_debug_string() {
     std::stringstream str;
 
     for (const auto& root : hierarchy) {
-        if (root.state.is_selfsigned)
+        if (root.state.is_selfsigned) {
             str << "* [ROOT]";
-        else
+        } else {
             str << "+ [ORPH]";
+        }
 
         str << ' ' << root.certificate.get_common_name() << std::endl;
 
         for_each_descendant(
             [&](const X509Node& node, int depth) {
-                while (depth-- > 0)
+                while (depth-- > 0) {
                     str << "---";
+                }
 
                 str << ' ' << node.certificate.get_common_name() << std::endl;
             },
@@ -321,16 +326,18 @@ void X509CertificateHierarchy::insert(X509Wrapper&& inserted_certificate) {
 } // End insert
 
 void X509CertificateHierarchy::prune() {
-    if (hierarchy.size() <= 1)
+    if (hierarchy.size() <= 1) {
         return;
+    }
 
     for (int i = 0; i < hierarchy.size(); ++i) {
         // Possible orphan
         auto& orphan = hierarchy[i];
 
         bool is_orphan = (orphan.state.is_selfsigned) == 0 && (orphan.state.is_orphan == 0);
-        if (is_orphan == false)
+        if (is_orphan == false) {
             continue;
+        }
 
         // Found a non-permanent orphan, search for a issuer
         bool found_issuer = false;

@@ -69,13 +69,16 @@ static void add_entry(int type, unsigned int hash, const char* filename, const u
     struct entry_info *ei, *found = NULL;
     unsigned int ndx = (type + hash) % countof(hash_table);
 
-    for (bi = hash_table[ndx]; bi; bi = bi->next)
-        if (bi->type == type && bi->hash == hash)
+    for (bi = hash_table[ndx]; bi; bi = bi->next) {
+        if (bi->type == type && bi->hash == hash) {
             break;
+        }
+    }
     if (!bi) {
         bi = (bucket_info*)(calloc(1, sizeof(*bi)));
-        if (!bi)
+        if (!bi) {
             return;
+        }
         bi->next = hash_table[ndx];
         bi->type = type;
         bi->hash = hash;
@@ -89,29 +92,35 @@ static void add_entry(int type, unsigned int hash, const char* filename, const u
         }
         if (!strcmp(filename, ei->filename)) {
             found = ei;
-            if (!digest)
+            if (!digest) {
                 break;
+            }
         }
     }
     ei = found;
     if (!ei) {
-        if (bi->num_needed >= MAX_COLLISIONS)
+        if (bi->num_needed >= MAX_COLLISIONS) {
             return;
+        }
         ei = (entry_info*)(calloc(1, sizeof(*ei)));
-        if (!ei)
+        if (!ei) {
             return;
+        }
 
         ei->old_id = ~0;
         ei->filename = strdup(filename);
-        if (bi->last_entry)
+        if (bi->last_entry) {
             bi->last_entry->next = ei;
-        if (!bi->first_entry)
+        }
+        if (!bi->first_entry) {
             bi->first_entry = ei;
+        }
         bi->last_entry = ei;
     }
 
-    if (old_id < ei->old_id)
+    if (old_id < ei->old_id) {
         ei->old_id = old_id;
+    }
     if (need_symlink && !ei->need_symlink) {
         ei->need_symlink = 1;
         bi->num_needed++;
@@ -131,25 +140,31 @@ static int handle_symlink(const char* filename, const char* fullpath) {
 
     for (i = 0; i < 8; i++) {
         ch = filename[i] - '0';
-        if (ch >= countof(xdigit) || xdigit[ch] < 0)
+        if (ch >= countof(xdigit) || xdigit[ch] < 0) {
             return -1;
+        }
         hash <<= 4;
         hash += xdigit[ch];
     }
-    if (filename[i++] != '.')
+    if (filename[i++] != '.') {
         return -1;
-    for (type = countof(symlink_extensions) - 1; type > 0; type--)
-        if (strcasecmp(symlink_extensions[type], &filename[i]) == 0)
+    }
+    for (type = countof(symlink_extensions) - 1; type > 0; type--) {
+        if (strcasecmp(symlink_extensions[type], &filename[i]) == 0) {
             break;
+        }
+    }
     i += strlen(symlink_extensions[type]);
 
     id = strtoul(&filename[i], &endptr, 10);
-    if (*endptr != 0)
+    if (*endptr != 0) {
         return -1;
+    }
 
     n = readlink(fullpath, linktarget, sizeof(linktarget));
-    if (n >= sizeof(linktarget) || n < 0)
+    if (n >= sizeof(linktarget) || n < 0) {
         return -1;
+    }
     linktarget[n] = 0;
 
     EVLOG_debug << "Found existing symlink " << std::string(filename) << " for " << hash << " (" << type
@@ -168,22 +183,27 @@ static int handle_certificate(const char* filename, const char* fullpath) {
     int i, type, ret = -1;
 
     ext = strrchr(filename, '.');
-    if (ext == NULL)
+    if (ext == NULL) {
         return 0;
-    for (i = 0; i < countof(file_extensions); i++) {
-        if (strcasecmp(file_extensions[i], ext + 1) == 0)
-            break;
     }
-    if (i >= countof(file_extensions))
+    for (i = 0; i < countof(file_extensions); i++) {
+        if (strcasecmp(file_extensions[i], ext + 1) == 0) {
+            break;
+        }
+    }
+    if (i >= countof(file_extensions)) {
         return -1;
+    }
 
     b = BIO_new_file(fullpath, "r");
-    if (!b)
+    if (!b) {
         return -1;
+    }
     inf = PEM_X509_INFO_read_bio(b, NULL, NULL, NULL);
     BIO_free(b);
-    if (!inf)
+    if (!inf) {
         return -1;
+    }
 
     if (sk_X509_INFO_num(inf) == 1) {
         x = sk_X509_INFO_value(inf, 0);
@@ -196,8 +216,9 @@ static int handle_certificate(const char* filename, const char* fullpath) {
             name = X509_CRL_get_issuer(x->crl);
             X509_CRL_digest(x->crl, evpmd, digest, NULL);
         }
-        if (name)
+        if (name) {
             add_entry(type, X509_NAME_hash(name), filename, digest, 1, ~0);
+        }
     } else {
         EVLOG_warning << std::string(filename) << " does not contain exactly one certificate or CRL: skipping";
     }
@@ -230,21 +251,26 @@ static int hash_dir(const char* dirname) {
     pathsep = (buflen && dirname[buflen - 1] == '/') ? "" : "/";
     buflen += NAME_MAX + 2;
     buf = (char*)(malloc(buflen));
-    if (buf == NULL)
+    if (buf == NULL) {
         goto err;
+    }
 
     EVLOG_debug << "Doing " << std::string(dirname);
     d = opendir(dirname);
-    if (!d)
+    if (!d) {
         goto err;
+    }
 
     while ((de = readdir(d)) != NULL) {
-        if (snprintf(buf, buflen, "%s%s%s", dirname, pathsep, de->d_name) >= buflen)
+        if (snprintf(buf, buflen, "%s%s%s", dirname, pathsep, de->d_name) >= buflen) {
             continue;
-        if (lstat(buf, &st) < 0)
+        }
+        if (lstat(buf, &st) < 0) {
             continue;
-        if (S_ISLNK(st.st_mode) && handle_symlink(de->d_name, buf) == 0)
+        }
+        if (S_ISLNK(st.st_mode) && handle_symlink(de->d_name, buf) == 0) {
             continue;
+        }
         if (strcmp(buf, "/etc/ssl/certs/ca-certificates.crt") == 0) {
             /* Ignore the /etc/ssl/certs/ca-certificates.crt file */
             EVLOG_debug << "Skipping /etc/ssl/certs/ca-certificates.crt file";
@@ -261,9 +287,11 @@ static int hash_dir(const char* dirname) {
 
             nextid = 0;
             memset(idmask, 0, (bi->num_needed + 7) / 8);
-            for (ei = bi->first_entry; ei; ei = ei->next)
-                if (ei->old_id < bi->num_needed)
+            for (ei = bi->first_entry; ei; ei = ei->next) {
+                if (ei->old_id < bi->num_needed) {
                     bit_set(idmask, ei->old_id);
+                }
+            }
 
             for (ei = bi->first_entry; ei; ei = nextei) {
                 nextei = ei->next;
@@ -277,8 +305,9 @@ static int hash_dir(const char* dirname) {
                                 << std::string(buf, strlen(buf));
                 } else if (ei->need_symlink) {
                     /* New link needed (it may replace something) */
-                    while (bit_isset(idmask, nextid))
+                    while (bit_isset(idmask, nextid)) {
                         nextid++;
+                    }
 
                     snprintf(buf, buflen, "%s%s%n%08x.%s%d", dirname, pathsep, &n, bi->hash,
                              symlink_extensions[bi->type], nextid);
