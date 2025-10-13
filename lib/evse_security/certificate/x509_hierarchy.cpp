@@ -151,7 +151,7 @@ X509CertificateHierarchy::find_certificate_root_node(const X509Wrapper& leaf) {
         }
     }
 
-    if (root_ptr) {
+    if (root_ptr != nullptr) {
         return std::make_pair(root_ptr, found_depth);
     }
 
@@ -181,7 +181,7 @@ std::optional<X509Wrapper> X509CertificateHierarchy::find_certificate(const Cert
         return true;
     });
 
-    if (certificate) {
+    if (certificate != nullptr) {
         return *certificate;
     }
 
@@ -369,7 +369,7 @@ void X509CertificateHierarchy::prune() {
 X509CertificateHierarchy X509CertificateHierarchy::build_hierarchy(std::vector<X509Wrapper>& certificates) {
     X509CertificateHierarchy ordered;
 
-    while (certificates.size()) {
+    while (certificates.size() != 0u) {
         ordered.insert(std::move(certificates.back()));
         certificates.pop_back();
     }

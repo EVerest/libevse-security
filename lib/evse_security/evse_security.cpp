@@ -726,7 +726,7 @@ EvseSecurity::get_installed_certificates(const std::vector<CertificateType>& cer
             // Iterate the hierarchy and add all the certificates to their respective locations
             for (auto& root : hierarchy.get_hierarchy()) {
                 // Ignore non self-signed
-                if (false == root.state.is_selfsigned) {
+                if (0 == root.state.is_selfsigned) {
                     continue;
                 }
 
@@ -819,7 +819,7 @@ EvseSecurity::get_installed_certificates(const std::vector<CertificateType>& cer
 
                         // Now the hierarchy_hash_data contains SubCA1->SubCA2->SECCLeaf,
                         // reverse order iteration to conform to the required leaf-first order
-                        if (hierarchy_hash_data.size()) {
+                        if (hierarchy_hash_data.size() != 0u) {
                             bool first_leaf = true;
 
                             // Reverse iteration
@@ -907,7 +907,7 @@ OCSPRequestDataList EvseSecurity::get_v2g_ocsp_request_data() {
 
     const GetCertificateFullInfoResult result = get_full_leaf_certificate_info_internal(params);
 
-    if (result.status != GetCertificateInfoStatus::Accepted or !result.info.size()) {
+    if (result.status != GetCertificateInfoStatus::Accepted or (result.info.size() == 0u)) {
         EVLOG_error << "Could not get key pair, for v2g ocsp request!";
         return OCSPRequestDataList();
     }

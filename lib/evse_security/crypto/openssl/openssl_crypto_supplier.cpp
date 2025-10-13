@@ -88,7 +88,7 @@ static bool export_key_internal(const KeyGenerationInfo& key_info, const EVP_PKE
             success = PEM_write_bio_PrivateKey(key_bio.get(), evp_key.get(), NULL, NULL, 0, NULL, NULL);
         }
 
-        if (false == success) {
+        if (0 == success) {
             EVLOG_error << "Failed to write private key!";
             return false;
         }
@@ -102,7 +102,7 @@ static bool export_key_internal(const KeyGenerationInfo& key_info, const EVP_PKE
             return false;
         }
 
-        if (false == PEM_write_bio_PUBKEY(key_bio.get(), evp_key.get())) {
+        if (0 == PEM_write_bio_PUBKEY(key_bio.get(), evp_key.get())) {
             EVLOG_error << "Failed to write pubkey!";
             return false;
         }
@@ -244,11 +244,11 @@ std::vector<X509Handle_ptr> OpenSSLSupplier::load_certificates(const std::string
     if (encoding == EncodingFormat::PEM) {
         STACK_OF(X509_INFO)* allcerts = PEM_X509_INFO_read_bio(bio.get(), nullptr, nullptr, nullptr);
 
-        if (allcerts) {
+        if (allcerts != nullptr) {
             for (int i = 0; i < sk_X509_INFO_num(allcerts); i++) {
                 X509_INFO* xi = sk_X509_INFO_value(allcerts, i);
 
-                if (xi && xi->x509) {
+                if ((xi != nullptr) && (xi->x509 != nullptr)) {
                     // Transfer ownership, safely, push_back since emplace_back can cause a memory leak
                     certificates.push_back(std::make_unique<X509HandleOpenSSL>(xi->x509));
                     xi->x509 = nullptr;
@@ -263,7 +263,7 @@ std::vector<X509Handle_ptr> OpenSSLSupplier::load_certificates(const std::string
         // NOLINTNEXTLINE(misc-const-correctness): would be problematic in the following make_unique statement
         X509* x509 = d2i_X509_bio(bio.get(), nullptr);
 
-        if (x509) {
+        if (x509 != nullptr) {
             certificates.push_back(std::make_unique<X509HandleOpenSSL>(x509));
         } else {
             throw CertificateLoadException("Certificate (DER) parsing error");
@@ -616,7 +616,7 @@ bool OpenSSLSupplier::x509_verify_signature(X509Handle* handle, const std::vecto
 
     const EVP_PKEY_ptr public_key_ptr(X509_get_pubkey(x509));
 
-    if (!public_key_ptr.get()) {
+    if (public_key_ptr.get() == nullptr) {
         EVLOG_error << "Error during X509_get_pubkey";
         return false;
     }
@@ -624,7 +624,7 @@ bool OpenSSLSupplier::x509_verify_signature(X509Handle* handle, const std::vecto
     // verify file signature
     const EVP_PKEY_CTX_ptr public_key_context_ptr(EVP_PKEY_CTX_new(public_key_ptr.get(), nullptr));
 
-    if (!public_key_context_ptr.get()) {
+    if (public_key_context_ptr.get() == nullptr) {
         EVLOG_error << "Error setting up public key context";
         return false;
     }
@@ -678,7 +678,7 @@ CertificateSignRequestResult OpenSSLSupplier::x509_generate_csr(const Certificat
     // set version of x509 req
     const int n_version = csr_info.n_version;
 
-    if (false == X509_REQ_set_version(x509_req_ptr.get(), n_version)) {
+    if (0 == X509_REQ_set_version(x509_req_ptr.get(), n_version)) {
         EVLOG_error << "Failed to set csr version!";
         ERR_print_errors_fp(stderr);
 
@@ -686,7 +686,7 @@ CertificateSignRequestResult OpenSSLSupplier::x509_generate_csr(const Certificat
     }
 
     // set public key of x509 req
-    if (false == X509_REQ_set_pubkey(x509_req_ptr.get(), key)) {
+    if (0 == X509_REQ_set_pubkey(x509_req_ptr.get(), key)) {
         EVLOG_error << "Failed to set csr pubkey!";
         ERR_print_errors_fp(stderr);
 
@@ -727,7 +727,7 @@ CertificateSignRequestResult OpenSSLSupplier::x509_generate_csr(const Certificat
         sk_X509_EXTENSION_push(extensions, ext_san);
     }
 
-    const bool result = X509_REQ_add_extensions(x509_req_ptr.get(), extensions);
+    const bool result = X509_REQ_add_extensions(x509_req_ptr.get(), extensions) != 0;
     X509_EXTENSION_free(ext_key_usage);
     X509_EXTENSION_free(ext_basic_constraints);
     X509_EXTENSION_free(ext_san);
@@ -741,7 +741,7 @@ CertificateSignRequestResult OpenSSLSupplier::x509_generate_csr(const Certificat
     }
 
     // sign the certificate with the private key
-    const bool x509_signed = X509_REQ_sign(x509_req_ptr.get(), key, EVP_sha256());
+    const bool x509_signed = X509_REQ_sign(x509_req_ptr.get(), key, EVP_sha256()) != 0;
 
     if (x509_signed == false) {
         EVLOG_error << "Failed to sign csr with error!";
@@ -764,7 +764,7 @@ CertificateSignRequestResult OpenSSLSupplier::x509_generate_csr(const Certificat
 
 bool OpenSSLSupplier::digest_file_sha256(const fs::path& path, std::vector<std::uint8_t>& out_digest) {
     EVP_MD_CTX_ptr md_context_ptr(EVP_MD_CTX_create());
-    if (!md_context_ptr.get()) {
+    if (md_context_ptr.get() == nullptr) {
         EVLOG_error << "Could not create EVP_MD_CTX";
         return false;
     }
@@ -854,7 +854,7 @@ template <typename T> static bool base64_decode(const std::string& base64_string
 
 static bool base64_encode(const unsigned char* bytes_str, int bytes_size, std::string& out_encoded) {
     const EVP_ENCODE_CTX_ptr base64_encode_context_ptr(EVP_ENCODE_CTX_new());
-    if (!base64_encode_context_ptr.get()) {
+    if (base64_encode_context_ptr.get() == nullptr) {
         EVLOG_error << "Error during EVP_ENCODE_CTX_new";
         return false;
     }
@@ -863,7 +863,7 @@ static bool base64_encode(const unsigned char* bytes_str, int bytes_size, std::s
     // evp_encode_ctx_set_flags(base64_encode_context_ptr.get(), EVP_ENCODE_CTX_NO_NEWLINES); // Of course it's not
     // public
 
-    if (!base64_encode_context_ptr.get()) {
+    if (base64_encode_context_ptr.get() == nullptr) {
         EVLOG_error << "Error during EVP_EncodeInit";
         return false;
     }
