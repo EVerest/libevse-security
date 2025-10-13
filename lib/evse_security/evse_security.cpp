@@ -6,11 +6,11 @@
 #include <evse_security/evse_security.hpp>
 
 #include <algorithm>
+#include <cstdio>
 #include <fstream>
 #include <iostream>
 #include <optional>
 #include <set>
-#include <stdio.h>
 
 #include <cert_rehash/c_rehash.hpp>
 
