@@ -259,15 +259,16 @@ OpenSSLProvider::OpenSSLProvider() = default;
 
 OpenSSLProvider::~OpenSSLProvider() = default;
 
-bool OpenSSLProvider::load(OSSL_PROVIDER*&, OSSL_PROVIDER*&, OSSL_LIB_CTX*, mode_t) {
+bool OpenSSLProvider::load(OSSL_PROVIDER*& /*unused*/, OSSL_PROVIDER*& /*unused*/, OSSL_LIB_CTX* /*unused*/,
+                           mode_t /*unused*/) {
     return false;
 }
 
-bool OpenSSLProvider::set_propstr(OSSL_LIB_CTX*, mode_t) {
+bool OpenSSLProvider::set_propstr(OSSL_LIB_CTX* /*unused*/, mode_t /*unused*/) {
     return false;
 }
 
-bool OpenSSLProvider::set_mode(OSSL_LIB_CTX*, mode_t) {
+bool OpenSSLProvider::set_mode(OSSL_LIB_CTX* /*unused*/, mode_t /*unused*/) {
     return false;
 }
 
