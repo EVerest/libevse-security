@@ -70,7 +70,7 @@ static void add_entry(int type, unsigned int hash, const char* filename, const u
     struct entry_info* found = nullptr;
     const unsigned int ndx = (type + hash) % hash_table.size();
 
-    for (bi = hash_table[ndx]; bi != nullptr; bi = bi->next) {
+    for (bi = hash_table.at(ndx); bi != nullptr; bi = bi->next) {
         if (bi->type == type && bi->hash == hash) {
             break;
         }
@@ -80,10 +80,10 @@ static void add_entry(int type, unsigned int hash, const char* filename, const u
         if (bi == nullptr) {
             return;
         }
-        bi->next = hash_table[ndx];
+        bi->next = hash_table.at(ndx);
         bi->type = type;
         bi->hash = hash;
-        hash_table[ndx] = bi;
+        hash_table.at(ndx) = bi;
     }
 
     for (ei = bi->first_entry; ei != nullptr; ei = ei->next) {
@@ -144,21 +144,21 @@ static int handle_symlink(const char* filename, const char* fullpath) {
 
     for (i = 0; i < 8; i++) {
         ch = filename[i] - '0';
-        if (ch >= xdigit.size() || xdigit[ch] < 0) {
+        if (ch >= xdigit.size() || xdigit.at(ch) < 0) {
             return -1;
         }
         hash <<= 4;
-        hash += xdigit[ch];
+        hash += xdigit.at(ch);
     }
     if (filename[i++] != '.') {
         return -1;
     }
     for (type = symlink_extensions.size() - 1; type > 0; type--) {
-        if (strcasecmp(symlink_extensions[type], &filename[i]) == 0) {
+        if (strcasecmp(symlink_extensions.at(type), &filename[i]) == 0) {
             break;
         }
     }
-    i += strlen(symlink_extensions[type]);
+    i += strlen(symlink_extensions.at(type));
 
     id = strtoul(&filename[i], &endptr, 10);
     if (*endptr != 0) {
@@ -170,7 +170,7 @@ static int handle_symlink(const char* filename, const char* fullpath) {
     if (n >= linktarget_size || n < 0) {
         return -1;
     }
-    linktarget[n] = 0;
+    linktarget.at(n) = 0;
 
     EVLOG_debug << "Found existing symlink " << std::string(filename) << " for " << hash << " (" << type
                 << "), certname " << std::string(linktarget.data(), strlen(linktarget.data()));
@@ -194,7 +194,7 @@ static int handle_certificate(const char* filename, const char* fullpath) {
         return 0;
     }
     for (i = 0; i < file_extensions.size(); i++) {
-        if (strcasecmp(file_extensions[i], ext + 1) == 0) {
+        if (strcasecmp(file_extensions.at(i), ext + 1) == 0) {
             break;
         }
     }
@@ -294,7 +294,7 @@ static int hash_dir(const char* dirname) {
     closedir(d);
 
     for (i = 0; i < hash_table.size(); i++) {
-        for (bi = hash_table[i]; bi != nullptr; bi = nextbi) {
+        for (bi = hash_table.at(i); bi != nullptr; bi = nextbi) {
             nextbi = bi->next;
             EVLOG_debug << "Type " << bi->type << " hash " << bi->hash << " num entries " << bi->num_needed << ":";
 
@@ -313,7 +313,7 @@ static int hash_dir(const char* dirname) {
 
                 if (ei->old_id < bi->num_needed) {
                     /* Link exists, and is used as-is */
-                    snprintf(buf, buflen, "%08x.%s%d", bi->hash, symlink_extensions[bi->type], ei->old_id);
+                    snprintf(buf, buflen, "%08x.%s%d", bi->hash, symlink_extensions.at(bi->type), ei->old_id);
                     EVLOG_debug << "link " << std::string(ei->filename, strlen(ei->filename)) << " -> "
                                 << std::string(buf, strlen(buf));
                 } else if (ei->need_symlink != 0u) {
@@ -323,7 +323,7 @@ static int hash_dir(const char* dirname) {
                     }
 
                     snprintf(buf, buflen, "%s%s%n%08x.%s%d", dirname, pathsep, &n, bi->hash,
-                             symlink_extensions[bi->type], nextid);
+                             symlink_extensions.at(bi->type), nextid);
                     EVLOG_debug << "link " << std::string(ei->filename, strlen(ei->filename)) << " -> "
                                 << std::string(buf + n, strlen(buf + n));
                     unlink(buf);
@@ -331,7 +331,7 @@ static int hash_dir(const char* dirname) {
                 } else {
                     /* Link to be deleted */
                     snprintf(buf, buflen, "%s%s%n%08x.%s%d", dirname, pathsep, &n, bi->hash,
-                             symlink_extensions[bi->type], ei->old_id);
+                             symlink_extensions.at(bi->type), ei->old_id);
                     EVLOG_debug << "unlink " << std::string(buf + n, strlen(buf + n));
                     unlink(buf);
                 }
@@ -340,7 +340,7 @@ static int hash_dir(const char* dirname) {
             }
             free(bi);
         }
-        hash_table[i] = nullptr;
+        hash_table.at(i) = nullptr;
     }
 
     ret = 0;

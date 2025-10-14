@@ -338,7 +338,7 @@ std::string OpenSSLSupplier::x509_get_issuer_name_hash(X509Handle* handle) {
 
     std::stringstream ss;
     for (int i = 0; i < SHA256_DIGEST_LENGTH; i++) {
-        ss << std::setw(2) << std::setfill('0') << std::hex << (int)md[i];
+        ss << std::setw(2) << std::setfill('0') << std::hex << (int)md.at(i);
     }
     return ss.str();
 }
@@ -393,7 +393,7 @@ std::string OpenSSLSupplier::x509_get_key_hash(X509Handle* handle) {
     X509_pubkey_digest(x509, EVP_sha256(), tmphash.data(), nullptr);
     std::stringstream ss;
     for (int i = 0; i < SHA256_DIGEST_LENGTH; i++) {
-        ss << std::setw(2) << std::setfill('0') << std::hex << (int)tmphash[i];
+        ss << std::setw(2) << std::setfill('0') << std::hex << (int)tmphash.at(i);
     }
 
     return ss.str();
