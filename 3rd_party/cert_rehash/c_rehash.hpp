@@ -22,7 +22,7 @@
 #include <everest/logging.hpp>
 
 constexpr auto MAX_COLLISIONS = 256;
-#define countof(x)     (sizeof(x) / sizeof(x[0]))
+#define countof(x) (sizeof(x) / sizeof((x)[0]))
 
 namespace evse_security {
 
