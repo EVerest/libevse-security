@@ -1286,7 +1286,6 @@ GetCertificateSignRequestResult EvseSecurity::generate_certificate_signing_reque
         return result;
     }
 
-    const std::string csr;
     CertificateSigningRequestInfo info;
 
     info.n_version = 0;
@@ -2209,7 +2208,6 @@ void EvseSecurity::garbage_collect() {
     // was added so that if we have a reset and the CSMS sends us a CSR response while we were
     // down it should still be processed when we boot up and NOT delete the CSRs
     for (const auto& [cert_dir, keys_dir, ca_type] : leaf_paths) {
-        const fs::path cert_path = cert_dir;
         const fs::path key_path = keys_dir;
 
         for (const auto& key_entry : fs::recursive_directory_iterator(key_path)) {
