@@ -487,7 +487,7 @@ DeleteResult EvseSecurity::delete_certificate(const CertificateHashData& certifi
         // The leaf bundle contains many chain/single certificates in separate files
         X509CertificateBundle leaf_bundle(leaf_certificate_path, EncodingFormat::PEM);
 
-        CaCertificateType root_load;
+        CaCertificateType root_load; // NOLINT(cppcoreguidelines-init-variables): initialized below
         if (secc) {
             root_load = CaCertificateType::V2G;
         } else if (csms) {
@@ -1389,7 +1389,7 @@ EvseSecurity::get_full_leaf_certificate_info_internal(const CertificateQueryPara
 
     fs::path key_dir;
     fs::path cert_dir;
-    CaCertificateType root_type;
+    CaCertificateType root_type; // NOLINT(cppcoreguidelines-init-variables): initialized below, or return before use
 
     if (certificate_type == LeafCertificateType::CSMS) {
         key_dir = this->directories.csms_leaf_key_directory;
@@ -2264,12 +2264,14 @@ void EvseSecurity::garbage_collect() {
             const bool csms = (leaf_certificate_path == directories.csms_leaf_cert_directory) ||
                               (directories.csms_leaf_cert_directory == directories.secc_leaf_cert_directory);
 
-            CaCertificateType load;
+            CaCertificateType load; // NOLINT(cppcoreguidelines-init-variables): initialized below, or throw
 
             if (secc) {
                 load = CaCertificateType::V2G;
             } else if (csms) {
                 load = CaCertificateType::CSMS;
+            } else {
+                throw CertificateLoadException("No compatible certificate type selected to load");
             }
 
             // Also load the roots since we need to build the hierarchy for correct certificate hashes
