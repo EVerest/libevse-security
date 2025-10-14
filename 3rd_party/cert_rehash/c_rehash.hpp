@@ -76,7 +76,7 @@ static void add_entry(int type, unsigned int hash, const char* filename, const u
         }
     }
     if (bi == nullptr) {
-        bi = (bucket_info*)(calloc(1, sizeof(*bi)));
+        bi = static_cast<bucket_info*>((calloc(1, sizeof(*bi))));
         if (bi == nullptr) {
             return;
         }
@@ -103,7 +103,7 @@ static void add_entry(int type, unsigned int hash, const char* filename, const u
         if (bi->num_needed >= MAX_COLLISIONS) {
             return;
         }
-        ei = (entry_info*)(calloc(1, sizeof(*ei)));
+        ei = static_cast<entry_info*>(calloc(1, sizeof(*ei)));
         if (ei == nullptr) {
             return;
         }
@@ -263,7 +263,7 @@ static int hash_dir(const char* dirname) {
     buflen = strlen(dirname);
     pathsep = ((buflen != 0) && dirname[buflen - 1] == '/') ? "" : "/";
     buflen += NAME_MAX + 2;
-    buf = (char*)(malloc(buflen));
+    buf = static_cast<char*>(malloc(buflen));
     if (buf == nullptr) {
         goto err;
     }
