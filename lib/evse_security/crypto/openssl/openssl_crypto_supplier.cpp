@@ -374,7 +374,7 @@ std::string OpenSSLSupplier::x509_get_serial_number(X509Handle* handle) {
 
     std::string serial(hex_serial);
     for (char& i : serial) {
-        i = std::tolower(i);
+        i = static_cast<char>(std::tolower(static_cast<unsigned char>(i)));
     }
 
     BN_free(bn_serial);
