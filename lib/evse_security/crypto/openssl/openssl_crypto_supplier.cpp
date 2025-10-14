@@ -121,8 +121,8 @@ constexpr const char* kt_ec = "EC";
 namespace {
 bool s_generate_key(const KeyGenerationInfo& key_info, KeyHandle_ptr& out_key, EVP_PKEY_CTX_ptr& ctx) {
     unsigned int bits = 0;
-    char group_256[] = "P-256";
-    char group_384[] = "P-384";
+    std::string group_256 = "P-256";
+    std::string group_384 = "P-384";
     char* group = nullptr;
     std::size_t group_sz = 0;
     int nid = NID_undef;
@@ -154,14 +154,14 @@ bool s_generate_key(const KeyGenerationInfo& key_info, KeyHandle_ptr& out_key, E
         bEC = false;
         break;
     case CryptoKeyType::EC_prime256v1:
-        group = group_256;
-        group_sz = sizeof(group_256);
+        group = group_256.data();
+        group_sz = group_256.length();
         nid = NID_X9_62_prime256v1;
         break;
     case CryptoKeyType::EC_secp384r1:
     default:
-        group = group_384;
-        group_sz = sizeof(group_384);
+        group = group_384.data();
+        group_sz = group_384.length();
         nid = NID_secp384r1;
         break;
     }
