@@ -63,7 +63,7 @@ struct CertificateQueryParams {
 // Unchangeable security limit for certificate deletion, a min entry count will be always kept (newest)
 static constexpr std::size_t DEFAULT_MINIMUM_CERTIFICATE_ENTRIES = 10;
 // 50 MB default limit for filesystem usage
-static constexpr std::uintmax_t DEFAULT_MAX_FILESYSTEM_SIZE = 1024 * 1024 * 50;
+static constexpr std::uintmax_t DEFAULT_MAX_FILESYSTEM_SIZE = 1024 * std::uintmax_t{1024} * std::uintmax_t{50};
 // Default maximum 2000 certificate entries
 static constexpr std::uintmax_t DEFAULT_MAX_CERTIFICATE_ENTRIES = 2000;
 
