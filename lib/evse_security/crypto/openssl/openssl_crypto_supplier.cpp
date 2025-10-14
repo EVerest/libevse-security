@@ -166,8 +166,7 @@ bool s_generate_key(const KeyGenerationInfo& key_info, KeyHandle_ptr& out_key, E
         break;
     }
 
-    OSSL_PARAM params[2];
-    std::memset(&params[0], 0, sizeof(params));
+    std::array<OSSL_PARAM, 2> params = {};
 
     if (bEC) {
         params[0] = OSSL_PARAM_construct_utf8_string("group", group, group_sz);
@@ -192,7 +191,7 @@ bool s_generate_key(const KeyGenerationInfo& key_info, KeyHandle_ptr& out_key, E
 
     if (bResult) {
         EVLOG_info << "Keygen init";
-        if (EVP_PKEY_keygen_init(ctx.get()) <= 0 || EVP_PKEY_CTX_set_params(ctx.get(), params) <= 0) {
+        if (EVP_PKEY_keygen_init(ctx.get()) <= 0 || EVP_PKEY_CTX_set_params(ctx.get(), params.data()) <= 0) {
             EVLOG_error << "Keygen init failed";
             ERR_print_errors_fp(stderr);
             bResult = false;
@@ -333,9 +332,9 @@ std::string OpenSSLSupplier::x509_get_issuer_name_hash(X509Handle* handle) {
         return {};
     }
 
-    unsigned char md[SHA256_DIGEST_LENGTH];
+    std::array<unsigned char, SHA256_DIGEST_LENGTH> md;
     const X509_NAME* name = X509_get_issuer_name(x509);
-    X509_NAME_digest(name, EVP_sha256(), md, nullptr);
+    X509_NAME_digest(name, EVP_sha256(), md.data(), nullptr);
 
     std::stringstream ss;
     for (int i = 0; i < SHA256_DIGEST_LENGTH; i++) {
@@ -390,8 +389,8 @@ std::string OpenSSLSupplier::x509_get_key_hash(X509Handle* handle) {
         return {};
     }
 
-    unsigned char tmphash[SHA256_DIGEST_LENGTH];
-    X509_pubkey_digest(x509, EVP_sha256(), tmphash, nullptr);
+    std::array<unsigned char, SHA256_DIGEST_LENGTH> tmphash;
+    X509_pubkey_digest(x509, EVP_sha256(), tmphash.data(), nullptr);
     std::stringstream ss;
     for (int i = 0; i < SHA256_DIGEST_LENGTH; i++) {
         ss << std::setw(2) << std::setfill('0') << std::hex << (int)tmphash[i];
@@ -788,7 +787,7 @@ bool OpenSSLSupplier::digest_file_sha256(const fs::path& path, std::vector<std::
     bool digest_error = false;
 
     unsigned int sha256_out_length = 0;
-    std::uint8_t sha256_out[EVP_MAX_MD_SIZE];
+    std::array<std::uint8_t, EVP_MAX_MD_SIZE> sha256_out;
 
     // calculate sha256 of file
     const bool processed_file = filesystem_utils::process_file(
@@ -802,7 +801,7 @@ bool OpenSSLSupplier::digest_file_sha256(const fs::path& path, std::vector<std::
             }
 
             if (last_chunk) {
-                if (EVP_DigestFinal_ex(md_context_ptr.get(), reinterpret_cast<unsigned char*>(sha256_out),
+                if (EVP_DigestFinal_ex(md_context_ptr.get(), reinterpret_cast<unsigned char*>(sha256_out.data()),
                                        &sha256_out_length) == 0) {
                     EVLOG_error << "Error during EVP_DigestFinal_ex";
                     digest_error = true;
@@ -819,7 +818,7 @@ bool OpenSSLSupplier::digest_file_sha256(const fs::path& path, std::vector<std::
     }
 
     out_digest.clear();
-    out_digest.insert(std::end(out_digest), sha256_out, sha256_out + sha256_out_length);
+    out_digest.insert(std::end(out_digest), sha256_out.data(), sha256_out.data() + sha256_out_length);
 
     return true;
 }
