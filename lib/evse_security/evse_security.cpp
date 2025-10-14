@@ -919,7 +919,7 @@ OCSPRequestDataList EvseSecurity::get_v2g_ocsp_request_data() {
 
     OCSPRequestDataList full_oscp_list;
 
-    for (const auto secc_key_pair : result.info) {
+    for (const auto& secc_key_pair : result.info) {
         std::string chain{};
 
         if (secc_key_pair.certificate.has_value()) {
