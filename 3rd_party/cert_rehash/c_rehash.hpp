@@ -134,7 +134,7 @@ static int handle_symlink(const char* filename, const char* fullpath) {
                                          12, 13, 14, 15, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
                                          -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, 10, 11, 12, 13, 14, 15};
     char linktarget[NAME_MAX];
-    char* endptr = nullptr;
+    char* endptr = nullptr; // NOLINT(misc-const-correctness): would not work with call to strtoul
     unsigned int hash = 0;
     unsigned char ch = 0;
     int i = 0;
@@ -179,7 +179,7 @@ static int handle_symlink(const char* filename, const char* fullpath) {
 
 static int handle_certificate(const char* filename, const char* fullpath) {
     STACK_OF(X509_INFO)* inf = nullptr;
-    X509_INFO* x = nullptr;
+    const X509_INFO* x = nullptr;
     BIO* b = nullptr;
     const char* ext = nullptr;
     unsigned char digest[EVP_MAX_MD_SIZE];
