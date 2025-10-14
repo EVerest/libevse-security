@@ -97,7 +97,7 @@ public:
         };
 
         std::vector<Chain> ordered;
-
+        ordered.reserve(certificates.size());
         for (auto& [path, certs] : certificates) {
             ordered.push_back(Chain{&path, &certs});
         }
