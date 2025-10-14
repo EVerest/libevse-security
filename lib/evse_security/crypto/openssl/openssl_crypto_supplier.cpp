@@ -840,24 +840,25 @@ template <typename T> bool base64_decode(const std::string& base64_string, T& ou
     const auto* encoded_str = reinterpret_cast<const unsigned char*>(base64_string.data());
     const int base64_length = base64_string.size();
 
-    std::uint8_t decoded_out[base64_length];
+    std::vector<std::uint8_t> decoded_out;
+    decoded_out.reserve(base64_length);
 
     int decoded_out_length = 0;
-    if (EVP_DecodeUpdate(base64_decode_context_ptr.get(), reinterpret_cast<unsigned char*>(decoded_out),
+    if (EVP_DecodeUpdate(base64_decode_context_ptr.get(), reinterpret_cast<unsigned char*>(decoded_out.data()),
                          &decoded_out_length, encoded_str, base64_length) < 0) {
         EVLOG_error << "Error during DecodeUpdate";
         return false;
     }
 
     int decode_final_out = 0;
-    if (EVP_DecodeFinal(base64_decode_context_ptr.get(), reinterpret_cast<unsigned char*>(decoded_out),
+    if (EVP_DecodeFinal(base64_decode_context_ptr.get(), reinterpret_cast<unsigned char*>(decoded_out.data()),
                         &decode_final_out) < 0) {
         EVLOG_error << "Error during EVP_DecodeFinal";
         return false;
     }
 
     out_decoded.clear();
-    out_decoded.insert(std::end(out_decoded), decoded_out, decoded_out + decoded_out_length);
+    out_decoded.insert(std::end(out_decoded), decoded_out.data(), decoded_out.data() + decoded_out_length);
 
     return true;
 }
@@ -880,22 +881,23 @@ bool base64_encode(const unsigned char* bytes_str, int bytes_size, std::string& 
 
     const int base64_length = ((bytes_size / 3) * 4) + 2;
     // If it causes issues, replace with 'alloca' on different platform
-    char base64_out[base64_length + 66]; // + 66 bytes for final block
+    std::vector<char> base64_out;
+    base64_out.reserve(base64_length + 66); // + 66 bytes for final block
     int full_len = 0;
 
     int base64_out_length = 0;
-    if (EVP_EncodeUpdate(base64_encode_context_ptr.get(), reinterpret_cast<unsigned char*>(base64_out),
+    if (EVP_EncodeUpdate(base64_encode_context_ptr.get(), reinterpret_cast<unsigned char*>(base64_out.data()),
                          &base64_out_length, bytes_str, bytes_size) < 0) {
         EVLOG_error << "Error during EVP_EncodeUpdate";
         return false;
     }
     full_len += base64_out_length;
 
-    EVP_EncodeFinal(base64_encode_context_ptr.get(), reinterpret_cast<unsigned char*>(base64_out) + base64_out_length,
-                    &base64_out_length);
+    EVP_EncodeFinal(base64_encode_context_ptr.get(),
+                    reinterpret_cast<unsigned char*>(base64_out.data()) + base64_out_length, &base64_out_length);
     full_len += base64_out_length;
 
-    out_encoded.assign(base64_out, full_len);
+    out_encoded.assign(base64_out.data(), full_len);
 
     return true;
 }
