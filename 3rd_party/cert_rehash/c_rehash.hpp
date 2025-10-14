@@ -313,7 +313,9 @@ static int hash_dir(const char* dirname) {
 
                 if (ei->old_id < bi->num_needed) {
                     /* Link exists, and is used as-is */
-                    snprintf(buf, buflen, "%08x.%s%d", bi->hash, symlink_extensions.at(bi->type), ei->old_id);
+                    if (snprintf(buf, buflen, "%08x.%s%d", bi->hash, symlink_extensions.at(bi->type), ei->old_id) < 0) {
+                        return -1;
+                    }
                     EVLOG_debug << "link " << std::string(ei->filename, strlen(ei->filename)) << " -> "
                                 << std::string(buf, strlen(buf));
                 } else if (ei->need_symlink != 0u) {
@@ -322,16 +324,20 @@ static int hash_dir(const char* dirname) {
                         nextid++;
                     }
 
-                    snprintf(buf, buflen, "%s%s%n%08x.%s%d", dirname, pathsep, &n, bi->hash,
-                             symlink_extensions.at(bi->type), nextid);
+                    if (snprintf(buf, buflen, "%s%s%n%08x.%s%d", dirname, pathsep, &n, bi->hash,
+                                 symlink_extensions.at(bi->type), nextid) < 0) {
+                        return -1;
+                    };
                     EVLOG_debug << "link " << std::string(ei->filename, strlen(ei->filename)) << " -> "
                                 << std::string(buf + n, strlen(buf + n));
                     unlink(buf);
                     symlink(ei->filename, buf);
                 } else {
                     /* Link to be deleted */
-                    snprintf(buf, buflen, "%s%s%n%08x.%s%d", dirname, pathsep, &n, bi->hash,
-                             symlink_extensions.at(bi->type), ei->old_id);
+                    if (snprintf(buf, buflen, "%s%s%n%08x.%s%d", dirname, pathsep, &n, bi->hash,
+                                 symlink_extensions.at(bi->type), ei->old_id) < 0) {
+                        return -1;
+                    };
                     EVLOG_debug << "unlink " << std::string(buf + n, strlen(buf + n));
                     unlink(buf);
                 }
