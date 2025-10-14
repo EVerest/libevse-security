@@ -7,6 +7,7 @@
 #include <algorithm>
 #include <chrono>
 #include <cstring>
+#include <iterator>
 #include <numeric>
 #include <string>
 #include <vector>
@@ -818,7 +819,7 @@ bool OpenSSLSupplier::digest_file_sha256(const fs::path& path, std::vector<std::
     }
 
     out_digest.clear();
-    out_digest.insert(std::end(out_digest), sha256_out.data(), sha256_out.data() + sha256_out_length);
+    std::copy_n(sha256_out.begin(), sha256_out_length, std::back_inserter((out_digest)));
 
     return true;
 }
@@ -858,7 +859,7 @@ template <typename T> bool base64_decode(const std::string& base64_string, T& ou
     }
 
     out_decoded.clear();
-    out_decoded.insert(std::end(out_decoded), decoded_out.data(), decoded_out.data() + decoded_out_length);
+    std::copy_n(decoded_out.begin(), decoded_out_length, std::back_inserter((out_decoded)));
 
     return true;
 }
@@ -894,7 +895,8 @@ bool base64_encode(const unsigned char* bytes_str, int bytes_size, std::string& 
     full_len += base64_out_length;
 
     EVP_EncodeFinal(base64_encode_context_ptr.get(),
-                    reinterpret_cast<unsigned char*>(base64_out.data()) + base64_out_length, &base64_out_length);
+                    std::next(reinterpret_cast<unsigned char*>(base64_out.data()), base64_out_length),
+                    &base64_out_length);
     full_len += base64_out_length;
 
     out_encoded.assign(base64_out.data(), full_len);
