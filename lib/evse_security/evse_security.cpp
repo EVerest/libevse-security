@@ -21,7 +21,8 @@
 
 namespace evse_security {
 
-static InstallCertificateResult to_install_certificate_result(CertificateValidationResult error) {
+namespace {
+InstallCertificateResult to_install_certificate_result(CertificateValidationResult error) {
     switch (error) {
     case CertificateValidationResult::Valid:
         EVLOG_info << "Certificate accepted";
@@ -46,7 +47,7 @@ static InstallCertificateResult to_install_certificate_result(CertificateValidat
     }
 }
 
-static std::vector<CaCertificateType> get_ca_certificate_types(const std::vector<CertificateType> certificate_types) {
+std::vector<CaCertificateType> get_ca_certificate_types(const std::vector<CertificateType> certificate_types) {
     std::vector<CaCertificateType> ca_certificate_types;
     for (const auto& certificate_type : certificate_types) {
         if (certificate_type == CertificateType::V2GRootCertificate) {
@@ -65,7 +66,7 @@ static std::vector<CaCertificateType> get_ca_certificate_types(const std::vector
     return ca_certificate_types;
 }
 
-static CertificateType get_certificate_type(const CaCertificateType ca_certificate_type) {
+CertificateType get_certificate_type(const CaCertificateType ca_certificate_type) {
     switch (ca_certificate_type) {
     case CaCertificateType::V2G:
         return CertificateType::V2GRootCertificate;
@@ -80,7 +81,7 @@ static CertificateType get_certificate_type(const CaCertificateType ca_certifica
     }
 }
 
-static bool is_keyfile(const fs::path& file_path) {
+bool is_keyfile(const fs::path& file_path) {
     if (fs::is_regular_file(file_path)) {
         if (file_path.has_extension()) {
             auto extension = file_path.extension();
@@ -94,9 +95,9 @@ static bool is_keyfile(const fs::path& file_path) {
 }
 
 /// @brief Searches for the private key linked to the provided certificate or nullopt if none was found
-static std::optional<fs::path> get_private_key_path_of_certificate(const X509Wrapper& certificate,
-                                                                   const fs::path& key_path_directory,
-                                                                   const std::optional<std::string> password) {
+std::optional<fs::path> get_private_key_path_of_certificate(const X509Wrapper& certificate,
+                                                            const fs::path& key_path_directory,
+                                                            const std::optional<std::string> password) {
     // Before iterating the whole dir check by the filename first 'key_path'.key/.tkey
     if (certificate.get_file().has_value()) {
         // Check normal keyfile & tpm filename
@@ -157,8 +158,8 @@ static std::optional<fs::path> get_private_key_path_of_certificate(const X509Wra
 /// @brief Searches for the certificate linked to the provided key
 /// @return The files where the certificates were found, more than one can be returned in case it is
 /// present in a bundle too
-static std::set<fs::path> get_certificate_path_of_key(const fs::path& key, const fs::path& certificate_path_directory,
-                                                      const std::optional<std::string> password) {
+std::set<fs::path> get_certificate_path_of_key(const fs::path& key, const fs::path& certificate_path_directory,
+                                               const std::optional<std::string> password) {
     std::string private_key;
 
     if (false == filesystem_utils::read_from_file(key, private_key)) {
@@ -228,8 +229,8 @@ static std::set<fs::path> get_certificate_path_of_key(const fs::path& key, const
 
 /// @brief Searches for the ocsp data and hash related to the specified certificate and hash
 /// @return True if the files were found, false otherwise
-static bool get_oscp_data_of_certificate(const X509Wrapper& certificate, const CertificateHashData& hash,
-                                         fs::path& out_path_hash, fs::path& out_path_data) {
+bool get_oscp_data_of_certificate(const X509Wrapper& certificate, const CertificateHashData& hash,
+                                  fs::path& out_path_hash, fs::path& out_path_data) {
     if (false == certificate.get_file().has_value()) {
         return false;
     }
@@ -275,10 +276,10 @@ static bool get_oscp_data_of_certificate(const X509Wrapper& certificate, const C
     return false;
 }
 
-static OCSPRequestDataList
-generate_ocsp_request_data_internal(const std::map<CaCertificateType, fs::path>& ca_bundle_path_map,
-                                    const std::set<CaCertificateType>& possible_roots,
-                                    const std::vector<X509Wrapper>& leaf_chain);
+OCSPRequestDataList generate_ocsp_request_data_internal(const std::map<CaCertificateType, fs::path>& ca_bundle_path_map,
+                                                        const std::set<CaCertificateType>& possible_roots,
+                                                        const std::vector<X509Wrapper>& leaf_chain);
+} // namespace
 
 std::mutex EvseSecurity::security_mutex;
 
@@ -970,10 +971,10 @@ OCSPRequestDataList EvseSecurity::get_mo_ocsp_request_data(const std::string& ce
     return {};
 }
 
-static OCSPRequestDataList
-generate_ocsp_request_data_internal(const std::map<CaCertificateType, fs::path>& ca_bundle_path_map,
-                                    const std::set<CaCertificateType>& possible_roots,
-                                    const std::vector<X509Wrapper>& leaf_chain) {
+namespace {
+OCSPRequestDataList generate_ocsp_request_data_internal(const std::map<CaCertificateType, fs::path>& ca_bundle_path_map,
+                                                        const std::set<CaCertificateType>& possible_roots,
+                                                        const std::vector<X509Wrapper>& leaf_chain) {
     OCSPRequestDataList response;
 
     if (leaf_chain.empty()) {
@@ -1066,6 +1067,7 @@ generate_ocsp_request_data_internal(const std::map<CaCertificateType, fs::path>&
 
     return response;
 }
+} // namespace
 
 void EvseSecurity::update_ocsp_cache(const CertificateHashData& certificate_hash_data,
                                      const std::string& ocsp_response) {

@@ -25,7 +25,8 @@
 
 namespace evse_security {
 
-static X509* get(X509Handle* handle) {
+namespace {
+X509* get(X509Handle* handle) {
     if (auto* ssl_handle = dynamic_cast<X509HandleOpenSSL*>(handle)) {
         return ssl_handle->get();
     }
@@ -33,7 +34,7 @@ static X509* get(X509Handle* handle) {
     return nullptr;
 }
 
-static EVP_PKEY* get(KeyHandle* handle) {
+EVP_PKEY* get(KeyHandle* handle) {
     if (auto* ssl_handle = dynamic_cast<KeyHandleOpenSSL*>(handle)) {
         return ssl_handle->get();
     }
@@ -41,7 +42,7 @@ static EVP_PKEY* get(KeyHandle* handle) {
     return nullptr;
 }
 
-static CertificateValidationResult to_certificate_error(const int ec) {
+CertificateValidationResult to_certificate_error(const int ec) {
     switch (ec) {
     case X509_V_ERR_CERT_HAS_EXPIRED:
         return CertificateValidationResult::Expired;
@@ -60,6 +61,7 @@ static CertificateValidationResult to_certificate_error(const int ec) {
         return CertificateValidationResult::Unknown;
     }
 }
+} // namespace
 
 const char* OpenSSLSupplier::get_supplier_name() {
     return OPENSSL_VERSION_TEXT;
@@ -70,7 +72,8 @@ bool OpenSSLSupplier::supports_tpm_key_creation() {
     return provider.supports_provider_tpm();
 }
 
-static bool export_key_internal(const KeyGenerationInfo& key_info, const EVP_PKEY_ptr& evp_key) {
+namespace {
+bool export_key_internal(const KeyGenerationInfo& key_info, const EVP_PKEY_ptr& evp_key) {
     // write private key to file
     if (key_info.private_key_file.has_value()) {
         const BIO_ptr key_bio(BIO_new_file(key_info.private_key_file.value().c_str(), "w"));
@@ -110,11 +113,13 @@ static bool export_key_internal(const KeyGenerationInfo& key_info, const EVP_PKE
 
     return true;
 }
+} // namespace
 
 constexpr const char* kt_rsa = "RSA";
 constexpr const char* kt_ec = "EC";
 
-static bool s_generate_key(const KeyGenerationInfo& key_info, KeyHandle_ptr& out_key, EVP_PKEY_CTX_ptr& ctx) {
+namespace {
+bool s_generate_key(const KeyGenerationInfo& key_info, KeyHandle_ptr& out_key, EVP_PKEY_CTX_ptr& ctx) {
     unsigned int bits = 0;
     char group_256[] = "P-256";
     char group_384[] = "P-384";
@@ -218,6 +223,7 @@ static bool s_generate_key(const KeyGenerationInfo& key_info, KeyHandle_ptr& out
 
     return bResult;
 }
+} // namespace
 
 bool OpenSSLSupplier::generate_key(const KeyGenerationInfo& key_info, KeyHandle_ptr& /*out_key*/) {
     KeyHandle_ptr gen_key;
@@ -818,7 +824,8 @@ bool OpenSSLSupplier::digest_file_sha256(const fs::path& path, std::vector<std::
     return true;
 }
 
-template <typename T> static bool base64_decode(const std::string& base64_string, T& out_decoded) {
+namespace {
+template <typename T> bool base64_decode(const std::string& base64_string, T& out_decoded) {
     const EVP_ENCODE_CTX_ptr base64_decode_context_ptr(EVP_ENCODE_CTX_new());
     if (!base64_decode_context_ptr.get()) {
         EVLOG_error << "Error during EVP_ENCODE_CTX_new";
@@ -856,7 +863,7 @@ template <typename T> static bool base64_decode(const std::string& base64_string
     return true;
 }
 
-static bool base64_encode(const unsigned char* bytes_str, int bytes_size, std::string& out_encoded) {
+bool base64_encode(const unsigned char* bytes_str, int bytes_size, std::string& out_encoded) {
     const EVP_ENCODE_CTX_ptr base64_encode_context_ptr(EVP_ENCODE_CTX_new());
     if (base64_encode_context_ptr.get() == nullptr) {
         EVLOG_error << "Error during EVP_ENCODE_CTX_new";
@@ -893,6 +900,7 @@ static bool base64_encode(const unsigned char* bytes_str, int bytes_size, std::s
 
     return true;
 }
+} // namespace
 
 bool OpenSSLSupplier::base64_decode_to_bytes(const std::string& base64_string, std::vector<std::uint8_t>& out_decoded) {
     return base64_decode<std::vector<std::uint8_t>>(base64_string, out_decoded);

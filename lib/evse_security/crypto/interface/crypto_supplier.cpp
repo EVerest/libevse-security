@@ -71,9 +71,11 @@ bool AbstractCryptoSupplier::x509_is_equal(X509Handle* a, X509Handle* b) {
     default_crypto_supplier_usage_error() return (a == b);
 }
 
-static X509Handle_ptr x509_duplicate_unique() {
+namespace {
+X509Handle_ptr x509_duplicate_unique() {
     default_crypto_supplier_usage_error() return {};
 }
+} // namespace
 
 CertificateValidationResult AbstractCryptoSupplier::x509_verify_certificate_chain(
     X509Handle* /*target*/, const std::vector<X509Handle*>& /*parents*/,

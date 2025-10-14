@@ -23,10 +23,12 @@ using OSSL_LIB_CTX = struct ossl_lib_ctx_st;
 
 namespace evse_security {
 
-static auto KEY_HEADER_DEFAULT = "-----BEGIN PRIVATE KEY-----";
-static auto KEY_HEADER_DEFAULT_ENCRYPTED = "-----BEGIN ENCRYPTED PRIVATE KEY-----";
+namespace {
+auto KEY_HEADER_DEFAULT = "-----BEGIN PRIVATE KEY-----";
+auto KEY_HEADER_DEFAULT_ENCRYPTED = "-----BEGIN ENCRYPTED PRIVATE KEY-----";
 
-static auto KEY_HEADER_TPM2 = "-----BEGIN TSS2 PRIVATE KEY-----";
+auto KEY_HEADER_TPM2 = "-----BEGIN TSS2 PRIVATE KEY-----";
+} // namespace
 
 bool is_custom_private_key_string(const std::string& private_key_pem) {
     // If we can't find the standard header it means it's a custom key
