@@ -8,6 +8,7 @@
  * Full license available at: http://opensource.org/licenses/MIT
  */
 
+#include <array>
 #include <dirent.h>
 #include <limits.h>
 #include <stdio.h>
@@ -22,7 +23,6 @@
 #include <everest/logging.hpp>
 
 constexpr auto MAX_COLLISIONS = 256;
-#define countof(x) (sizeof(x) / sizeof((x)[0]))
 
 namespace evse_security {
 
@@ -31,7 +31,7 @@ struct entry_info {
     char* filename;
     unsigned short old_id;
     unsigned char need_symlink;
-    unsigned char digest[EVP_MAX_MD_SIZE];
+    std::array<unsigned char, EVP_MAX_MD_SIZE> digest;
 };
 
 struct bucket_info {
@@ -47,13 +47,13 @@ enum Type {
     TYPE_CRL
 };
 
-static const char* symlink_extensions[] = {"", "r"};
-static const char* file_extensions[] = {"pem", "crt", "cer", "crl"};
+static std::array<const char*, 2> symlink_extensions = {"", "r"};
+static std::array<const char*, 4> file_extensions = {"pem", "crt", "cer", "crl"};
 
 static int evpmdsize;
 static const EVP_MD* evpmd;
 
-static struct bucket_info* hash_table[257];
+static std::array<struct bucket_info*, 257> hash_table;
 
 static void bit_set(unsigned char* set, unsigned bit) {
     set[bit / 8] |= 1 << (bit % 8);
@@ -68,7 +68,7 @@ static void add_entry(int type, unsigned int hash, const char* filename, const u
     struct bucket_info* bi = nullptr;
     struct entry_info* ei = nullptr;
     struct entry_info* found = nullptr;
-    const unsigned int ndx = (type + hash) % countof(hash_table);
+    const unsigned int ndx = (type + hash) % hash_table.size();
 
     for (bi = hash_table[ndx]; bi != nullptr; bi = bi->next) {
         if (bi->type == type && bi->hash == hash) {
@@ -87,7 +87,7 @@ static void add_entry(int type, unsigned int hash, const char* filename, const u
     }
 
     for (ei = bi->first_entry; ei != nullptr; ei = ei->next) {
-        if ((digest != nullptr) && memcmp(digest, ei->digest, evpmdsize) == 0) {
+        if ((digest != nullptr) && memcmp(digest, ei->digest.data(), evpmdsize) == 0) {
             EVLOG_warning << "Skipping duplicate certificate in file " << std::string(filename);
             return;
         }
@@ -125,15 +125,15 @@ static void add_entry(int type, unsigned int hash, const char* filename, const u
     if ((need_symlink != 0) && (ei->need_symlink == 0u)) {
         ei->need_symlink = 1;
         bi->num_needed++;
-        memcpy(ei->digest, digest, evpmdsize);
+        memcpy(ei->digest.data(), digest, evpmdsize);
     }
 }
 
 static int handle_symlink(const char* filename, const char* fullpath) {
-    static const signed char xdigit[] = {0,  1,  2,  3,  4,  5,  6,  7,  8,  9,  -1, -1, -1, -1, -1, -1, -1, 10, 11,
-                                         12, 13, 14, 15, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
-                                         -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, 10, 11, 12, 13, 14, 15};
-    char linktarget[NAME_MAX];
+    static std::array<const signed char, 55> xdigit = {
+        0,  1,  2,  3,  4,  5,  6,  7,  8,  9,  -1, -1, -1, -1, -1, -1, -1, 10, 11, 12, 13, 14, 15, -1, -1, -1, -1, -1,
+        -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, 10, 11, 12, 13, 14, 15};
+    std::array<char, NAME_MAX> linktarget;
     char* endptr = nullptr; // NOLINT(misc-const-correctness): would not work with call to strtoul
     unsigned int hash = 0;
     unsigned char ch = 0;
@@ -144,7 +144,7 @@ static int handle_symlink(const char* filename, const char* fullpath) {
 
     for (i = 0; i < 8; i++) {
         ch = filename[i] - '0';
-        if (ch >= countof(xdigit) || xdigit[ch] < 0) {
+        if (ch >= xdigit.size() || xdigit[ch] < 0) {
             return -1;
         }
         hash <<= 4;
@@ -153,7 +153,7 @@ static int handle_symlink(const char* filename, const char* fullpath) {
     if (filename[i++] != '.') {
         return -1;
     }
-    for (type = countof(symlink_extensions) - 1; type > 0; type--) {
+    for (type = symlink_extensions.size() - 1; type > 0; type--) {
         if (strcasecmp(symlink_extensions[type], &filename[i]) == 0) {
             break;
         }
@@ -165,15 +165,16 @@ static int handle_symlink(const char* filename, const char* fullpath) {
         return -1;
     }
 
-    n = readlink(fullpath, linktarget, sizeof(linktarget));
-    if (n >= sizeof(linktarget) || n < 0) {
+    auto linktarget_size = linktarget.size() * sizeof(decltype(linktarget)::value_type);
+    n = readlink(fullpath, linktarget.data(), linktarget_size);
+    if (n >= linktarget_size || n < 0) {
         return -1;
     }
     linktarget[n] = 0;
 
     EVLOG_debug << "Found existing symlink " << std::string(filename) << " for " << hash << " (" << type
-                << "), certname " << std::string(linktarget, strlen(linktarget));
-    add_entry(type, hash, linktarget, nullptr, 0, id);
+                << "), certname " << std::string(linktarget.data(), strlen(linktarget.data()));
+    add_entry(type, hash, linktarget.data(), nullptr, 0, id);
     return 0;
 }
 
@@ -182,7 +183,7 @@ static int handle_certificate(const char* filename, const char* fullpath) {
     const X509_INFO* x = nullptr;
     BIO* b = nullptr;
     const char* ext = nullptr;
-    unsigned char digest[EVP_MAX_MD_SIZE];
+    std::array<unsigned char, EVP_MAX_MD_SIZE> digest;
     const X509_NAME* name = nullptr;
     int i = 0;
     int type = 0;
@@ -192,12 +193,12 @@ static int handle_certificate(const char* filename, const char* fullpath) {
     if (ext == nullptr) {
         return 0;
     }
-    for (i = 0; i < countof(file_extensions); i++) {
+    for (i = 0; i < file_extensions.size(); i++) {
         if (strcasecmp(file_extensions[i], ext + 1) == 0) {
             break;
         }
     }
-    if (i >= countof(file_extensions)) {
+    if (i >= file_extensions.size()) {
         return -1;
     }
 
@@ -216,14 +217,14 @@ static int handle_certificate(const char* filename, const char* fullpath) {
         if (x->x509 != nullptr) {
             type = TYPE_CERT;
             name = X509_get_subject_name(x->x509);
-            X509_digest(x->x509, evpmd, digest, nullptr);
+            X509_digest(x->x509, evpmd, digest.data(), nullptr);
         } else if (x->crl != nullptr) {
             type = TYPE_CRL;
             name = X509_CRL_get_issuer(x->crl);
-            X509_CRL_digest(x->crl, evpmd, digest, nullptr);
+            X509_CRL_digest(x->crl, evpmd, digest.data(), nullptr);
         }
         if (name != nullptr) {
-            add_entry(type, X509_NAME_hash(name), filename, digest, 1, ~0);
+            add_entry(type, X509_NAME_hash(name), filename, digest.data(), 1, ~0);
         }
     } else {
         EVLOG_warning << std::string(filename) << " does not contain exactly one certificate or CRL: skipping";
@@ -241,7 +242,7 @@ static int hash_dir(const char* dirname) {
     struct entry_info* nextei = nullptr;
     struct dirent* de = nullptr;
     struct stat st;
-    unsigned char idmask[MAX_COLLISIONS / 8];
+    std::array<unsigned char, MAX_COLLISIONS / 8> idmask;
     int i = 0;
     int n = 0;
     int nextid = 0;
@@ -292,16 +293,16 @@ static int hash_dir(const char* dirname) {
     }
     closedir(d);
 
-    for (i = 0; i < countof(hash_table); i++) {
+    for (i = 0; i < hash_table.size(); i++) {
         for (bi = hash_table[i]; bi != nullptr; bi = nextbi) {
             nextbi = bi->next;
             EVLOG_debug << "Type " << bi->type << " hash " << bi->hash << " num entries " << bi->num_needed << ":";
 
             nextid = 0;
-            memset(idmask, 0, (bi->num_needed + 7) / 8);
+            memset(idmask.data(), 0, (bi->num_needed + 7) / 8);
             for (ei = bi->first_entry; ei != nullptr; ei = ei->next) {
                 if (ei->old_id < bi->num_needed) {
-                    bit_set(idmask, ei->old_id);
+                    bit_set(idmask.data(), ei->old_id);
                 }
             }
 
@@ -317,7 +318,7 @@ static int hash_dir(const char* dirname) {
                                 << std::string(buf, strlen(buf));
                 } else if (ei->need_symlink != 0u) {
                     /* New link needed (it may replace something) */
-                    while (bit_isset(idmask, nextid) != 0) {
+                    while (bit_isset(idmask.data(), nextid) != 0) {
                         nextid++;
                     }
 
