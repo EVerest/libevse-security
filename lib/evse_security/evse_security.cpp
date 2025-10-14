@@ -735,6 +735,10 @@ EvseSecurity::get_installed_certificates(const std::vector<CertificateType>& cer
 
                 certificate_hash_data_chain.certificate_type =
                     get_certificate_type(ca_certificate_type); // We always know type
+                if (!root.hash.has_value()) {
+                    EVLOG_error << "Root certificate is missing hash";
+                    continue;
+                }
                 certificate_hash_data_chain.certificate_hash_data = root.hash.value();
 
                 // Add all owned children/certificates in order
@@ -1760,8 +1764,12 @@ GetCertificateInfoResult EvseSecurity::get_ca_certificate_info_internal(CaCertif
             for (auto& root : hierarchy.get_hierarchy()) {
                 if (root.certificate.is_selfsigned() && root.certificate.is_valid()) {
                     CertificateInfo info;
-                    info.certificate = root.certificate.get_file().value();
-                    info.certificate_single = root.certificate.get_file().value();
+                    const auto& root_certificate_file = root.certificate.get_file();
+                    if (!root_certificate_file.has_value()) {
+                        throw CertificateLoadException("Could not load root certificate file");
+                    }
+                    info.certificate = root_certificate_file.value();
+                    info.certificate_single = root_certificate_file.value();
 
                     result.info = info;
                     result.status = GetCertificateInfoStatus::Accepted;
@@ -1853,7 +1861,7 @@ int EvseSecurity::get_leaf_expiry_days_count(LeafCertificateType certificate_typ
             if (key_pair.info.has_value()) {
                 if (key_pair.info.value().certificate.has_value()) {
                     certificate_path = key_pair.info.value().certificate.value();
-                } else {
+                } else if (key_pair.info.value().certificate_single.has_value()) {
                     certificate_path = key_pair.info.value().certificate_single.value();
                 }
             }
