@@ -507,8 +507,8 @@ CertificateValidationResult OpenSSLSupplier::x509_verify_certificate_chain(
     const X509_STORE_ptr store_ptr(X509_STORE_new());
     const X509_STORE_CTX_ptr store_ctx_ptr(X509_STORE_CTX_new());
 
-    for (size_t i = 0; i < parents.size(); i++) {
-        X509_STORE_add_cert(store_ptr.get(), get(parents[i]));
+    for (auto parent : parents) {
+        X509_STORE_add_cert(store_ptr.get(), get(parent));
     }
 
     if (dir_path.has_value() || file_path.has_value()) {
