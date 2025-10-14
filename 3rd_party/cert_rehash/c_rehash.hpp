@@ -122,7 +122,7 @@ static void add_entry(int type, unsigned int hash, const char* filename, const u
     if (old_id < ei->old_id) {
         ei->old_id = old_id;
     }
-    if ((need_symlink != 0) && (ei->need_symlink == 0u)) {
+    if ((need_symlink != 0) && (ei->need_symlink == 0U)) {
         ei->need_symlink = 1;
         bi->num_needed++;
         memcpy(ei->digest.data(), digest, evpmdsize);
@@ -318,7 +318,7 @@ static int hash_dir(const char* dirname) {
                     }
                     EVLOG_debug << "link " << std::string(ei->filename, strlen(ei->filename)) << " -> "
                                 << std::string(buf, strlen(buf));
-                } else if (ei->need_symlink != 0u) {
+                } else if (ei->need_symlink != 0U) {
                     /* New link needed (it may replace something) */
                     while (bit_isset(idmask.data(), nextid) != 0) {
                         nextid++;
