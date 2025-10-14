@@ -47,8 +47,8 @@ enum Type {
     TYPE_CRL
 };
 
-static std::array<const char*, 2> symlink_extensions = {"", "r"};
-static std::array<const char*, 4> file_extensions = {"pem", "crt", "cer", "crl"};
+static const std::array<const char*, 2> symlink_extensions = {"", "r"};
+static const std::array<const char*, 4> file_extensions = {"pem", "crt", "cer", "crl"};
 
 static int evpmdsize;
 static const EVP_MD* evpmd;
