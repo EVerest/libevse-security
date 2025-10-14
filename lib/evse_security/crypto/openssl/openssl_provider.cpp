@@ -24,10 +24,10 @@ using OSSL_LIB_CTX = struct ossl_lib_ctx_st;
 namespace evse_security {
 
 namespace {
-auto KEY_HEADER_DEFAULT = "-----BEGIN PRIVATE KEY-----";
-auto KEY_HEADER_DEFAULT_ENCRYPTED = "-----BEGIN ENCRYPTED PRIVATE KEY-----";
+const auto KEY_HEADER_DEFAULT = "-----BEGIN PRIVATE KEY-----";
+const auto KEY_HEADER_DEFAULT_ENCRYPTED = "-----BEGIN ENCRYPTED PRIVATE KEY-----";
 
-auto KEY_HEADER_TPM2 = "-----BEGIN TSS2 PRIVATE KEY-----";
+const auto KEY_HEADER_TPM2 = "-----BEGIN TSS2 PRIVATE KEY-----";
 } // namespace
 
 bool is_custom_private_key_string(const std::string& private_key_pem) {

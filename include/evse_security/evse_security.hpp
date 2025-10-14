@@ -68,10 +68,10 @@ static constexpr std::uintmax_t DEFAULT_MAX_FILESYSTEM_SIZE = 1024 * 1024 * 50;
 static constexpr std::uintmax_t DEFAULT_MAX_CERTIFICATE_ENTRIES = 2000;
 
 // Expiry for CSRs that did not receive a response CSR, 60 minutes
-static std::chrono::seconds DEFAULT_CSR_EXPIRY(3600);
+static const std::chrono::seconds DEFAULT_CSR_EXPIRY(3600);
 
 // Garbage collect default time, 20 minutes
-static std::chrono::seconds DEFAULT_GARBAGE_COLLECT_TIME(20 * 60);
+static const std::chrono::seconds DEFAULT_GARBAGE_COLLECT_TIME(20 * 60);
 
 /// @brief This class holds filesystem paths to CA bundle file locations and directories for leaf certificates
 class EvseSecurity {
