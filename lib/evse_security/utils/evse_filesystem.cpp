@@ -101,7 +101,7 @@ bool write_to_file(const fs::path& file_path, const std::string& data, std::ios:
             EVLOG_error << "Error opening file: " << file_path;
             return false;
         }
-        fs.write(data.c_str(), data.size());
+        fs.write(data.c_str(), static_cast<std::ptrdiff_t>(data.size()));
 
         if (!fs) {
             EVLOG_error << "Error writing to file: " << file_path;
@@ -128,7 +128,7 @@ bool process_file(const fs::path& file_path, size_t buffer_size,
     std::vector<std::uint8_t> buffer(buffer_size);
     bool interupted = false;
 
-    while (file.read(reinterpret_cast<char*>(buffer.data()), buffer_size)) {
+    while (file.read(reinterpret_cast<char*>(buffer.data()), static_cast<std::ptrdiff_t>(buffer_size))) {
         interupted = func(buffer.data(), buffer_size, false);
 
         if (interupted) {
