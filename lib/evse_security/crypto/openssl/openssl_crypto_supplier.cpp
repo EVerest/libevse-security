@@ -322,6 +322,7 @@ std::string OpenSSLSupplier::x509_get_common_name(X509Handle* handle) {
     }
 
     const unsigned char* cn_str = ASN1_STRING_get0_data(ca_asn1);
+    // NOLINTNEXTLINE(cppcoreguidelines-pro-type-reinterpret-cast): needed because of OpenSSL API
     std::string common_name(reinterpret_cast<const char*>(cn_str), ASN1_STRING_length(ca_asn1));
     return common_name;
 }
@@ -648,8 +649,11 @@ bool OpenSSLSupplier::x509_verify_signature(X509Handle* handle, const std::vecto
     };
 
     const int result =
-        EVP_PKEY_verify(public_key_context_ptr.get(), reinterpret_cast<const unsigned char*>(signature.data()),
-                        signature.size(), reinterpret_cast<const unsigned char*>(data.data()), data.size());
+        EVP_PKEY_verify(public_key_context_ptr.get(),
+                        // NOLINTNEXTLINE(cppcoreguidelines-pro-type-reinterpret-cast): needed because of OpenSSL API
+                        reinterpret_cast<const unsigned char*>(signature.data()), signature.size(),
+                        // NOLINTNEXTLINE(cppcoreguidelines-pro-type-reinterpret-cast): needed because of OpenSSL API
+                        reinterpret_cast<const unsigned char*>(data.data()), data.size());
 
     EVP_cleanup();
 
@@ -704,12 +708,19 @@ CertificateSignRequestResult OpenSSLSupplier::x509_generate_csr(const Certificat
     X509_NAME* x509Name = X509_REQ_get_subject_name(x509_req_ptr.get());
 
     // set subject of x509 req
-    X509_NAME_add_entry_by_txt(x509Name, "C", MBSTRING_ASC,
-                               reinterpret_cast<const unsigned char*>(csr_info.country.c_str()), -1, -1, 0);
-    X509_NAME_add_entry_by_txt(x509Name, "O", MBSTRING_ASC,
-                               reinterpret_cast<const unsigned char*>(csr_info.organization.c_str()), -1, -1, 0);
-    X509_NAME_add_entry_by_txt(x509Name, "CN", MBSTRING_ASC,
-                               reinterpret_cast<const unsigned char*>(csr_info.commonName.c_str()), -1, -1, 0);
+    X509_NAME_add_entry_by_txt(
+        x509Name, "C", MBSTRING_ASC,
+        // NOLINTNEXTLINE(cppcoreguidelines-pro-type-reinterpret-cast): needed because of OpenSSL API
+        reinterpret_cast<const unsigned char*>(csr_info.country.c_str()), -1, -1, 0);
+    X509_NAME_add_entry_by_txt(
+        x509Name, "O", MBSTRING_ASC,
+        // NOLINTNEXTLINE(cppcoreguidelines-pro-type-reinterpret-cast): needed because of OpenSSL API
+        reinterpret_cast<const unsigned char*>(csr_info.organization.c_str()), -1, -1, 0);
+    X509_NAME_add_entry_by_txt(
+        x509Name, "CN", MBSTRING_ASC,
+        // NOLINTNEXTLINE(cppcoreguidelines-pro-type-reinterpret-cast): needed because of OpenSSL API
+        reinterpret_cast<const unsigned char*>(csr_info.commonName.c_str()), -1, -1, 0);
+    // NOLINTNEXTLINE(cppcoreguidelines-pro-type-reinterpret-cast): needed because of OpenSSL API
     X509_NAME_add_entry_by_txt(x509Name, "DC", MBSTRING_ASC, reinterpret_cast<const unsigned char*>("CPO"), -1, -1, 0);
 
     STACK_OF(X509_EXTENSION)* extensions = sk_X509_EXTENSION_new_null();
@@ -802,6 +813,7 @@ bool OpenSSLSupplier::digest_file_sha256(const fs::path& path, std::vector<std::
             }
 
             if (last_chunk) {
+                // NOLINTNEXTLINE(cppcoreguidelines-pro-type-reinterpret-cast): needed because of OpenSSL API
                 if (EVP_DigestFinal_ex(md_context_ptr.get(), reinterpret_cast<unsigned char*>(sha256_out.data()),
                                        &sha256_out_length) == 0) {
                     EVLOG_error << "Error during EVP_DigestFinal_ex";
@@ -838,6 +850,7 @@ template <typename T> bool base64_decode(const std::string& base64_string, T& ou
         return false;
     }
 
+    // NOLINTNEXTLINE(cppcoreguidelines-pro-type-reinterpret-cast): needed because of OpenSSL API
     const auto* encoded_str = reinterpret_cast<const unsigned char*>(base64_string.data());
     const int base64_length = base64_string.size();
 
@@ -845,6 +858,7 @@ template <typename T> bool base64_decode(const std::string& base64_string, T& ou
     decoded_out.reserve(base64_length);
 
     int decoded_out_length = 0;
+    // NOLINTNEXTLINE(cppcoreguidelines-pro-type-reinterpret-cast): needed because of OpenSSL API
     if (EVP_DecodeUpdate(base64_decode_context_ptr.get(), reinterpret_cast<unsigned char*>(decoded_out.data()),
                          &decoded_out_length, encoded_str, base64_length) < 0) {
         EVLOG_error << "Error during DecodeUpdate";
@@ -852,6 +866,7 @@ template <typename T> bool base64_decode(const std::string& base64_string, T& ou
     }
 
     int decode_final_out = 0;
+    // NOLINTNEXTLINE(cppcoreguidelines-pro-type-reinterpret-cast): needed because of OpenSSL API
     if (EVP_DecodeFinal(base64_decode_context_ptr.get(), reinterpret_cast<unsigned char*>(decoded_out.data()),
                         &decode_final_out) < 0) {
         EVLOG_error << "Error during EVP_DecodeFinal";
@@ -887,6 +902,7 @@ bool base64_encode(const unsigned char* bytes_str, int bytes_size, std::string& 
     int full_len = 0;
 
     int base64_out_length = 0;
+    // NOLINTNEXTLINE(cppcoreguidelines-pro-type-reinterpret-cast): needed because of OpenSSL API
     if (EVP_EncodeUpdate(base64_encode_context_ptr.get(), reinterpret_cast<unsigned char*>(base64_out.data()),
                          &base64_out_length, bytes_str, bytes_size) < 0) {
         EVLOG_error << "Error during EVP_EncodeUpdate";
@@ -895,6 +911,7 @@ bool base64_encode(const unsigned char* bytes_str, int bytes_size, std::string& 
     full_len += base64_out_length;
 
     EVP_EncodeFinal(base64_encode_context_ptr.get(),
+                    // NOLINTNEXTLINE(cppcoreguidelines-pro-type-reinterpret-cast): needed because of OpenSSL API
                     std::next(reinterpret_cast<unsigned char*>(base64_out.data()), base64_out_length),
                     &base64_out_length);
     full_len += base64_out_length;
@@ -914,10 +931,12 @@ bool OpenSSLSupplier::base64_decode_to_string(const std::string& base64_string, 
 }
 
 bool OpenSSLSupplier::base64_encode_from_bytes(const std::vector<std::uint8_t>& bytes, std::string& out_encoded) {
+    // NOLINTNEXTLINE(cppcoreguidelines-pro-type-reinterpret-cast): needed for API usage
     return base64_encode(reinterpret_cast<const unsigned char*>(bytes.data()), bytes.size(), out_encoded);
 }
 
 bool OpenSSLSupplier::base64_encode_from_string(const std::string& string, std::string& out_encoded) {
+    // NOLINTNEXTLINE(cppcoreguidelines-pro-type-reinterpret-cast): needed for API usage
     return base64_encode(reinterpret_cast<const unsigned char*>(string.data()), string.size(), out_encoded);
 }
 

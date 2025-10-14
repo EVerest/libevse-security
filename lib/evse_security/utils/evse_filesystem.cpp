@@ -128,6 +128,7 @@ bool process_file(const fs::path& file_path, size_t buffer_size,
     std::vector<std::uint8_t> buffer(buffer_size);
     bool interupted = false;
 
+    // NOLINTNEXTLINE(cppcoreguidelines-pro-type-reinterpret-cast): needed for API usage
     while (file.read(reinterpret_cast<char*>(buffer.data()), static_cast<std::ptrdiff_t>(buffer_size))) {
         interupted = func(buffer.data(), buffer_size, false);
 
