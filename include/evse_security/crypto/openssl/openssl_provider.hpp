@@ -123,7 +123,7 @@ private:
 
 public:
     OpenSSLProvider();
-    ~OpenSSLProvider();
+    ~OpenSSLProvider(); // NOLINT(performance-trivially-destructible): dtor impl dependent on ifdef
 
     void set_global_mode(mode_t mode) {
         set_mode(nullptr, mode);
