@@ -73,7 +73,7 @@ bool X509CertificateHierarchy::get_certificate_hash(const X509Wrapper& certifica
 
     // Search for certificate in the hierarchy and return the hash
     CertificateHashData hash;
-    bool found;
+    bool found = false;
 
     for_each([&](const X509Node& node) {
         if (node.certificate == certificate && node.hash.has_value()) {
@@ -135,7 +135,7 @@ std::optional<X509Wrapper> X509CertificateHierarchy::find_certificate_root(const
 std::optional<std::pair<const X509Node*, int>>
 X509CertificateHierarchy::find_certificate_root_node(const X509Wrapper& leaf) {
     const X509Node* root_ptr = nullptr;
-    int found_depth;
+    int found_depth = 0;
 
     for (const auto& root : hierarchy) {
         if (root.state.is_selfsigned) {

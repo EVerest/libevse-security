@@ -80,7 +80,7 @@ static bool export_key_internal(const KeyGenerationInfo& key_info, const EVP_PKE
             return false;
         }
 
-        int success;
+        int success = 0;
         if (key_info.private_key_pass.has_value()) {
             success = PEM_write_bio_PrivateKey(key_bio.get(), evp_key.get(), EVP_aes_128_cbc(), nullptr, 0, nullptr,
                                                (void*)key_info.private_key_pass.value().c_str());
@@ -425,8 +425,8 @@ bool OpenSSLSupplier::x509_get_validity(X509Handle* handle, std::int64_t& out_va
     const ASN1_TIME* notBefore = X509_get_notBefore(x509);
     const ASN1_TIME* notAfter = X509_get_notAfter(x509);
 
-    int day;
-    int sec;
+    int day = 0;
+    int sec = 0;
     ASN1_TIME_diff(&day, &sec, nullptr, notBefore);
     out_valid_in =
         std::chrono::duration_cast<std::chrono::seconds>(days_to_seconds(day)).count() + sec; // Convert days to seconds
@@ -543,8 +543,8 @@ CertificateValidationResult OpenSSLSupplier::x509_verify_certificate_chain(
 
     if (allow_future_certificates) {
         // Manually check if cert is expired
-        int day;
-        int sec;
+        int day = 0;
+        int sec = 0;
         ASN1_TIME_diff(&day, &sec, nullptr, X509_get_notAfter(get(target)));
         if (day < 0 || sec < 0) {
             // certificate is expired
@@ -836,14 +836,14 @@ template <typename T> static bool base64_decode(const std::string& base64_string
 
     std::uint8_t decoded_out[base64_length];
 
-    int decoded_out_length;
+    int decoded_out_length = 0;
     if (EVP_DecodeUpdate(base64_decode_context_ptr.get(), reinterpret_cast<unsigned char*>(decoded_out),
                          &decoded_out_length, encoded_str, base64_length) < 0) {
         EVLOG_error << "Error during DecodeUpdate";
         return false;
     }
 
-    int decode_final_out;
+    int decode_final_out = 0;
     if (EVP_DecodeFinal(base64_decode_context_ptr.get(), reinterpret_cast<unsigned char*>(decoded_out),
                         &decode_final_out) < 0) {
         EVLOG_error << "Error during EVP_DecodeFinal";
@@ -877,7 +877,7 @@ static bool base64_encode(const unsigned char* bytes_str, int bytes_size, std::s
     char base64_out[base64_length + 66]; // + 66 bytes for final block
     int full_len = 0;
 
-    int base64_out_length;
+    int base64_out_length = 0;
     if (EVP_EncodeUpdate(base64_encode_context_ptr.get(), reinterpret_cast<unsigned char*>(base64_out),
                          &base64_out_length, bytes_str, bytes_size) < 0) {
         EVLOG_error << "Error during EVP_EncodeUpdate";

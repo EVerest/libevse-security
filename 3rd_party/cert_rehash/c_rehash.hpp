@@ -65,8 +65,8 @@ static int bit_isset(unsigned char* set, unsigned bit) {
 
 static void add_entry(int type, unsigned int hash, const char* filename, const unsigned char* digest, int need_symlink,
                       unsigned short old_id) {
-    struct bucket_info* bi;
-    struct entry_info* ei;
+    struct bucket_info* bi = nullptr;
+    struct entry_info* ei = nullptr;
     struct entry_info* found = nullptr;
     const unsigned int ndx = (type + hash) % countof(hash_table);
 
@@ -134,13 +134,13 @@ static int handle_symlink(const char* filename, const char* fullpath) {
                                          12, 13, 14, 15, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
                                          -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, 10, 11, 12, 13, 14, 15};
     char linktarget[NAME_MAX];
-    char* endptr;
+    char* endptr = nullptr;
     unsigned int hash = 0;
-    unsigned char ch;
-    int i;
-    int type;
-    int id;
-    ssize_t n;
+    unsigned char ch = 0;
+    int i = 0;
+    int type = 0;
+    int id = 0;
+    ssize_t n = 0;
 
     for (i = 0; i < 8; i++) {
         ch = filename[i] - '0';
@@ -178,14 +178,14 @@ static int handle_symlink(const char* filename, const char* fullpath) {
 }
 
 static int handle_certificate(const char* filename, const char* fullpath) {
-    STACK_OF(X509_INFO) * inf;
-    X509_INFO* x;
-    BIO* b;
-    const char* ext;
+    STACK_OF(X509_INFO)* inf = nullptr;
+    X509_INFO* x = nullptr;
+    BIO* b = nullptr;
+    const char* ext = nullptr;
     unsigned char digest[EVP_MAX_MD_SIZE];
     const X509_NAME* name = nullptr;
-    int i;
-    int type;
+    int i = 0;
+    int type = 0;
     const int ret = -1;
 
     ext = strrchr(filename, '.');
@@ -235,21 +235,21 @@ static int handle_certificate(const char* filename, const char* fullpath) {
 }
 
 static int hash_dir(const char* dirname) {
-    struct bucket_info* bi;
-    struct bucket_info* nextbi;
-    struct entry_info* ei;
-    struct entry_info* nextei;
-    struct dirent* de;
+    struct bucket_info* bi = nullptr;
+    struct bucket_info* nextbi = nullptr;
+    struct entry_info* ei = nullptr;
+    struct entry_info* nextei = nullptr;
+    struct dirent* de = nullptr;
     struct stat st;
     unsigned char idmask[MAX_COLLISIONS / 8];
-    int i;
-    int n;
-    int nextid;
-    int buflen;
+    int i = 0;
+    int n = 0;
+    int nextid = 0;
+    int buflen = 0;
     int ret = -1;
-    const char* pathsep;
-    char* buf;
-    DIR* d;
+    const char* pathsep = nullptr;
+    char* buf = nullptr;
+    DIR* d = nullptr;
 
     evpmd = EVP_sha1();
     evpmdsize = EVP_MD_size(evpmd);
