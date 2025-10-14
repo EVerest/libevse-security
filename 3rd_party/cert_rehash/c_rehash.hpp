@@ -21,7 +21,7 @@
 
 #include <everest/logging.hpp>
 
-#define MAX_COLLISIONS 256
+constexpr auto MAX_COLLISIONS = 256;
 #define countof(x)     (sizeof(x) / sizeof(x[0]))
 
 namespace evse_security {
