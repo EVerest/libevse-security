@@ -254,7 +254,7 @@ void X509CertificateBundle::add_certificate(X509Wrapper&& certificate) {
 
 void X509CertificateBundle::add_certificate_unique(X509Wrapper&& certificate) {
     if (!contains_certificate(certificate)) {
-        return add_certificate(std::move(certificate));
+        add_certificate(std::move(certificate));
         invalidate_hierarchy();
     }
 }
