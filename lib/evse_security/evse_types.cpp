@@ -156,6 +156,7 @@ std::string get_installed_certificates_status_to_string(GetInstalledCertificates
     }
 };
 
+namespace {
 std::string get_key_pair_status_to_string(GetCertificateInfoStatus e) {
     switch (e) {
     case GetCertificateInfoStatus::Accepted:
@@ -172,6 +173,7 @@ std::string get_key_pair_status_to_string(GetCertificateInfoStatus e) {
         throw std::out_of_range("Could not convert GetCertificateInfoStatus to string");
     }
 };
+} // namespace
 
 } // namespace conversions
 
