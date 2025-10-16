@@ -56,3 +56,4 @@ Checks: >
 HeaderFilterRegex:  ".*"
 CheckOptions:
   - { key: performance-unnecessary-value-param.AllowedTypes, value: ((std::shared_ptr)) }
+  - { key: bugprone-implicit-widening-of-multiplication-result.IgnoreConstantIntExpr, value: true }
