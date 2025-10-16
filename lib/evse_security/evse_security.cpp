@@ -47,7 +47,7 @@ InstallCertificateResult to_install_certificate_result(CertificateValidationResu
     }
 }
 
-std::vector<CaCertificateType> get_ca_certificate_types(const std::vector<CertificateType> certificate_types) {
+std::vector<CaCertificateType> get_ca_certificate_types(const std::vector<CertificateType>& certificate_types) {
     std::vector<CaCertificateType> ca_certificate_types;
     for (const auto& certificate_type : certificate_types) {
         if (certificate_type == CertificateType::V2GRootCertificate) {
