@@ -89,11 +89,7 @@ public:
         for (auto& root : hierarchy) {
             // Process roots
             if (!func(root)) {
-                {
-                    {
-                        return;
-                    }
-                }
+                return;
             }
 
             for (auto& child : root.children) {
@@ -107,11 +103,7 @@ public:
 
             // Process node
             if (!func(top)) {
-                {
-                    {
-                        return;
-                    }
-                }
+                return;
             }
 
             for (auto& child : top.children) {
@@ -123,11 +115,7 @@ public:
     /// @brief Depth-first descendant iteration
     template <typename function> static void for_each_descendant(function func, const X509Node& node, int depth = 0) {
         if (node.children.empty()) {
-            {
-                {
-                    return;
-                }
-            }
+            return;
         }
 
         for (const auto& child : node.children) {

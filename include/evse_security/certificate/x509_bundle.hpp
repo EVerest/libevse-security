@@ -82,9 +82,7 @@ public:
     template <typename function> void for_each_chain(function func) {
         for (const auto& chain : certificates) {
             if (!func(chain.first, chain.second)) {
-                {
-                    break;
-                }
+                break;
             }
         }
     }
@@ -107,9 +105,7 @@ public:
 
         for (const auto& chain : ordered) {
             if (!func(*chain.path, *chain.certificates)) {
-                {
-                    break;
-                }
+                break;
             }
         }
     }
