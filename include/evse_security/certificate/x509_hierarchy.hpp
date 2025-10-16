@@ -93,7 +93,7 @@ public:
             }
 
             for (auto& child : root.children) {
-                queue.emplace(child);
+                queue.push(child); // NOLINT(modernize-use-emplace)
             }
         }
 
@@ -107,7 +107,7 @@ public:
             }
 
             for (auto& child : top.children) {
-                queue.emplace(child);
+                queue.push(child); // NOLINT(modernize-use-emplace)
             }
         }
     }
