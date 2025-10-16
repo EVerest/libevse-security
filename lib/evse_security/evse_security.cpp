@@ -292,7 +292,9 @@ EvseSecurity::EvseSecurity(const FilePaths& file_paths, const std::optional<std:
     directories(file_paths.directories),
     links(file_paths.links),
     max_fs_usage_bytes(max_fs_usage_bytes.value_or(DEFAULT_MAX_FILESYSTEM_SIZE)),
-    max_fs_certificate_store_entries(max_fs_certificate_store_entries.value_or(DEFAULT_MAX_CERTIFICATE_ENTRIES)) {
+    max_fs_certificate_store_entries(max_fs_certificate_store_entries.value_or(DEFAULT_MAX_CERTIFICATE_ENTRIES)),
+    csr_expiry(csr_expiry.value_or(DEFAULT_CSR_EXPIRY)),
+    garbage_collect_time(garbage_collect_time.value_or(DEFAULT_GARBAGE_COLLECT_TIME)) {
     static_assert(sizeof(std::uint8_t) == 1, "uint8_t not equal to 1 byte!");
 
     const std::vector<fs::path> dirs = {
@@ -339,9 +341,6 @@ EvseSecurity::EvseSecurity(const FilePaths& file_paths, const std::optional<std:
             }
         }
     }
-
-    this->csr_expiry = csr_expiry.value_or(DEFAULT_CSR_EXPIRY);
-    this->garbage_collect_time = garbage_collect_time.value_or(DEFAULT_GARBAGE_COLLECT_TIME);
 
     // Start GC timer
     garbage_collect_timer.interval([this]() { this->garbage_collect(); }, this->garbage_collect_time);
