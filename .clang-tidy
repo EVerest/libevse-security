@@ -41,6 +41,7 @@ Checks: >
     -readability-simplify-boolean-expr,
     -readability-use-anyofallof,
     -readability-use-std-min-max,
+    -readability-redundant-inline-specifier,
     -concurrency-mt-unsafe,
     -portability-avoid-pragma-once,
     -portability-template-virtual-member-function,

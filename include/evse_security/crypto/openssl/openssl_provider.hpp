@@ -79,19 +79,19 @@ private:
     static struct ossl_provider_st* s_tls_prov_custom_p;
     static struct ossl_lib_ctx_st* s_tls_libctx_p;
 
-    static void reset(flags_t f) {
+    static inline void reset(flags_t f) {
         s_flags &= ~(1 << static_cast<flags_underlying_t>(f));
     }
 
-    static void set(flags_t f) {
+    static inline void set(flags_t f) {
         s_flags |= 1 << static_cast<flags_underlying_t>(f);
     }
 
-    static bool is_set(flags_t f) {
+    static inline bool is_set(flags_t f) {
         return (s_flags & (1 << static_cast<flags_underlying_t>(f))) != 0;
     }
 
-    static bool is_reset(flags_t f) {
+    static inline bool is_reset(flags_t f) {
         return !is_set(f);
     }
 
@@ -99,7 +99,7 @@ private:
     /// @param f - flag to update
     /// @param val - whether to set or reset the flag
     /// @return true when the flag was changed
-    static bool update(flags_t f, bool val) {
+    static inline bool update(flags_t f, bool val) {
         const bool result = (val != is_set(f));
         if (val) {
             set(f);
@@ -111,10 +111,10 @@ private:
 
     bool load(struct ossl_provider_st*& default_p, struct ossl_provider_st*& custom_p, struct ossl_lib_ctx_st* libctx_p,
               mode_t mode);
-    bool load_global(mode_t mode) {
+    inline bool load_global(mode_t mode) {
         return load(s_global_prov_default_p, s_global_prov_custom_p, nullptr, mode);
     }
-    bool load_tls(mode_t mode) {
+    inline bool load_tls(mode_t mode) {
         return load(s_tls_prov_default_p, s_tls_prov_custom_p, s_tls_libctx_p, mode);
     }
 
@@ -125,38 +125,38 @@ public:
     OpenSSLProvider();
     ~OpenSSLProvider(); // NOLINT(performance-trivially-destructible): dtor impl dependent on ifdef
 
-    void set_global_mode(mode_t mode) {
+    inline void set_global_mode(mode_t mode) {
         set_mode(nullptr, mode);
     }
 
-    void set_tls_mode(mode_t mode) {
+    inline void set_tls_mode(mode_t mode) {
         set_mode(s_tls_libctx_p, mode);
     }
 
     const char* propquery(mode_t mode) const;
 
-    mode_t propquery_global() const {
+    inline mode_t propquery_global() const {
         return (is_set(flags_t::global_custom_provider)) ? mode_t::custom_provider : mode_t::default_provider;
     }
-    mode_t propquery_tls() const {
+    inline mode_t propquery_tls() const {
         return (is_set(flags_t::tls_custom_provider)) ? mode_t::custom_provider : mode_t::default_provider;
     }
 
-    const char* propquery_global_str() const {
+    inline const char* propquery_global_str() const {
         return propquery(propquery_global());
     }
-    const char* propquery_tls_str() const {
+    inline const char* propquery_tls_str() const {
         return propquery(propquery_tls());
     }
-    const char* propquery_default() const {
+    inline const char* propquery_default() const {
         return propquery(mode_t::default_provider);
     }
-    const char* propquery_custom() const {
+    inline const char* propquery_custom() const {
         return propquery(mode_t::custom_provider);
     }
 
     /// @brief return the TLS OSSL library context
-    operator struct ossl_lib_ctx_st *() {
+    inline operator struct ossl_lib_ctx_st *() {
         return s_tls_libctx_p;
     }
 
