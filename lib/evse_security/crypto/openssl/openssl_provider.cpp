@@ -16,17 +16,19 @@
 #else
 // dummy structures for non-OpenSSL 3
 struct ossl_provider_st {};
-typedef struct ossl_provider_st OSSL_PROVIDER;
+using OSSL_PROVIDER = struct ossl_provider_st;
 struct ossl_lib_ctx_st;
-typedef struct ossl_lib_ctx_st OSSL_LIB_CTX;
+using OSSL_LIB_CTX = struct ossl_lib_ctx_st;
 #endif
 
 namespace evse_security {
 
-static auto KEY_HEADER_DEFAULT = "-----BEGIN PRIVATE KEY-----";
-static auto KEY_HEADER_DEFAULT_ENCRYPTED = "-----BEGIN ENCRYPTED PRIVATE KEY-----";
+namespace {
+const auto KEY_HEADER_DEFAULT = "-----BEGIN PRIVATE KEY-----";
+const auto KEY_HEADER_DEFAULT_ENCRYPTED = "-----BEGIN ENCRYPTED PRIVATE KEY-----";
 
-static auto KEY_HEADER_TPM2 = "-----BEGIN TSS2 PRIVATE KEY-----";
+const auto KEY_HEADER_TPM2 = "-----BEGIN TSS2 PRIVATE KEY-----";
+} // namespace
 
 bool is_custom_private_key_string(const std::string& private_key_pem) {
     // If we can't find the standard header it means it's a custom key
@@ -255,25 +257,24 @@ OSSL_PROVIDER* OpenSSLProvider::s_tls_prov_default_p = nullptr;
 OSSL_PROVIDER* OpenSSLProvider::s_tls_prov_custom_p = nullptr;
 OSSL_LIB_CTX* OpenSSLProvider::s_tls_libctx_p = nullptr;
 
-OpenSSLProvider::OpenSSLProvider() {
-}
+OpenSSLProvider::OpenSSLProvider() = default;
 
-OpenSSLProvider::~OpenSSLProvider() {
-}
+OpenSSLProvider::~OpenSSLProvider() = default;
 
-bool OpenSSLProvider::load(OSSL_PROVIDER*&, OSSL_PROVIDER*&, OSSL_LIB_CTX*, mode_t) {
+bool OpenSSLProvider::load(OSSL_PROVIDER*& /*unused*/, OSSL_PROVIDER*& /*unused*/, OSSL_LIB_CTX* /*unused*/,
+                           mode_t /*unused*/) {
     return false;
 }
 
-bool OpenSSLProvider::set_propstr(OSSL_LIB_CTX*, mode_t) {
+bool OpenSSLProvider::set_propstr(OSSL_LIB_CTX* /*unused*/, mode_t /*unused*/) {
     return false;
 }
 
-bool OpenSSLProvider::set_mode(OSSL_LIB_CTX*, mode_t) {
+bool OpenSSLProvider::set_mode(OSSL_LIB_CTX* /*unused*/, mode_t /*unused*/) {
     return false;
 }
 
-const char* OpenSSLProvider::propquery(mode_t mode) const {
+const char* OpenSSLProvider::propquery(mode_t /*mode*/) const {
     return nullptr;
 }
 

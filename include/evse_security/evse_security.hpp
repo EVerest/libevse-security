@@ -68,10 +68,10 @@ static constexpr std::uintmax_t DEFAULT_MAX_FILESYSTEM_SIZE = 1024 * 1024 * 50;
 static constexpr std::uintmax_t DEFAULT_MAX_CERTIFICATE_ENTRIES = 2000;
 
 // Expiry for CSRs that did not receive a response CSR, 60 minutes
-static std::chrono::seconds DEFAULT_CSR_EXPIRY(3600);
+static constexpr std::chrono::seconds DEFAULT_CSR_EXPIRY(3600);
 
 // Garbage collect default time, 20 minutes
-static std::chrono::seconds DEFAULT_GARBAGE_COLLECT_TIME(20 * 60);
+static constexpr std::chrono::seconds DEFAULT_GARBAGE_COLLECT_TIME(20 * 60);
 
 /// @brief This class holds filesystem paths to CA bundle file locations and directories for leaf certificates
 class EvseSecurity {
@@ -330,7 +330,6 @@ private:
     /// @brief Determines if the total filesize of certificates is > than the max_filesystem_usage bytes
     bool is_filesystem_full();
 
-private:
     static std::mutex security_mutex;
 
     // why not reusing the FilePaths here directly (storage duplication)
@@ -357,7 +356,6 @@ private:
     // is there only one password for all private keys?
     std::optional<std::string> private_key_password; // used to decrypt encrypted private keys
 
-private:
 // Define here all tests that require internal function usage
 #ifdef BUILD_TESTING_EVSE_SECURITY
     FRIEND_TEST(EvseSecurityTests, verify_directory_bundles);

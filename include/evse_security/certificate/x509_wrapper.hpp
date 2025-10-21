@@ -35,14 +35,12 @@ public:
 
     ~X509Wrapper();
 
-public:
     /// @brief Returns true if this certificate is the child of the provided parent
     bool is_child(const X509Wrapper& parent) const;
 
     /// @brief Returns true if this certificate is self-signed
     bool is_selfsigned() const;
 
-public:
     /// @brief Gets x509 raw handle
     inline X509Handle* get() const {
         return x509.get();
@@ -117,7 +115,6 @@ public:
     /// @brief If the certificate has expired
     bool is_expired() const;
 
-public:
     X509Wrapper& operator=(X509Wrapper&& other) = default;
 
     /// @return true if the two certificates are the same
@@ -131,7 +128,6 @@ public:
 private:
     void update_validity();
 
-private:
     X509Handle_ptr x509;   // X509 wrapper object
     std::int64_t valid_in; // seconds; if > 0 cert is not yet valid, negative value means past, positive is in future
     std::int64_t valid_to; // seconds; if < 0 cert has expired, negative value means past, positive is in future

@@ -10,6 +10,7 @@
 
 namespace evse_security {
 
+// NOLINTNEXTLINE(cert-int09-c, readability-enum-initial-value): prefer implicit initialization for readability
 enum class CryptoKeyType {
     EC_prime256v1, // Default EC. P-256, ~equiv to rsa 3072
     EC_secp384r1,  // P-384, ~equiv to rsa 7680
@@ -73,8 +74,7 @@ public:
 };
 
 struct CryptoHandle {
-    virtual ~CryptoHandle() {
-    }
+    virtual ~CryptoHandle() = default;
 };
 
 /// @brief Handle abstraction to crypto lib X509 certificate

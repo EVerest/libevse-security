@@ -1,5 +1,8 @@
 .*
+!.clang-format
+!.clang-tidy
 !.ci
 !.github
 !.gitignore
-build
+build*
+clang-tidy-*
