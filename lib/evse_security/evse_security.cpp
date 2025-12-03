@@ -220,9 +220,9 @@ std::set<fs::path> get_certificate_path_of_key(const fs::path& key, const fs::pa
     }
 
     std::string error = "Could not find certificate for given private key: ";
-    error += key;
+    error += key.string();
     error += " certificates path: ";
-    error += certificate_path_directory;
+    error += certificate_path_directory.string();
 
     throw NoCertificateValidException(error);
 }
@@ -1527,7 +1527,7 @@ EvseSecurity::get_full_leaf_certificate_info_internal(const CertificateQueryPara
             // We are searching for both the full leaf bundle, containing the leaf and the cso1/2 and the single
             // leaf without the cso1/2
             leaf_directory.for_each_chain(
-                [&](const std::filesystem::path& /*path*/, const std::vector<X509Wrapper>& chain) {
+                [&](const fs::path& /*path*/, const std::vector<X509Wrapper>& chain) {
                     // If we contain the latest valid, we found our generated bundle
                     const bool leaf_found = (std::find(chain.begin(), chain.end(), certificate) != chain.end());
 
@@ -1831,7 +1831,7 @@ std::string EvseSecurity::get_verify_location(CaCertificateType certificate_type
 
         if (!verify_location.empty() &&
             (!verify_location.is_using_directory() || hash_dir(location_path.c_str()) == 0)) {
-            return location_path;
+            return location_path.string();
         }
 
     } catch (const CertificateLoadException& e) {

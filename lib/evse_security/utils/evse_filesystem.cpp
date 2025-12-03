@@ -56,7 +56,7 @@ bool create_file_if_nonexistent(const fs::path& file_path) {
 
     try {
         if (!fs::exists(file_path)) {
-            const std::ofstream file(file_path);
+            const fsstd::ofstream file(file_path);
             return true;
         }
         if (fs::is_directory(file_path)) {
@@ -118,7 +118,7 @@ bool write_to_file(const fs::path& file_path, const std::string& data, std::ios:
 
 bool process_file(const fs::path& file_path, size_t buffer_size,
                   std::function<bool(const std::uint8_t*, std::size_t, bool last_chunk)>&& func) {
-    std::ifstream file(file_path, std::ios::binary);
+    fsstd::ifstream file(file_path, std::ios::binary);
 
     if (!file) {
         EVLOG_error << "Error opening file: " << file_path;
@@ -166,7 +166,7 @@ std::string get_random_file_name(const std::string& extension) {
 bool read_hash_from_file(const fs::path& file_path, CertificateHashData& out_hash) {
     if (file_path.extension() == CERT_HASH_EXTENSION) {
         try {
-            std::ifstream hs(file_path);
+            fsstd::ifstream hs(file_path);
             std::string algo;
 
             hs >> algo;

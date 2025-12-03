@@ -2,6 +2,8 @@
 // Copyright Pionix GmbH and Contributors to EVerest
 #pragma once
 
+#include <evse_security/utils/evse_filesystem_types.hpp>
+
 #include <chrono>
 #include <memory>
 #include <optional>
@@ -46,10 +48,10 @@ struct KeyGenerationInfo {
     bool generate_on_custom;
 
     /// @brief If we should export the public key to a file
-    std::optional<std::string> public_key_file;
+    std::optional<fs::path> public_key_file;
 
     /// @brief If we should export the private key to a file
-    std::optional<std::string> private_key_file;
+    std::optional<fs::path> private_key_file;
     /// @brief If we should have a pass for the private key file
     std::optional<std::string> private_key_pass;
 };
