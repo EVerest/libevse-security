@@ -135,7 +135,11 @@ public:
         X509CertificateHierarchy ordered;
 
         (std::for_each(certificates.begin(), certificates.end(),
+#if defined(__GNUC__) && !defined(__clang__) && (__GNUC__ < 9)
+                       [ordered_ptr = &ordered](X509Wrapper& cert) { ordered_ptr->insert(std::move(cert)); }),
+#else
                        [&ordered](X509Wrapper& cert) { ordered.insert(std::move(cert)); }),
+#endif
          ...); // Fold expr
 
         // Prune the tree

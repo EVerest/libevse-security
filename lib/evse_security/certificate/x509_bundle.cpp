@@ -101,7 +101,7 @@ int X509CertificateBundle::get_certificate_chains_count() const {
 void X509CertificateBundle::add_certificates(const std::string& data, const EncodingFormat encoding,
                                              const std::optional<fs::path>& path) {
     auto loaded = CryptoSupplier::load_certificates(data, encoding);
-    auto& list = certificates[path.value_or(std::filesystem::path())];
+    auto& list = certificates[path.value_or(fs::path())];
 
     for (auto& x509 : loaded) {
         if (path.has_value()) {
@@ -239,7 +239,7 @@ void X509CertificateBundle::delete_all_certificates() {
 void X509CertificateBundle::add_certificate(X509Wrapper&& certificate) {
     if (source == X509CertificateSource::DIRECTORY) {
         // If it is in directory mode only allow sub-directories of that directory
-        const std::filesystem::path certif_path = certificate.get_file().value_or(std::filesystem::path());
+        const fs::path certif_path = certificate.get_file().value_or(fs::path());
 
         if (filesystem_utils::is_subdirectory(path, certif_path)) {
             certificates[certif_path].push_back(std::move(certificate));
@@ -309,7 +309,6 @@ bool X509CertificateBundle::export_certificates() {
     }
     if (source == X509CertificateSource::FILE) {
         // write to a separate file to minimise corruption and data loss; then rename
-        namespace fs = std::filesystem;
         bool result{false};
 
         try {
@@ -420,7 +419,7 @@ std::string X509CertificateBundle::to_export_string() const {
     return export_string;
 }
 
-std::string X509CertificateBundle::to_export_string(const std::filesystem::path& chain) const {
+std::string X509CertificateBundle::to_export_string(const fs::path& chain) const {
     std::string export_string;
 
     auto found = certificates.find(chain);

@@ -90,6 +90,10 @@ if(LIBEVSE_SECURITY_USE_BOOST_FILESYSTEM)
         PRIVATE
             Boost::filesystem
     )
+    target_compile_definitions(evse_security
+        PRIVATE
+            LIBEVSE_SECURITY_USE_BOOST_FILESYSTEM
+    )
 endif()
 
 if(LIBEVSE_CRYPTO_SUPPLIER_OPENSSL)

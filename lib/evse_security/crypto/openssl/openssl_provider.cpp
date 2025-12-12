@@ -38,7 +38,7 @@ bool is_custom_private_key_string(const std::string& private_key_pem) {
 
 bool is_custom_private_key_file(const fs::path& private_key_file_pem) {
     if (fs::is_regular_file(private_key_file_pem)) {
-        std::ifstream key_file(private_key_file_pem);
+        fsstd::ifstream key_file(private_key_file_pem);
         std::string line;
         std::getline(key_file, line);
         key_file.close();

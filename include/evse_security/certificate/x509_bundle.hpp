@@ -158,7 +158,7 @@ public:
     std::string to_export_string() const;
 
     /// @brief Returns a full exportable representation of a certificate sub-chain, if found
-    std::string to_export_string(const std::filesystem::path& chain) const;
+    std::string to_export_string(const fs::path& chain) const;
 
     /// @brief Exports the full certificate chain either as individual files if it is using a directory
     /// or as a bundle if it uses a bundle file, at the initially provided path. Also deletes/adds the updated
